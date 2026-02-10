@@ -1,6 +1,8 @@
+import { ItemVarientStatusType } from '../../enums';
+
 export interface ItemVariant {
     variantId: string;
     price: number;
-    status: string;
+    status: ItemVarientStatusType;
     variantName?: string;
 }

@@ -1,3 +1,4 @@
+import { OrderType } from '../../enums';
 import { Ticket } from './Ticket';
 
 export interface Order {
@@ -6,6 +7,6 @@ export interface Order {
     tableId: string;
     tableName: string;
     splitedType: number;
-    orderType: number;
+    orderType: OrderType;
     tickets: Ticket[];
 }

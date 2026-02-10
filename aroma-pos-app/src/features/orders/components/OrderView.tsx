@@ -3,6 +3,7 @@ import { Table, Button, Space, Tag, Typography, theme, Drawer, Tabs, List, Divid
 import { EyeOutlined, ShoppingCartOutlined, CreditCardOutlined, FileTextOutlined, UserOutlined } from '@ant-design/icons';
 import { Order, Ticket, TicketItem } from '../../../shared/types';
 import Card from 'antd/es/card/Card';
+import { OrderType } from '@/src/shared/enums';
 
 interface OrderViewProps {
     orders: Order[];
@@ -52,7 +53,18 @@ const OrderView: React.FC<OrderViewProps> = ({ orders }) => {
             title: 'Type',
             dataIndex: 'orderType',
             key: 'orderType',
-            render: (type: number) => type === 1 ? <Tag icon={<UserOutlined />}>Dine In</Tag> : <Tag>Takeout</Tag>
+            render: (type?: OrderType) => {
+                    switch (type) {
+                        case OrderType.DineIn:
+                            return <Tag>Dine In</Tag>;
+
+                        case OrderType.TakeAway:
+                            return <Tag>Takeaway</Tag>;
+
+                        default:
+                            return <Tag color="default">Unknown</Tag>;
+                    }
+            }
         },
         {
             title: 'Total Tickets',

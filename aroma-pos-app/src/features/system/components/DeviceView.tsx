@@ -4,6 +4,7 @@ import { PlusOutlined, EditOutlined, DeleteOutlined, DesktopOutlined, FilterOutl
 import { Device, DeviceType, DeviceProtocol, DeviceStatus } from '../../../shared/types';
 import { systemService } from '../api/system.service';
 import { Option } from 'antd/es/mentions';
+import { DeviceStatusType } from '@/src/shared/enums';
 
 interface DeviceViewProps {
     devices: Device[];
@@ -178,9 +179,8 @@ const DeviceView: React.FC<DeviceViewProps> = ({ devices, onSave, onDelete }) =>
                         </Form.Item>
                         <Form.Item name="status" label="Status" rules={[{ required: true }]}>
                             <Select>
-                                <Option value="Active">Active</Option>
-                                <Option value="Inactive">Inactive</Option>
-                                <Option value="Maintenance">Maintenance</Option>
+                                <Option value={DeviceStatusType.Active}> {DeviceStatusType[DeviceStatusType.Active]}</Option>
+                                <Option value={DeviceStatusType.InActive}> {DeviceStatusType[DeviceStatusType.InActive]}</Option>
                             </Select>
                         </Form.Item>
                     </div>

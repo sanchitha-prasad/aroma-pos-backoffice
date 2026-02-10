@@ -7,7 +7,7 @@ export interface MenuItem {
   name: string;
   description?: string;
   categoryId: string;
-  status: string;
+  isActive : boolean;
   variants: ItemVariant[];
   modifierGroupIds: string[];
   tagIds?: string[];

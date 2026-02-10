@@ -5,6 +5,7 @@ import { MenuItem, ModifierGroup, Category, Device, ItemVariant, Variant } from 
 import { Option } from 'antd/es/mentions';
 import { VariantService } from '../api/variants.service';
 import { showErrorMessage } from '@/src/shared/types/ui/ErrorMessageModel';
+import { ItemVarientStatusType } from '@/src/shared/enums';
 
 interface MenuFormProps {
     initialData?: MenuItem | null;
@@ -47,7 +48,7 @@ const MenuForm: React.FC<MenuFormProps> = ({ initialData, categories, modifierGr
         if (initialData) {
             (form as any).setFieldsValue({
                 ...initialData,
-                status: initialData.status === 'Available',
+                status: initialData.status === ItemVarientStatusType.Available,
                 modifierGroupIds: initialData.modifierGroups?.map(g => g.modifierGroupId) || initialData.modifierGroupIds || []
             });
 
@@ -68,11 +69,11 @@ const MenuForm: React.FC<MenuFormProps> = ({ initialData, categories, modifierGr
             return;
         }
 
-        const finalData = {
+        const finalData: Omit<MenuItem , "id"> = {
             name: values.name,
             description: values.description,
             categoryId: values.categoryId,
-            status: values.status ? 'Available' : 'Unavailable',
+            isActive: values.status ,
             modifierGroupIds: values.modifierGroupIds,
             tagIds: [],
             variants: variants
@@ -81,7 +82,7 @@ const MenuForm: React.FC<MenuFormProps> = ({ initialData, categories, modifierGr
     };
 
     const handleAddVariant = () => {
-        setVariants([...variants, { variantId: '', price: 0, status: 'Available' }]);
+        setVariants([...variants, { variantId: '', price: 0, status: ItemVarientStatusType.Available }]);
     };
 
     const handleVariantChange = (index: number, field: keyof ItemVariant, value: any) => {
@@ -169,7 +170,7 @@ const MenuForm: React.FC<MenuFormProps> = ({ initialData, categories, modifierGr
                                     <Form.Item label="Description" name="description">
                                         <TextArea rows={4} style={{ resize: 'none' }} />
                                     </Form.Item>
-                                    <Form.Item name="status" valuePropName="checked" label="Available Status">
+                                     <Form.Item name="status" valuePropName="checked" label="Available Status">
                                         <Switch checkedChildren="Available" unCheckedChildren="Sold Out" />
                                     </Form.Item>
                                 </div>

@@ -1,11 +1,12 @@
 import { DeviceStatus } from './DeviceStatus';
 import { DeviceType } from './DeviceType';
 import { DeviceProtocol } from './DeviceProtocol';
+import { DeviceStatusType } from '../../enums';
 
 export interface Device {
   id: string;
   name: string;
-  status: DeviceStatus;
+  status: DeviceStatusType;
   location?: string;
   serialNumber?: string;
   ipAddress?: string;
