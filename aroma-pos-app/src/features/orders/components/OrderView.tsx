@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Table, Button, Space, Tag, Typography, theme, Drawer, Tabs, List, Card, Divider, Descriptions } from 'antd';
+import { Table, Button, Space, Tag, Typography, theme, Drawer, Tabs, List, Divider, Descriptions } from 'antd';
 import { EyeOutlined, ShoppingCartOutlined, CreditCardOutlined, FileTextOutlined, UserOutlined } from '@ant-design/icons';
 import { Order, Ticket, TicketItem } from '../../../shared/types';
+import Card from 'antd/es/card/Card';
 
 interface OrderViewProps {
     orders: Order[];
@@ -26,8 +27,9 @@ const OrderView: React.FC<OrderViewProps> = ({ orders }) => {
     };
 
     const getPaymentStatus = (status: number) => {
-        switch(status) {
-            case 3: return <Tag color="green">Paid</Tag>;
+        switch (status) {
+            case 3: return <Tag color="yellow">Partially Paid</Tag>;
+            case 2: return <Tag color="green">Paid</Tag>;
             case 1: return <Tag color="orange">Pending</Tag>;
             default: return <Tag color="default">Unknown</Tag>;
         }
@@ -36,14 +38,14 @@ const OrderView: React.FC<OrderViewProps> = ({ orders }) => {
     const columns = [
         {
             title: 'Order #',
-            dataIndex: 'orderNumber',
-            key: 'orderNumber',
+            dataIndex: 'orderCode',
+            key: 'orderCode',
             render: (text: number) => <strong>#{text}</strong>
         },
         {
             title: 'Table',
-            dataIndex: 'tableId',
-            key: 'tableId',
+            dataIndex: 'tableName',
+            key: 'tableName',
             render: (text: string) => <Tag color="blue">{text}</Tag>
         },
         {
@@ -77,14 +79,15 @@ const OrderView: React.FC<OrderViewProps> = ({ orders }) => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
             <div>
                 <Title level={5}>Order Items</Title>
-                <Table 
+                <Text level={5}>Ticket Number #{ticket.ticketCode}</Text>
+                <Table
                     dataSource={ticket.items}
                     rowKey="id"
                     pagination={false}
                     columns={[
-                        { 
-                            title: 'Item', 
-                            dataIndex: 'name', 
+                        {
+                            title: 'Item',
+                            dataIndex: 'name',
                             key: 'name',
                             render: (text: string, item: TicketItem) => (
                                 <div>
@@ -99,13 +102,13 @@ const OrderView: React.FC<OrderViewProps> = ({ orders }) => {
                             )
                         },
                         { title: 'Qty', dataIndex: 'quantity', key: 'qty', width: 60 },
-                        { 
-                            title: 'Price', 
-                            key: 'price', 
+                        {
+                            title: 'Price',
+                            key: 'price',
                             align: 'right',
                             render: (_: any, item: TicketItem) => {
                                 const modTotal = item.modifiers.reduce((acc, m) => acc + m.price, 0);
-                                const total = (item.price + modTotal) * item.quantity;
+                                const total = ((item.price + modTotal) * item.quantity) * item.portion;
                                 return `$${total.toFixed(2)}`;
                             }
                         }
@@ -114,44 +117,95 @@ const OrderView: React.FC<OrderViewProps> = ({ orders }) => {
             </div>
 
             <div>
-                 <Title level={5}>Payments</Title>
-                 {ticket.payments.length > 0 ? (
-                     <List
+                <Title level={5}>Payments</Title>
+                {ticket.payments.length > 0 ? (
+                    <List
                         dataSource={ticket.payments}
                         renderItem={payment => (
                             <List.Item>
-                                <List.Item.Meta 
+                                <List.Item.Meta
                                     avatar={<CreditCardOutlined style={{ fontSize: 24, color: token.colorPrimary }} />}
-                                    title={`Payment ID: ${payment.id.substring(0, 8)}...`}
+                                    title={
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <span>Payment ID:</span>
+                                            <Tag color="gray" style={{ fontSize: 10, margin: 0 }}>
+                                                {payment.id}
+                                            </Tag>
+                                        </div>
+                                    }
                                     description={payment.paymentType === 0 ? "Cash" : "Card"}
                                 />
                                 <div style={{ fontWeight: 600 }}>${payment.amount.toFixed(2)}</div>
                             </List.Item>
                         )}
-                     />
-                 ) : (
-                     <Text type="secondary">No payments recorded.</Text>
-                 )}
+                    />
+                ) : (
+                    <Text type="secondary">No payments recorded.</Text>
+                )}
             </div>
 
             <Card size="small" style={{ background: token.colorFillAlter }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <Text>Subtotal:</Text>
-                    <Text strong>${ticket.items.reduce((acc, item) => acc + (item.price * item.quantity), 0).toFixed(2)}</Text>
-                </div>
-                {ticket.items.some(item => item.taxes && item.taxes.length > 0) && (
-                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <Text>Tax:</Text>
-                        <Text strong>$0.00</Text> 
-                    </div>
-                )}
-                <Divider style={{ margin: '8px 0' }} />
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 16 }}>
-                    <Text strong>Total:</Text>
-                    <Text strong style={{ color: token.colorPrimary }}>
-                         ${ticket.items.reduce((acc, item) => acc + (item.price * item.quantity), 0).toFixed(2)}
-                    </Text>
-                </div>
+                {(() => {
+                    let totalTax = 0;
+                    const subtotal = ticket.items.reduce((acc, item) => {
+                        const modTotal = item.modifiers.reduce((mAcc, m) => mAcc + m.price, 0);
+                        const itemSubtotal = ((item.price + modTotal) * item.quantity) * item.portion;
+
+                        if (item.taxes && item.taxes.length > 0) {
+                            const itemTax = item.taxes.reduce((tAcc, tax) => {
+                                return tax.isActive ? tAcc + (itemSubtotal * (tax.percentage / 100)) : tAcc;
+                            }, 0);
+                            totalTax += itemTax;
+                        }
+                        return acc + itemSubtotal;
+                    }, 0);
+
+                    const grandTotal = subtotal + totalTax;
+
+                    // 1. Calculate Total Paid
+                    const totalPaid = ticket.payments.reduce((acc, p) => acc + p.amount, 0);
+
+                    // 2. Calculate Balance (Remaining)
+                    const balance = grandTotal - totalPaid;
+
+                    return (
+                        <>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                                <Text>Subtotal:</Text>
+                                <Text strong>${subtotal.toFixed(2)}</Text>
+                            </div>
+
+                            {totalTax > 0 && (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                                    <Text>Tax:</Text>
+                                    <Text strong>${totalTax.toFixed(2)}</Text>
+                                </div>
+                            )}
+
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 16 }}>
+                                <Text strong>Total:</Text>
+                                <Text strong>${grandTotal.toFixed(2)}</Text>
+                            </div>
+
+                            <Divider style={{ margin: '8px 0' }} />
+
+                            {/* Paid Amount Display */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                                <Text type="secondary">Paid:</Text>
+                                <Text strong type="success">${totalPaid.toFixed(2)}</Text>
+                            </div>
+
+                            {/* Balance Display */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <Text strong>{balance <= 0 ? "Change:" : "Balance Due:"}</Text>
+                                <Text strong style={{ color: balance > 0 ? token.colorError : token.colorSuccess }}>
+                                    ${Math.abs(balance).toFixed(2)}
+                                </Text>
+                            </div>
+                        </>
+                    );
+                })()}
+
                 <div style={{ marginTop: 8, textAlign: 'right' }}>
                     {getPaymentStatus(ticket.paymentStatus)}
                 </div>
@@ -167,23 +221,23 @@ const OrderView: React.FC<OrderViewProps> = ({ orders }) => {
             </div>
 
             <div style={{ background: token.colorBgContainer, borderRadius: 12, border: `1px solid ${token.colorBorderSecondary}`, overflow: 'hidden' }}>
-                <Table 
+                <Table
                     className="custom-table"
-                    dataSource={orders} 
-                    columns={columns} 
-                    rowKey="id" 
-                    pagination={{ pageSize: 10 }} 
+                    dataSource={orders}
+                    columns={columns}
+                    rowKey="id"
+                    pagination={{ pageSize: 10 }}
                 />
             </div>
 
             <Drawer
-                title={selectedOrder ? `Order #${selectedOrder.orderNumber}` : 'Order Details'}
+                title={selectedOrder ? `Order #${selectedOrder.orderCode}` : 'Order Details'}
                 width={600}
                 onClose={() => setIsDrawerOpen(false)}
                 open={isDrawerOpen}
             >
                 {selectedOrder && (
-                    <Tabs 
+                    <Tabs
                         defaultActiveKey="0"
                         items={selectedOrder.tickets.map((ticket, index) => ({
                             key: index.toString(),

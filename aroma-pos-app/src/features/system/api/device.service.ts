@@ -9,7 +9,7 @@ export const DeviceSevices = {
         return handleRequest<Device[]>(apiClient.get('/api/devices'));
     },
     createDevice: async (data: Omit<Device, 'id'>): Promise<ServiceResponse<Device>> => {
-        return handleRequest<Device>(apiClient.post('/api/devices/frontend', data));
+        return handleRequest<Device>(apiClient.post('/api/devices', data));
     },
 
     updateDevice: async (id: string, data: Partial<Device>): Promise<ServiceResponse<Device>> => {

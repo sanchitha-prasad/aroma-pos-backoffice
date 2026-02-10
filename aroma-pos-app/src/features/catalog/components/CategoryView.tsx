@@ -29,9 +29,9 @@ const CategoryView: React.FC<CategoryViewProps> = ({ categories, devices = [], t
             setEditingCat(cat);
             setName(cat.name);
             setDesc(cat.description || '');
-            setSelectedKds(cat.KitichenDisplayIds || []);
+            setSelectedKds(cat.kitchenDisplays?.map(d => d.id)|| []);
             setSelectedPrinters(cat.PrinterIds || []);
-            setSelectedTaxes(cat.taxIds || []);
+            setSelectedTaxes(cat.taxes?.map(t => t.id) || []);
         } else {
             setEditingCat(null);
             setName('');
@@ -67,6 +67,26 @@ const CategoryView: React.FC<CategoryViewProps> = ({ categories, devices = [], t
             render: (_: any, r: Category) => {
                 if (r.taxes && r.taxes.length > 0) {
                     return r.taxes.map(t => <Tag key={t.id} color="purple">{t.name}</Tag>);
+                }
+                return <span style={{ color: '#ccc' }}>--</span>;
+            }
+        },
+        { 
+            title: 'KDS Screens', 
+            key: 'kds',
+            render: (_: any, r: Category) => {
+                if (r.kitchenDisplays && r.kitchenDisplays.length > 0) {
+                    return r.kitchenDisplays.map(d => <Tag key={d.id} color="blue">{d.name}</Tag>);
+                }
+                return <span style={{ color: '#ccc' }}>--</span>;
+            }
+        },
+        { 
+            title: 'Printers', 
+            key: 'printers',
+            render: (_: any, r: Category) => {
+                if (r.PrinterIds && r.PrinterIds.length > 0) {
+                    return r.PrinterIds.map(id => <Tag key={id} color="green">Printer {id}</Tag>);
                 }
                 return <span style={{ color: '#ccc' }}>--</span>;
             }

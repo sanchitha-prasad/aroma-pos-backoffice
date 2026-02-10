@@ -10,7 +10,7 @@ interface DashboardPageProps {
 
 const Dashboard: React.FC<DashboardPageProps> = ({ isDarkMode }) => {
     const [activities, setActivities] = useState<Activity[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         // const fetchData = async () => {

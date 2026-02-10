@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { 
-    Table, Button, Space, Input, Modal, Typography, 
-    theme, Popconfirm, message, InputNumber, Form, Tabs, List, Select, Row, Col, Tag, Switch 
+import {
+    Table, Button, Space, Input, Modal, Typography,
+    theme, Popconfirm, message, InputNumber, Form, Tabs, List, Select, Row, Col, Tag, Switch
 } from 'antd';
-import { 
-    PlusOutlined, EditOutlined, DeleteOutlined, 
-    AppstoreOutlined, UnorderedListOutlined, MinusCircleOutlined 
+import {
+    PlusOutlined, EditOutlined, DeleteOutlined,
+    AppstoreOutlined, UnorderedListOutlined, MinusCircleOutlined
 } from '@ant-design/icons';
 import { Modifier, ModifierGroup, ModifierItem } from '../../../shared/types';
 import { ModifiersService } from '../api/modifiers.service';
@@ -24,7 +24,7 @@ interface ModifierManagementViewProps {
 const ModifierManagementView: React.FC<ModifierManagementViewProps> = ({ allModifiers, allGroups, onModifierChange }) => {
     const { token } = theme.useToken();
     const [activeTab, setActiveTab] = useState('modifiers');
-    
+
     const [isModModalOpen, setIsModModalOpen] = useState(false);
     const [editingModifier, setEditingModifier] = useState<Modifier | null>(null);
     const [modForm] = Form.useForm();
@@ -70,7 +70,7 @@ const ModifierManagementView: React.FC<ModifierManagementViewProps> = ({ allModi
     const handleSaveGroup = async () => {
         try {
             const values = await (groupForm as any).validateFields();
-            
+
             const payload = {
                 ...values,
                 modifierItems: values.modifierItems || []
@@ -124,7 +124,7 @@ const ModifierManagementView: React.FC<ModifierManagementViewProps> = ({ allModi
         { title: 'Name', dataIndex: 'name', key: 'name', render: (t: string) => <b>{t}</b> },
         { title: 'Description', dataIndex: 'description', key: 'desc' },
         { title: 'Price', dataIndex: 'price', key: 'price', render: (v: number) => `$${v.toFixed(2)}` },
-        { 
+        {
             title: 'Action', key: 'action', width: 100,
             render: (_: any, r: Modifier) => (
                 <Space>
@@ -140,23 +140,23 @@ const ModifierManagementView: React.FC<ModifierManagementViewProps> = ({ allModi
     const groupColumns = [
         { title: 'Group Name', dataIndex: 'name', key: 'name', render: (t: string) => <b>{t}</b> },
         { title: 'Description', dataIndex: 'description', key: 'desc' },
-        { 
-            title: 'Select Constraints', key: 'constraints', 
+        {
+            title: 'Select Constraints', key: 'constraints',
             render: (_: any, r: ModifierGroup) => (
                 <Tag color="blue">Min: {r.minSelectCount} / Max: {r.maxSelectCount}</Tag>
             )
         },
-        { 
-            title: 'Modifiers', key: 'items', 
+        {
+            title: 'Modifiers', key: 'items',
             render: (_: any, r: ModifierGroup) => (
                 <Tag>{r.modifierItems?.length || 0} items</Tag>
             )
         },
-        { 
+        {
             title: 'Status', dataIndex: 'isActive', key: 'active',
             render: (act: boolean) => act ? <Tag color="green">Active</Tag> : <Tag>Inactive</Tag>
         },
-        { 
+        {
             title: 'Action', key: 'action', width: 100,
             render: (_: any, r: ModifierGroup) => (
                 <Space>
@@ -173,9 +173,9 @@ const ModifierManagementView: React.FC<ModifierManagementViewProps> = ({ allModi
         <div style={{ padding: 24, height: '100%', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                 <Title level={2} style={{ margin: 0 }}>Modifier Management</Title>
-                <Button 
-                    type="primary" 
-                    icon={<PlusOutlined />} 
+                <Button
+                    type="primary"
+                    icon={<PlusOutlined />}
                     onClick={() => activeTab === 'modifiers' ? openModifierModal() : openGroupModal()}
                 >
                     {activeTab === 'modifiers' ? 'New Modifier' : 'New Group'}
@@ -183,9 +183,9 @@ const ModifierManagementView: React.FC<ModifierManagementViewProps> = ({ allModi
             </div>
 
             <Card bodyStyle={{ padding: 0 }} style={{ overflow: 'hidden', borderRadius: 8 }}>
-                <Tabs 
-                    activeKey={activeTab} 
-                    onChange={setActiveTab} 
+                <Tabs
+                    activeKey={activeTab}
+                    onChange={setActiveTab}
                     type="card"
                     tabBarStyle={{ margin: 0, padding: '10px 10px 0', background: token.colorFillAlter }}
                     items={[
@@ -264,8 +264,18 @@ const ModifierManagementView: React.FC<ModifierManagementViewProps> = ({ allModi
                             <Form.List name="modifierItems">
                                 {(fields, { add, remove }) => (
                                     <>
+                                        {fields.length > 0 && (
+                                            <div style={{ display: 'flex', gap: 8, marginBottom: 4 ,marginLeft: 4,marginbottom:8}}>
+                                                <span style={{ flex: 3, fontWeight: 'bold' }}>Modifier Name</span>
+                                                <span style={{ flex: 1, fontWeight: 'bold' }}>Qty</span>
+                                                <span style={{ flex: 1, fontWeight: 'bold' }}>Min Qty</span>
+                                                <span style={{ flex: 1, fontWeight: 'bold' }}>Max Qty</span>
+                                                {/* Spacer for the delete icon to keep alignment correct */}
+                                                <span style={{ width: 14 }}></span>
+                                            </div>
+                                        )}
                                         {fields.map(({ key, name, ...restField }) => (
-                                            <div key={key} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+                                            <div key={key} style={{ display: 'flex', gap: 8, marginBottom: 8,marginTop:8, alignItems: 'center' }}>
                                                 <Form.Item
                                                     {...restField}
                                                     name={[name, 'modifierId']}
@@ -280,11 +290,19 @@ const ModifierManagementView: React.FC<ModifierManagementViewProps> = ({ allModi
                                                 </Form.Item>
                                                 <Form.Item
                                                     {...restField}
+                                                    name={[name, 'quantity']}
+                                                    initialValue={0}
+                                                    style={{ flex: 1, margin: 0 }}
+                                                >
+                                                    <InputNumber placeholder="Default" min={0} style={{ width: '100%' }} />
+                                                </Form.Item>
+                                                <Form.Item
+                                                    {...restField}
                                                     name={[name, 'minQuantity']}
                                                     initialValue={0}
                                                     style={{ flex: 1, margin: 0 }}
                                                 >
-                                                    <InputNumber placeholder="Min Qty" min={0} style={{width: '100%'}} />
+                                                    <InputNumber placeholder="Min Qty" min={0} style={{ width: '100%' }} />
                                                 </Form.Item>
                                                 <Form.Item
                                                     {...restField}
@@ -292,16 +310,9 @@ const ModifierManagementView: React.FC<ModifierManagementViewProps> = ({ allModi
                                                     initialValue={1}
                                                     style={{ flex: 1, margin: 0 }}
                                                 >
-                                                    <InputNumber placeholder="Max Qty" min={1} style={{width: '100%'}} />
+                                                    <InputNumber placeholder="Max Qty" min={1} style={{ width: '100%' }} />
                                                 </Form.Item>
-                                                 <Form.Item
-                                                    {...restField}
-                                                    name={[name, 'quantity']}
-                                                    initialValue={0}
-                                                    style={{ flex: 1, margin: 0 }}
-                                                >
-                                                    <InputNumber placeholder="Default" min={0} style={{width: '100%'}} />
-                                                </Form.Item>
+                                                
                                                 <MinusCircleOutlined onClick={() => remove(name)} style={{ color: 'red' }} />
                                             </div>
                                         ))}

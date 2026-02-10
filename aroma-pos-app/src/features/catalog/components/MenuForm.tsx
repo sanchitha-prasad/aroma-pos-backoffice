@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect,useMemo, useState } from 'react';
 import { Form, Input, InputNumber, Select, Button, theme, message, Popconfirm, Typography, Tabs, Table, Switch, Modal } from 'antd';
 import { DeleteOutlined, SaveOutlined, PlusOutlined } from '@ant-design/icons';
 import { MenuItem, ModifierGroup, Category, Device, ItemVariant, Variant } from '../../../shared/types';
@@ -48,7 +48,7 @@ const MenuForm: React.FC<MenuFormProps> = ({ initialData, categories, modifierGr
             (form as any).setFieldsValue({
                 ...initialData,
                 status: initialData.status === 'Available',
-                modifierGroupIds: initialData.modifierGroups?.map(g => g.id) || initialData.modifierGroupIds || []
+                modifierGroupIds: initialData.modifierGroups?.map(g => g.modifierGroupId) || initialData.modifierGroupIds || []
             });
 
             if (initialData.variants) {
@@ -96,41 +96,42 @@ const MenuForm: React.FC<MenuFormProps> = ({ initialData, categories, modifierGr
         setVariants(newVars);
     };
 
-    const variantColumns = [
-        {
-            title: 'Variant Type',
-            dataIndex: 'variantId',
-            render: (val: string, record: ItemVariant, index: number) => (
-                <Select
-                    placeholder="Select Size"
-                    value={val || undefined}
-                    onChange={v => handleVariantChange(index, 'variantId', v)}
-                    style={{ width: 150 }}
-                >
-                    {availableVariants.map(v => <Option key={v.id} value={v.id}>{v.name}</Option>)}
-                </Select>
-            )
-        },
-        {
-            title: 'Price',
-            dataIndex: 'price',
-            render: (val: number, record: ItemVariant, index: number) => (
-                <InputNumber
-                    min={0}
-                    prefix="$"
-                    value={val}
-                    onChange={val => handleVariantChange(index, 'price', val)}
-                    style={{ width: '100%' }}
-                />
-            )
-        },
-        {
-            title: 'Action',
-            render: (_: any, record: any, index: number) => (
-                <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleDeleteVariant(index)} />
-            )
-        }
-    ];
+    const variantColumns = useMemo(() => [
+    {
+        title: 'Variant Type',
+        dataIndex: 'variantId',
+        render: (val: string, record: ItemVariant, index: number) => (
+            <Select
+                placeholder="Select Size"
+                value={val || undefined}
+                onChange={v => handleVariantChange(index, 'variantId', v)}
+                style={{ width: 150 }}
+            >
+                {availableVariants.map(v => <Option key={v.id} value={v.id}>{v.name}</Option>)}
+            </Select>
+        )
+    },
+    {
+        title: 'Price',
+        dataIndex: 'price',
+        render: (val: number, record: ItemVariant, index: number) => (
+            <InputNumber
+                min={0}
+                prefix="$"
+                value={val}
+                // Ensure this triggers the state update correctly
+                onChange={val => handleVariantChange(index, 'price', val)}
+                style={{ width: '100%' }}
+            />
+        )
+    },
+    {
+        title: 'Action',
+        render: (_: any, record: any, index: number) => (
+            <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleDeleteVariant(index)} />
+        )
+    }
+], [availableVariants, variants]);
 
     return (
         <div style={{
