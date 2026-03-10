@@ -4,7 +4,7 @@ import { PlusOutlined, EditOutlined, DeleteOutlined, DesktopOutlined, FilterOutl
 import { Device, DeviceType, DeviceProtocol, DeviceStatus } from '../../../shared/types';
 import { systemService } from '../api/system.service';
 import { Option } from 'antd/es/mentions';
-import { DeviceStatusType } from '@/src/shared/enums';
+import { DeviceStatusType,DeviceProtocolType,DeviceTypeEnum } from '@/src/shared/enums';
 
 interface DeviceViewProps {
     devices: Device[];
@@ -142,23 +142,37 @@ const DeviceView: React.FC<DeviceViewProps> = ({ devices, onSave, onDelete }) =>
                 width={600}
             >
                 <Form form={form} layout="vertical">
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
                         <Form.Item name="name" label="Device Name" rules={[{ required: true }]}>
                             <Input placeholder="e.g. POS 1" />
                         </Form.Item>
                         <Form.Item name="deviceTypeId" label="Device Type" rules={[{ required: true }]}>
                             <Select>
-                                {deviceTypes.map(t => <Option key={t.id} value={t.id}>{t.name}</Option>)}
+                                <Option value={DeviceTypeEnum.POS}> {DeviceTypeEnum[DeviceTypeEnum.POS]}</Option>
+                                <Option value={DeviceTypeEnum.PRINTER}> {DeviceTypeEnum[DeviceTypeEnum.PRINTER]}</Option>
+                                <Option value={DeviceTypeEnum.KDS}> {DeviceTypeEnum[DeviceTypeEnum.KDS]}</Option>
+                                <Option value={DeviceTypeEnum.PAX}> {DeviceTypeEnum[DeviceTypeEnum.PAX]}</Option>
+                                <Option value={DeviceTypeEnum.EXPEDITOR}> {DeviceTypeEnum[DeviceTypeEnum.EXPEDITOR]}</Option>
+                            </Select>
+                        </Form.Item>
+                        <Form.Item name="status" label="Status" rules={[{ required: true }]}>
+                            <Select>DeviceStatusType
+                                <Option value={DeviceStatusType.Active}> {DeviceStatusType[DeviceStatusType.Active]}</Option>
+                                <Option value={DeviceStatusType.InActive}> {DeviceStatusType[DeviceStatusType.InActive]}</Option>
                             </Select>
                         </Form.Item>
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                         <Form.Item name="deviceProtocolId" label="Protocol">
-                             <Select>
-                                {protocols.map(p => <Option key={p.id} value={p.id}>{p.name}</Option>)}
-                            </Select>
+                              <Select>
+                                <Option value={DeviceProtocolType.TCP}> {DeviceProtocolType[DeviceProtocolType.TCP]}</Option>
+                                <Option value={DeviceProtocolType.TCPIP}> {DeviceProtocolType[DeviceProtocolType.TCPIP]}</Option>
+                                <Option value={DeviceProtocolType.USB}> {DeviceProtocolType[DeviceProtocolType.USB]}</Option>
+                                <Option value={DeviceProtocolType.HTTP}> {DeviceProtocolType[DeviceProtocolType.HTTP]}</Option>
+                              </Select> 
                         </Form.Item>
+
                          <Form.Item name="location" label="Location">
                             <Input placeholder="e.g. Building A" />
                         </Form.Item>
@@ -177,12 +191,13 @@ const DeviceView: React.FC<DeviceViewProps> = ({ devices, onSave, onDelete }) =>
                         <Form.Item name="serialNumber" label="Serial Number">
                             <Input />
                         </Form.Item>
-                        <Form.Item name="status" label="Status" rules={[{ required: true }]}>
+                         <Form.Item name="provider" label="Provider">
                             <Select>
-                                <Option value={DeviceStatusType.Active}> {DeviceStatusType[DeviceStatusType.Active]}</Option>
-                                <Option value={DeviceStatusType.InActive}> {DeviceStatusType[DeviceStatusType.InActive]}</Option>
+                                <Option value = "HNB">HNB</Option>
+                                <Option value = "COM">COM</Option>
                             </Select>
                         </Form.Item>
+
                     </div>
                 </Form>
             </Modal>

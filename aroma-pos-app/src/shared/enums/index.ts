@@ -14,5 +14,19 @@ export enum ItemVarientStatusType   {
     NotAvailable
 }
 
+export enum DeviceProtocolType
+{
+    TCP = 1,
+    TCPIP,
+    USB,
+    HTTP
+}
 
-
+export enum DeviceTypeEnum
+{
+    POS=1,
+    PRINTER,
+    KDS,
+    PAX,
+    EXPEDITOR,
+}
