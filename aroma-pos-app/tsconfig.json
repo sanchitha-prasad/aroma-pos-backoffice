@@ -1,5 +1,7 @@
 {
   "compilerOptions": {
+    "sourceMap": true,
+    "inlineSources": true,
     "target": "ES2022",
     "experimentalDecorators": true,
     "useDefineForClassFields": false,

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Space, Input, Modal, Typography, theme, Popconfirm, InputNumber, Form, Tabs, Tag, Select } from 'antd';
+import { Table, Button, Space, Input, Modal, Typography, theme, Popconfirm, InputNumber, Form, Tabs, Tag, Select, Card } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, DesktopOutlined, FilterOutlined, CreditCardOutlined, WifiOutlined, DisconnectOutlined } from '@ant-design/icons';
 import { Device, DeviceType, DeviceProtocol, DeviceStatus } from '../../../shared/types';
 import { systemService } from '../api/system.service';
 import { Option } from 'antd/es/mentions';
-import { DeviceStatusType,DeviceProtocolType,DeviceTypeEnum } from '@/src/shared/enums';
+import { DeviceStatusType,DeviceProtocolType,DeviceTypeEnum,CardProviderType } from '@/src/shared/enums';
+import { DeviceSevices } from '../api/device.service'; 
 
 interface DeviceViewProps {
     devices: Device[];
@@ -24,13 +25,22 @@ const DeviceView: React.FC<DeviceViewProps> = ({ devices, onSave, onDelete }) =>
     const [protocols, setProtocols] = useState<DeviceProtocol[]>([]);
 
     useEffect(() => {
-        Promise.all([systemService.getDeviceTypes(), systemService.getDeviceProtocols()])
-            .then(([types, protos]) => {
-                setDeviceTypes(types);
-                setProtocols(protos);
+        Promise.all([DeviceSevices.getDeviceTypes(), DeviceSevices.getDeviceProtocols()])
+            .then(([typesRes, protos]) => {
+                setDeviceTypes(typesRes.data);
+                setProtocols(protos.data);
             })
             .catch(err => console.error("Failed to load device meta", err));
     }, []);
+
+    // useEffect(() => {
+    //     Promise.all([systemService.getDeviceTypes(), systemService.getDeviceProtocols()])
+    //         .then(([types, protos]) => {
+    //             setDeviceTypes(types);
+    //             setProtocols(protos);
+    //         })
+    //         .catch(err => console.error("Failed to load device meta", err));
+    // }, []);
 
     const showModal = (device?: Device) => {
         if (device) {
@@ -103,6 +113,11 @@ const DeviceView: React.FC<DeviceViewProps> = ({ devices, onSave, onDelete }) =>
                 return <Tag color={isOnline ? 'green' : 'red'}>{status}</Tag>;
             }
         },
+        { 
+            title: 'Provider', 
+            dataIndex: 'provider', 
+            key: 'provider'
+        },
         {
             title: 'Actions',
             key: 'actions',
@@ -147,13 +162,11 @@ const DeviceView: React.FC<DeviceViewProps> = ({ devices, onSave, onDelete }) =>
                             <Input placeholder="e.g. POS 1" />
                         </Form.Item>
                         <Form.Item name="deviceTypeId" label="Device Type" rules={[{ required: true }]}>
-                            <Select>
-                                <Option value={DeviceTypeEnum.POS}> {DeviceTypeEnum[DeviceTypeEnum.POS]}</Option>
-                                <Option value={DeviceTypeEnum.PRINTER}> {DeviceTypeEnum[DeviceTypeEnum.PRINTER]}</Option>
-                                <Option value={DeviceTypeEnum.KDS}> {DeviceTypeEnum[DeviceTypeEnum.KDS]}</Option>
-                                <Option value={DeviceTypeEnum.PAX}> {DeviceTypeEnum[DeviceTypeEnum.PAX]}</Option>
-                                <Option value={DeviceTypeEnum.EXPEDITOR}> {DeviceTypeEnum[DeviceTypeEnum.EXPEDITOR]}</Option>
-                            </Select>
+                        <Select placeholder="Select a device type">
+                            {deviceTypes.map((type) => (
+                                <Option key={type.id} value={type.id}>{type.name}</Option>
+                            ))}
+                        </Select>
                         </Form.Item>
                         <Form.Item name="status" label="Status" rules={[{ required: true }]}>
                             <Select>DeviceStatusType
@@ -164,13 +177,16 @@ const DeviceView: React.FC<DeviceViewProps> = ({ devices, onSave, onDelete }) =>
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+
                         <Form.Item name="deviceProtocolId" label="Protocol">
-                              <Select>
-                                <Option value={DeviceProtocolType.TCP}> {DeviceProtocolType[DeviceProtocolType.TCP]}</Option>
-                                <Option value={DeviceProtocolType.TCPIP}> {DeviceProtocolType[DeviceProtocolType.TCPIP]}</Option>
-                                <Option value={DeviceProtocolType.USB}> {DeviceProtocolType[DeviceProtocolType.USB]}</Option>
-                                <Option value={DeviceProtocolType.HTTP}> {DeviceProtocolType[DeviceProtocolType.HTTP]}</Option>
-                              </Select> 
+
+                            <Select placeholder="Select a protocol">
+                                 {protocols.map((proto:DeviceProtocol) => (
+                                    <Option key={proto.id} value={proto.id}>{proto.name}</Option>
+                                ))} 
+    
+                            </Select>
+                                
                         </Form.Item>
 
                          <Form.Item name="location" label="Location">
@@ -193,8 +209,7 @@ const DeviceView: React.FC<DeviceViewProps> = ({ devices, onSave, onDelete }) =>
                         </Form.Item>
                          <Form.Item name="provider" label="Provider">
                             <Select>
-                                <Option value = "HNB">HNB</Option>
-                                <Option value = "COM">COM</Option>
+                                <Option value={CardProviderType.HNB}> {CardProviderType[CardProviderType.HNB]}</Option>
                             </Select>
                         </Form.Item>
 

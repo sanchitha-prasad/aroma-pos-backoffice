@@ -30,3 +30,8 @@ export enum DeviceTypeEnum
     PAX,
     EXPEDITOR,
 }
+
+export enum CardProviderType
+{
+    HNB = 1,
+}

@@ -120,37 +120,7 @@ class ApiClient {
             }
         );
         
-        // Response Interceptor New
-        // this.axiosInstance.interceptors.response.use(
-        //     (response) => response.data.data,
-        //     async (error: AxiosError<ApiResponse<any>>) => {
-        //         const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
-
-        //         if (error.response?.status === 401 && !originalRequest._retry) {
-        //             originalRequest._retry = true;
-        //             try {
-        //                 const refreshToken = localStorage.getItem('refreshToken');
-        //                 const res = await axios.post(`${API_CONFIG.AUTH_URL}/api/authentication/refresh`, {
-        //                     refreshToken: refreshToken
-        //                 });
-
-        //                 if (res.data.success) {
-        //                     localStorage.setItem('accessToken', res.data.data.accessToken);
-        //                     localStorage.setItem('refreshToken', res.data.data.refreshToken);
-                            
-        //                     originalRequest.headers.set('Authorization', `Bearer ${res.data.data.accessToken}`);
-        //                     return this.axiosInstance(originalRequest);
-        //                 }
-        //             } catch (refreshError) {
-        //                 this.handleError(error); // Logout if refresh fails
-        //             }
-        //         }
-        //         this.handleError(error);
-        //         return Promise.reject(error);
-        //     }
-        // );
-
-        
+              
     }
 
     private handleError(error: AxiosError<ApiResponse<any>>) {
