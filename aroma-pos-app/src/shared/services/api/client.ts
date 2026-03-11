@@ -8,6 +8,7 @@ interface CustomRequestConfig extends AxiosRequestConfig {
     skipErrorRedirect?: boolean;
     suppressErrorToast?: boolean;
     baseUrl?: string; // Support overriding base URL (e.g. for Auth service)
+    //_retry?: boolean;
 }
 
 // Standard API Response Structure
@@ -22,11 +23,13 @@ interface ApiResponse<T> {
 class ApiClient {
     private axiosInstance: AxiosInstance;
 
+
     constructor() {
         this.axiosInstance = axios.create({
             baseURL: API_CONFIG.CORE_URL,
             timeout: API_CONFIG.TIMEOUT,
             headers: API_CONFIG.HEADERS,
+            //withCredentials:true,
         });
 
         this.setupInterceptors();
@@ -87,7 +90,7 @@ class ApiClient {
             }
         );
 
-        // Response Interceptor (Keep your existing one, just ensuring the type matches)
+        // Response Interceptor (Just ensuring the type matches)
         this.axiosInstance.interceptors.response.use(
             (response: AxiosResponse<ApiResponse<any>>) => {
                 const { data } = response;
@@ -116,6 +119,38 @@ class ApiClient {
                 return Promise.reject(error);
             }
         );
+        
+        // Response Interceptor New
+        // this.axiosInstance.interceptors.response.use(
+        //     (response) => response.data.data,
+        //     async (error: AxiosError<ApiResponse<any>>) => {
+        //         const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+
+        //         if (error.response?.status === 401 && !originalRequest._retry) {
+        //             originalRequest._retry = true;
+        //             try {
+        //                 const refreshToken = localStorage.getItem('refreshToken');
+        //                 const res = await axios.post(`${API_CONFIG.AUTH_URL}/api/authentication/refresh`, {
+        //                     refreshToken: refreshToken
+        //                 });
+
+        //                 if (res.data.success) {
+        //                     localStorage.setItem('accessToken', res.data.data.accessToken);
+        //                     localStorage.setItem('refreshToken', res.data.data.refreshToken);
+                            
+        //                     originalRequest.headers.set('Authorization', `Bearer ${res.data.data.accessToken}`);
+        //                     return this.axiosInstance(originalRequest);
+        //                 }
+        //             } catch (refreshError) {
+        //                 this.handleError(error); // Logout if refresh fails
+        //             }
+        //         }
+        //         this.handleError(error);
+        //         return Promise.reject(error);
+        //     }
+        // );
+
+        
     }
 
     private handleError(error: AxiosError<ApiResponse<any>>) {

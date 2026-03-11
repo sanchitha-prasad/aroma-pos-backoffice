@@ -66,6 +66,9 @@ export const authService = {
             loginNumber: '0000'
         };
 
+        //to save current user during login 
+        localStorage.setItem('currentUser',JSON.stringify(user));
+
         return user;
     },
 
@@ -85,6 +88,17 @@ export const authService = {
                 authService.logout();
                 return null;
             }
+
+            //add current user
+            const savedUser = localStorage.getItem('currentUser');
+            if (savedUser){
+                return JSON.parse(savedUser);
+            }
+            const roleFromToken=
+                payload.role ||
+                payload.Role ||
+                payload.UserRole ||
+                'server';
 
             return {
                 id: payload.sub || 'unknown',
