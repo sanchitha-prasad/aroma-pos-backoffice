@@ -35,3 +35,9 @@ export enum CardProviderType
 {
     HNB = 1,
 }
+
+export enum CustomerStatus {
+    Active = 1,
+    Inactive = 2,
+    Blocked = 3
+}

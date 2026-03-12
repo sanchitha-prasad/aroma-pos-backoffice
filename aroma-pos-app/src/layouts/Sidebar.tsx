@@ -66,6 +66,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     { key: '/taxes', icon: <PercentageOutlined />, label: 'Taxes', permission: 'view_taxes' },
     { key: '/devices', icon: <DesktopOutlined />, label: 'Devices', permission: 'view_devices' },
     { key: '/employees', icon: <TeamOutlined />, label: 'Employees', permission: 'view_employees' },
+    { key: '/customers', icon: <TeamOutlined />, label: 'Customers', permission: 'ALWAYS_VISIBLE' }, //need to change permission later
     { key: '/branches', icon: <ShopOutlined />, label: 'Branches', permission: 'view_branches' },
     { key: '/roles', icon: <SafetyCertificateOutlined />, label: 'Roles & Permissions', permission: 'manage_roles' },
     { key: '/activities', icon: <HistoryOutlined />, label: 'Activity Log', permission: 'view_activity' },

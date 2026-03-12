@@ -22,6 +22,7 @@ import RolePermissions from './pages/RolePermissions';
 import Taxes from './pages/Taxes';
 import Branches from './pages/Branches';
 import Orders from './pages/Orders';
+import Customers from './pages/Customers';
 
 import { Employee, Role } from './shared/types';
 import { DEFAULT_ROLE_PERMISSIONS } from './shared/constants';
@@ -122,6 +123,7 @@ const App: React.FC = () => {
             <Route path="branches" element={<Branches />} />
             <Route path="orders" element={<Orders />} />
             <Route path="employees" element={<Employees />} />
+            <Route path="customers" element={<Customers />} />
             
             <Route path="roles" element={<RolePermissions />} />
             <Route path="activities" element={<Activities />} />
