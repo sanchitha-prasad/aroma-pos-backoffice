@@ -6,6 +6,7 @@ import { systemService } from '../api/system.service';
 import { Option } from 'antd/es/mentions';
 import { DeviceStatusType,DeviceProtocolType,DeviceTypeEnum,CardProviderType } from '@/src/shared/enums';
 import { DeviceSevices } from '../api/device.service'; 
+const { useWatch } = Form;
 
 interface DeviceViewProps {
     devices: Device[];
@@ -24,6 +25,16 @@ const DeviceView: React.FC<DeviceViewProps> = ({ devices, onSave, onDelete }) =>
     const [deviceTypes, setDeviceTypes] = useState<DeviceType[]>([]);
     const [protocols, setProtocols] = useState<DeviceProtocol[]>([]);
 
+    const selectedTypeId = useWatch('deviceTypeId', form);
+
+    const isPax = deviceTypes.find(t => t.id === selectedTypeId)?.name === DeviceTypeEnum[DeviceTypeEnum.PAX];
+
+    useEffect(() => {
+        if (!isPax) {
+            form.setFieldValue('provider', undefined);
+        }
+    }, [isPax, form]);
+
     useEffect(() => {
         Promise.all([DeviceSevices.getDeviceTypes(), DeviceSevices.getDeviceProtocols()])
             .then(([typesRes, protos]) => {
@@ -32,15 +43,6 @@ const DeviceView: React.FC<DeviceViewProps> = ({ devices, onSave, onDelete }) =>
             })
             .catch(err => console.error("Failed to load device meta", err));
     }, []);
-
-    // useEffect(() => {
-    //     Promise.all([systemService.getDeviceTypes(), systemService.getDeviceProtocols()])
-    //         .then(([types, protos]) => {
-    //             setDeviceTypes(types);
-    //             setProtocols(protos);
-    //         })
-    //         .catch(err => console.error("Failed to load device meta", err));
-    // }, []);
 
     const showModal = (device?: Device) => {
         if (device) {
@@ -80,11 +82,22 @@ const DeviceView: React.FC<DeviceViewProps> = ({ devices, onSave, onDelete }) =>
             dataIndex: 'name', 
             key: 'name',
             render: (text: string, record: Device) => (
-                <Space>
-                    <DesktopOutlined style={{ color: token.colorPrimary }} />
-                    <span style={{ fontWeight: 500 }}>{text}</span>
-                    {record.serialNumber && <span style={{ fontSize: 11, color: '#999' }}>({record.serialNumber})</span>}
-                </Space>
+                // <Space>
+                //     <DesktopOutlined style={{ color: token.colorPrimary }} />
+                //     <span style={{ fontWeight: 500 }}>{text}</span>
+                //     {record.serialNumber && <span style={{ fontSize: 11, color: '#999' }}>({record.serialNumber})</span>}
+                // </Space>
+            <div>
+                <div style={{ fontWeight: 500 }}>
+                    <DesktopOutlined style={{ marginRight: 8, color: token.colorPrimary }} />
+                    {text}
+                </div>
+                    {record.serialNumber && (
+                        <div style={{ fontSize: 11, color: '#999', marginLeft: 22 }}>
+                            {record.serialNumber}
+                        </div>
+                    )}
+             </div>
             )
         },
         { 
@@ -204,11 +217,15 @@ const DeviceView: React.FC<DeviceViewProps> = ({ devices, onSave, onDelete }) =>
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                        <Form.Item name="serialNumber" label="Serial Number">
-                            <Input />
+                        <Form.Item name="serialNumber" label="Serial Number" rules={[{ required: true }]}>
+                            <Input placeholder="e.g. SN-2025-AX94-4495"/>
                         </Form.Item>
-                         <Form.Item name="provider" label="Provider">
-                            <Select>
+                         <Form.Item name="provider" label={<span style={{ color: isPax ? 'inherit' : token.colorTextDisabled }}>Provider</span>} >
+                            <Select 
+                                placeholder="Select a provider" 
+                                disabled={!isPax} 
+                                allowclear
+                            >
                                 <Option value={CardProviderType.HNB}> {CardProviderType[CardProviderType.HNB]}</Option>
                             </Select>
                         </Form.Item>
