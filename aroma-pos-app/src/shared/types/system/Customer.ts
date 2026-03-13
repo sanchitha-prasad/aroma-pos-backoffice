@@ -8,7 +8,21 @@ export interface Customer {
     email?: string;         
     phoneNumber: string;    
     status: CustomerStatus; 
-    isActive: boolean;      
     createdOnUtc: string;   
     updatedOnUtc?: string;  
+}
+
+export interface CreateCustomerRequest{
+    firstName: string;     
+    lastName?: string;      
+    email?: string;         
+    phoneNumber: string;    
+}
+
+export interface UpdateCustomerRequest{
+    firstName: string;     
+    lastName?: string;      
+    email?: string;         
+    phoneNumber: string;  
+    status: CustomerStatus;  
 }
