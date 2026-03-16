@@ -203,7 +203,8 @@ const MenuForm: React.FC<MenuFormProps> = ({ initialData, categories, modifierGr
                                     <Table
                                         dataSource={variants}
                                         columns={variantColumns}
-                                        rowKey={(r) => r.variantId + Math.random()}
+                                       // rowKey={(r) => r.variantId + Math.random()}
+                                        rowKey={(_, index) => index.toString()}
                                         pagination={false}
                                         size="small"
                                     />
