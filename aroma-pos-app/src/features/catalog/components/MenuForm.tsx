@@ -77,6 +77,7 @@ const MenuForm: React.FC<MenuFormProps> = ({ initialData, categories, modifierGr
             modifierGroupIds: values.modifierGroupIds,
             tagIds: [],
             variants: variants
+
         };
         onSave(finalData as any);
     };
@@ -109,6 +110,20 @@ const MenuForm: React.FC<MenuFormProps> = ({ initialData, categories, modifierGr
                 style={{ width: 150 }}
             >
                 {availableVariants.map(v => <Option key={v.id} value={v.id}>{v.name}</Option>)}
+            </Select>
+        )
+    },
+    {
+        title: 'Status',
+        dataIndex: 'status',
+        render: (val: number, record: ItemVariant, index: number) => (
+            <Select
+                value={val}
+                onChange={v => handleVariantChange(index, 'status', v)}
+                style={{ width: 140 }}
+            >
+                <Option value={ItemVarientStatusType.Available}>Available</Option>
+                <Option value={ItemVarientStatusType.NotAvailable}>Not Available</Option>
             </Select>
         )
     },
@@ -148,7 +163,7 @@ const MenuForm: React.FC<MenuFormProps> = ({ initialData, categories, modifierGr
             <div style={{ flex: 1, overflowY: 'auto', padding: '24px 32px' }}>
                 <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Title level={4} style={{ margin: 0 }}>
-                        {initialData ? 'Edit Menu Item' : 'New Menu Item'}
+                        {initialData ? 'Edit Menu Item' : 'New Menu Items'}
                     </Title>
                 </div>
 
