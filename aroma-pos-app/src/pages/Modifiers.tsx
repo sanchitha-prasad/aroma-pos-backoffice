@@ -24,12 +24,12 @@ const Modifiers: React.FC = () => {
                 ModifiersService.getModifiers()
             ]);
             if (grpData.success){
-                setGroups(grpData.data);
+                setGroups(grpData.data ?? []);
             }else{
                 showErrorMessage(popup, grpData.message, "Modifier Group Fetch Failed");
             }
             if(modData.success){
-                setModifiers(modData.data);
+                setModifiers(modData.data ?? []);
             }else{
                 showErrorMessage(popup, modData.message, "Modifier Fetch Failed");
             }

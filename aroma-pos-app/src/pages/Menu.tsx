@@ -42,22 +42,22 @@ const Menu: React.FC<MenuPageProps> = ({ currentUser }) => {
               DeviceSevices.getDevices()
           ]);
           if(itemsData.success){
-            setMenuItems(itemsData.data);
+            setMenuItems(itemsData.data ?? []);
           }else{
             showErrorMessage(popup, itemsData.message, "Menu Fetch Failed");
           }
           if(catsData.success){
-            setCategories(catsData.data);
+            setCategories(catsData.data ?? []);
           }else{
             showErrorMessage(popup, catsData.message, "Category Fetch Failed");
           }
           if(groupsData.success){
-            setModifierGroups(groupsData.data);
+            setModifierGroups(groupsData.data ?? []);
           }else{
             showErrorMessage(popup, groupsData.message, "Modifier Group Fetch Failed");
           }
           if(devicesData.success){
-            setDevices(devicesData.data);
+            setDevices(devicesData.data ?? []);
           }else{
             showErrorMessage(popup, devicesData.message, "Device Fetch Failed");
           }

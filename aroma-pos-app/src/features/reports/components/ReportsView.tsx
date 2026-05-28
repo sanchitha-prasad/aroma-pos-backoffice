@@ -31,121 +31,6 @@ const { Sider, Content } = Layout;
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
 
-// --- Mock Data Generators ---
-
-const generateSalesSummary = () => {
-    return Array.from({ length: 10 }).map((_, i) => ({
-        key: i,
-        date: dayjs().subtract(i, 'day').format('YYYY-MM-DD'),
-        orders: Math.floor(Math.random() * 100) + 50,
-        grossSales: (Math.random() * 2000 + 1000).toFixed(2),
-        discounts: (Math.random() * 100).toFixed(2),
-        netSales: (Math.random() * 1800 + 900).toFixed(2),
-        tax: (Math.random() * 200).toFixed(2),
-        total: (Math.random() * 2200 + 1100).toFixed(2),
-    }));
-};
-
-const generateHourlySales = () => {
-    return Array.from({ length: 12 }).map((_, i) => ({
-        key: i,
-        hour: `${i + 10}:00 - ${i + 11}:00`,
-        orders: Math.floor(Math.random() * 20) + 5,
-        sales: (Math.random() * 500 + 100).toFixed(2),
-        labor: (Math.random() * 15 + 10).toFixed(2) + '%',
-    }));
-};
-
-const generateItemSales = () => {
-    const items = ['Classic Burger', 'Cheese Pizza', 'Coke', 'Fries', 'Steak', 'Salad'];
-    return items.map((item, i) => ({
-        key: i,
-        item: item,
-        category: i % 2 === 0 ? 'Food' : 'Drinks',
-        qty: Math.floor(Math.random() * 50) + 10,
-        amount: (Math.random() * 500 + 50).toFixed(2),
-    }));
-};
-
-const generateCategorySales = () => {
-    return [
-        { key: 1, category: 'Food', qty: 145, amount: 2350.50 },
-        { key: 2, category: 'Beverage', qty: 89, amount: 450.25 },
-        { key: 3, category: 'Alcohol', qty: 45, amount: 890.00 },
-        { key: 4, category: 'Merchandise', qty: 12, amount: 240.00 },
-    ];
-};
-
-const generateTipReport = () => {
-    return [
-        { key: 1, employee: 'John Doe', cashTips: 45.00, creditTips: 120.00, total: 165.00 },
-        { key: 2, employee: 'Jane Smith', cashTips: 20.00, creditTips: 80.00, total: 100.00 },
-        { key: 3, employee: 'Mike Cook', cashTips: 10.00, creditTips: 0.00, total: 10.00 },
-    ];
-};
-
-const generateShiftSalesReport = () => {
-    return [
-        { key: 1, shift: 'Morning (8am-4pm)', orders: 45, sales: 1250.00 },
-        { key: 2, shift: 'Dinner (4pm-11pm)', orders: 89, sales: 3450.50 },
-        { key: 3, shift: 'Late Night (11pm-2am)', orders: 22, sales: 650.00 },
-    ];
-};
-
-const generateOrderSummary = () => {
-    return Array.from({ length: 15 }).map((_, i) => ({
-        key: i,
-        orderId: `#100${i}`,
-        time: dayjs().subtract(i * 20, 'minute').format('HH:mm'),
-        type: i % 3 === 0 ? 'Dine In' : 'Takeout',
-        items: Math.floor(Math.random() * 5) + 1,
-        total: (Math.random() * 50 + 10).toFixed(2),
-        status: 'Completed'
-    }));
-};
-
-const generateEmployeeShiftReport = () => {
-    return [
-        { key: 1, name: 'John Doe', role: 'Server', clockIn: '10:00 AM', clockOut: '4:00 PM', hours: 6.0, sales: 850.50, tips: 120.00 },
-        { key: 2, name: 'Jane Smith', role: 'Manager', clockIn: '09:00 AM', clockOut: '5:00 PM', hours: 8.0, sales: 0.00, tips: 0.00 },
-        { key: 3, name: 'Mike Cook', role: 'Kitchen', clockIn: '11:00 AM', clockOut: '8:00 PM', hours: 9.0, sales: 0.00, tips: 0.00 },
-    ];
-};
-
-const generatePaymentReport = () => {
-    return [
-        { key: 1, method: 'Cash', count: 45, amount: 1250.00 },
-        { key: 2, method: 'Visa', count: 89, amount: 3450.50 },
-        { key: 3, method: 'MasterCard', count: 56, amount: 2100.25 },
-        { key: 4, method: 'Amex', count: 12, amount: 890.00 },
-        { key: 5, method: 'Gift Card', count: 5, amount: 125.00 },
-    ];
-};
-
-const generateDrawerReport = () => {
-    return [
-        { key: 1, drawerId: 'DRW-01', user: 'John Doe', openTime: '10:00 AM', startAmount: 200.00, cashSales: 450.00, drops: 300.00, expected: 350.00, actual: 350.00, variance: 0.00 },
-        { key: 2, drawerId: 'DRW-02', user: 'Jane Smith', openTime: '04:00 PM', startAmount: 200.00, cashSales: 890.00, drops: 800.00, expected: 290.00, actual: 285.00, variance: -5.00 },
-    ];
-};
-
-const generateAuditLog = () => {
-    return Array.from({ length: 8 }).map((_, i) => ({
-        key: i,
-        time: dayjs().subtract(i * 45, 'minute').format('HH:mm'),
-        user: i % 2 === 0 ? 'Manager' : 'Admin',
-        action: i % 3 === 0 ? 'Void Order' : i % 3 === 1 ? 'Comp Item' : 'Open Drawer',
-        details: 'Auth Override',
-        amount: (Math.random() * 50).toFixed(2),
-    }));
-};
-
-const generateShiftAuditReport = () => {
-    return [
-        { key: 1, shift: 'Morning', manager: 'Jane Smith', startCash: 1200, endCash: 1500, overShort: 0 },
-        { key: 2, shift: 'Evening', manager: 'John Doe', startCash: 1500, endCash: 3200, overShort: -5.50 },
-    ];
-};
 
 interface ReportsViewProps {
     isDarkMode: boolean;
@@ -193,7 +78,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
         switch (subReport) {
             case 'summary':
                 title = 'Sales Summary';
-                data = generateSalesSummary();
+                data = [];
                 columns = [
                     { title: 'Date', dataIndex: 'date', key: 'date' },
                     { title: 'Orders', dataIndex: 'orders', key: 'orders' },
@@ -206,7 +91,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
                 break;
             case 'hourly':
                 title = 'Hourly Sales';
-                data = generateHourlySales();
+                data = [];
                 columns = [
                     { title: 'Hour', dataIndex: 'hour', key: 'hour' },
                     { title: 'Orders', dataIndex: 'orders', key: 'orders' },
@@ -216,7 +101,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
                 break;
             case 'item':
                 title = 'Sales by Item';
-                data = generateItemSales();
+                data = [];
                 columns = [
                     { title: 'Item Name', dataIndex: 'item', key: 'item' },
                     { title: 'Category', dataIndex: 'category', key: 'category' },
@@ -226,7 +111,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
                 break;
             case 'category':
                 title = 'Sales by Category';
-                data = generateCategorySales();
+                data = [];
                 columns = [
                     { title: 'Category', dataIndex: 'category', key: 'category' },
                     { title: 'Qty Sold', dataIndex: 'qty', key: 'qty' },
@@ -235,7 +120,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
                 break;
             case 'tips':
                 title = 'Tip Report';
-                data = generateTipReport();
+                data = [];
                 columns = [
                     { title: 'Employee', dataIndex: 'employee', key: 'employee' },
                     { title: 'Cash Tips', dataIndex: 'cashTips', key: 'cashTips', render: (v: number) => `$${v.toFixed(2)}` },
@@ -245,7 +130,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
                 break;
             case 'shift':
                 title = 'Sales by Shift';
-                data = generateShiftSalesReport();
+                data = [];
                 columns = [
                     { title: 'Shift', dataIndex: 'shift', key: 'shift' },
                     { title: 'Orders', dataIndex: 'orders', key: 'orders' },
@@ -254,7 +139,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
                 break;
             case 'orders':
                 title = 'Order Summary';
-                data = generateOrderSummary();
+                data = [];
                 columns = [
                     { title: 'Order ID', dataIndex: 'orderId', key: 'orderId' },
                     { title: 'Time', dataIndex: 'time', key: 'time' },
@@ -284,7 +169,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
             { key: 'performance', label: 'Sales by Employee', perm: 'rpt_emp_performance' },
         ].filter(t => permissions.includes(t.perm));
 
-        const data = generateEmployeeShiftReport();
+        const data: any[] = [];
         const columns = [
             { title: 'Employee', dataIndex: 'name', key: 'name' },
             { title: 'Role', dataIndex: 'role', key: 'role', render: (r: string) => <Tag color="blue">{r}</Tag> },
@@ -307,7 +192,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
             { key: 'summary', label: 'Batch Summary', perm: 'rpt_pay_summary' },
         ].filter(t => permissions.includes(t.perm));
 
-        const data = generatePaymentReport();
+        const data: any[] = [];
         const columns = [
             { title: 'Method', dataIndex: 'method', key: 'method', render: (t: string) => <strong>{t}</strong> },
             { title: 'Count', dataIndex: 'count', key: 'count' },
@@ -334,7 +219,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
 
         if (subReport === 'drawer') {
             title = 'Drawer Report';
-            data = generateDrawerReport();
+            data = [];
             columns = [
                 { title: 'Drawer ID', dataIndex: 'drawerId', key: 'drawerId' },
                 { title: 'User', dataIndex: 'user', key: 'user' },
@@ -347,7 +232,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
             ];
         } else if (subReport === 'shift_summary') {
             title = 'Shift Summary Audit';
-            data = generateShiftAuditReport();
+            data = [];
             columns = [
                 { title: 'Shift', dataIndex: 'shift', key: 'shift' },
                 { title: 'Manager', dataIndex: 'manager', key: 'manager' },
@@ -357,7 +242,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
             ];
         } else {
             title = 'Sensitive Action Logs';
-            data = generateAuditLog();
+            data = [];
             columns = [
                 { title: 'Time', dataIndex: 'time', key: 'time' },
                 { title: 'User', dataIndex: 'user', key: 'user' },

@@ -21,7 +21,7 @@ const Variants: React.FC = () => {
         try {
             const variants = await VariantService.getVariants();
             if(variants.success){
-                setVariants(variants.data);
+                setVariants(variants.data ?? []);
             }else{
                 showErrorMessage(popup, variants.message, "Variant Fetch Failed");
             }

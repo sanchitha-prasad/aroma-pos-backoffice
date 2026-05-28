@@ -3,6 +3,8 @@ import { message, Spin } from 'antd';
 import EmployeesView from '../features/system/components/UsersView';
 import { Activity, Branch, Employee } from '../shared/types';
 import { systemService } from '../features/system/api/system.service';
+import { EmployeesService } from '../features/system/api/employees.service';
+import { BranchServices } from '../features/system/api/branch.service';
 
 const Employees: React.FC = () => {
     const [employees, setEmployees] = useState<Employee[]>([]);
@@ -18,12 +20,12 @@ const Employees: React.FC = () => {
         setLoading(true);
         try {
             const [empData, branchData, actData] = await Promise.all([
-                systemService.getEmployees(),
-                systemService.getBranches(),
+                EmployeesService.getEmployees(),
+                BranchServices.getBranches(),
                 systemService.getActivities()
             ]);
-            setEmployees(empData);
-            setBranches(branchData);
+            if (empData.success) setEmployees(empData.data ?? []);
+            if (branchData.success) setBranches(branchData.data ?? []);
             setActivities(actData);
         } catch (error) {
             message.error("Failed to load employee data");
@@ -34,8 +36,12 @@ const Employees: React.FC = () => {
 
     const handleSave = async (emp: Employee) => {
         try {
-            if (emp.id) await systemService.updateEmployee(emp.id, emp);
-            else await systemService.createEmployee(emp);
+            if (emp.id) {
+                await EmployeesService.updateEmployee(emp.id, emp);
+            } else {
+                const { id, ...createData } = emp;
+                await EmployeesService.createEmployee(createData);
+            }
             message.success("Employee saved");
             fetchData();
         } catch (e) { }
@@ -43,7 +49,7 @@ const Employees: React.FC = () => {
 
     const handleDelete = async (id: string) => {
         try {
-            await systemService.deleteEmployee(id);
+            await EmployeesService.deleteEmployee(id);
             setEmployees(prev => prev.filter(x => x.id !== id));
             message.success("Employee deleted");
         } catch (e) { }
@@ -51,12 +57,12 @@ const Employees: React.FC = () => {
 
     const handleLogActivity = (action: string, target: string) => {
         systemService.logActivity({ action, target, user: 'User' });
-        const newAct: Activity = { 
-            id: Date.now().toString(), 
-            user: 'User', 
-            action, 
-            target, 
-            time: new Date() 
+        const newAct: Activity = {
+            id: Date.now().toString(),
+            user: 'User',
+            action,
+            target,
+            time: new Date()
         };
         setActivities(prev => [newAct, ...prev]);
     };
@@ -64,9 +70,9 @@ const Employees: React.FC = () => {
     if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: 50 }}><Spin size="large" /></div>;
 
     return (
-        <EmployeesView 
-            onLogActivity={handleLogActivity} 
-            activities={activities} 
+        <EmployeesView
+            onLogActivity={handleLogActivity}
+            activities={activities}
             branches={branches}
             employees={employees}
             onSave={handleSave}

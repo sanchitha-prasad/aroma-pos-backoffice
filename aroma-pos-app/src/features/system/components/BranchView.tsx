@@ -4,8 +4,9 @@ import { PlusOutlined, EditOutlined, DeleteOutlined, ShopOutlined, EnvironmentOu
 import { Branch } from '../../../shared/types';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
-import { Option } from 'antd/es/mentions';
 dayjs.extend(utc);
+
+const { Option } = Select;
 
 interface BranchViewProps {
     branches: Branch[];
@@ -46,7 +47,7 @@ const BranchView: React.FC<BranchViewProps> = ({ branches, onSave, onDelete }) =
             const { operationTimes, ...rest } = values;
             
             const newBranch: Branch = {
-                id: editingBranch ? editingBranch.id : null,
+                id: editingBranch ? editingBranch.id : '',
                 name: values.name,
                 code: values.code,
                 phoneNumber: values.phoneNumber,
@@ -179,7 +180,7 @@ const BranchView: React.FC<BranchViewProps> = ({ branches, onSave, onDelete }) =
                                             <Input placeholder="branch@aromapos.com" />
                                         </Form.Item>
                                     </div>
-                                    <Form.Item name="isActive" label="Status" valuePropName="checked" rules={[{ required: true }]}>
+                                    <Form.Item name="isActive" label="Status" rules={[{ required: true }]}>
                                         <Select>
                                             <Option value={true}>Active</Option>
                                             <Option value={false}>Inactive</Option>

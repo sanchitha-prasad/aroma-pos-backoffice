@@ -2,8 +2,9 @@ import React, { useEffect,useMemo, useState } from 'react';
 import { Form, Input, InputNumber, Select, Button, theme, message, Popconfirm, Typography, Tabs, Table, Switch, Modal } from 'antd';
 import { DeleteOutlined, SaveOutlined, PlusOutlined } from '@ant-design/icons';
 import { MenuItem, ModifierGroup, Category, Device, ItemVariant, Variant } from '../../../shared/types';
-import { Option } from 'antd/es/mentions';
 import { VariantService } from '../api/variants.service';
+
+const { Option } = Select;
 import { showErrorMessage } from '@/src/shared/types/ui/ErrorMessageModel';
 import { ItemVarientStatusType } from '@/src/shared/enums';
 
@@ -48,8 +49,8 @@ const MenuForm: React.FC<MenuFormProps> = ({ initialData, categories, modifierGr
         if (initialData) {
             (form as any).setFieldsValue({
                 ...initialData,
-                status: initialData.status === ItemVarientStatusType.Available,
-                modifierGroupIds: initialData.modifierGroups?.map(g => g.modifierGroupId) || initialData.modifierGroupIds || []
+                status: initialData.isActive,
+                modifierGroupIds: initialData.modifierGroups?.map(g => g.id) || initialData.modifierGroupIds || []
             });
 
             if (initialData.variants) {
@@ -204,7 +205,7 @@ const MenuForm: React.FC<MenuFormProps> = ({ initialData, categories, modifierGr
                                         dataSource={variants}
                                         columns={variantColumns}
                                        // rowKey={(r) => r.variantId + Math.random()}
-                                        rowKey={(_, index) => index.toString()}
+                                        rowKey={(_, index) => (index ?? 0).toString()}
                                         pagination={false}
                                         size="small"
                                     />

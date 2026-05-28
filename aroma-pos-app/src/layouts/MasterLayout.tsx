@@ -20,11 +20,7 @@ const MasterLayout: React.FC<MasterLayoutProps> = ({ currentUser, isDarkMode, se
   const [collapsed, setCollapsed] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
 
-  const notifications = [
-    { title: 'Low Stock Alert', desc: 'Burger Buns are running low (5 packs left).', time: '10 min ago' },
-    { title: 'New Order', desc: 'Order #1024 received from Table 5.', time: '1 hr ago' },
-    { title: 'Shift Report', desc: 'Daily sales report is ready for review.', time: '3 hrs ago' },
-  ];
+  const notifications: { title: string; desc: string; time: string }[] = [];
   
   const userPermissions = currentUser && rolePermissions[currentUser.role] 
     ? rolePermissions[currentUser.role] 

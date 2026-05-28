@@ -21,7 +21,7 @@ const Branches: React.FC = () => {
         try {
             const data = await BranchServices.getBranches();
             if (data.success) {
-                setBranches(data.data);
+                setBranches(data.data ?? []);
             } else {
                 showErrorMessage(popup, data.message, "Branch Fetch Failed");
             }

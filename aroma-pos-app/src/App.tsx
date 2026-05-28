@@ -99,7 +99,7 @@ const App: React.FC = () => {
       return (
           <ConfigProvider theme={appTheme}>
               <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                  <Spin size="large" tip="Initializing..." />
+                  <Spin size="large" description="Initializing..." />
               </div>
           </ConfigProvider>
       );

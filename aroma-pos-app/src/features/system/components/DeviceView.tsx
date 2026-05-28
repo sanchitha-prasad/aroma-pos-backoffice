@@ -3,8 +3,9 @@ import { Table, Button, Space, Input, Modal, Typography, theme, Popconfirm, Inpu
 import { PlusOutlined, EditOutlined, DeleteOutlined, DesktopOutlined, FilterOutlined, CreditCardOutlined, WifiOutlined, DisconnectOutlined } from '@ant-design/icons';
 import { Device, DeviceType, DeviceProtocol, DeviceStatus } from '../../../shared/types';
 import { systemService } from '../api/system.service';
-import { Option } from 'antd/es/mentions';
 import { DeviceStatusType,DeviceProtocolType,DeviceTypeEnum,CardProviderType } from '@/src/shared/enums';
+
+const { Option } = Select;
 import { DeviceSevices } from '../api/device.service'; 
 const { useWatch } = Form;
 
@@ -38,8 +39,8 @@ const DeviceView: React.FC<DeviceViewProps> = ({ devices, onSave, onDelete }) =>
     useEffect(() => {
         Promise.all([DeviceSevices.getDeviceTypes(), DeviceSevices.getDeviceProtocols()])
             .then(([typesRes, protos]) => {
-                setDeviceTypes(typesRes.data);
-                setProtocols(protos.data);
+                setDeviceTypes(typesRes.data ?? []);
+                setProtocols(protos.data ?? []);
             })
             .catch(err => console.error("Failed to load device meta", err));
     }, []);
@@ -182,9 +183,9 @@ const DeviceView: React.FC<DeviceViewProps> = ({ devices, onSave, onDelete }) =>
                         </Select>
                         </Form.Item>
                         <Form.Item name="status" label="Status" rules={[{ required: true }]}>
-                            <Select>DeviceStatusType
-                                <Option value={DeviceStatusType.Active}> {DeviceStatusType[DeviceStatusType.Active]}</Option>
-                                <Option value={DeviceStatusType.InActive}> {DeviceStatusType[DeviceStatusType.InActive]}</Option>
+                            <Select>
+                                <Option value={DeviceStatusType.Active}>{DeviceStatusType[DeviceStatusType.Active]}</Option>
+                                <Option value={DeviceStatusType.InActive}>{DeviceStatusType[DeviceStatusType.InActive]}</Option>
                             </Select>
                         </Form.Item>
                     </div>
@@ -221,10 +222,10 @@ const DeviceView: React.FC<DeviceViewProps> = ({ devices, onSave, onDelete }) =>
                             <Input placeholder="e.g. SN-2025-AX94-4495"/>
                         </Form.Item>
                          <Form.Item name="provider" label={<span style={{ color: isPax ? 'inherit' : token.colorTextDisabled }}>Provider</span>} >
-                            <Select 
-                                placeholder="Select a provider" 
-                                disabled={!isPax} 
-                                allowclear
+                            <Select
+                                placeholder="Select a provider"
+                                disabled={!isPax}
+                                allowClear
                             >
                                 <Option value={CardProviderType.HNB}> {CardProviderType[CardProviderType.HNB]}</Option>
                             </Select>

@@ -265,7 +265,7 @@ const ModifierManagementView: React.FC<ModifierManagementViewProps> = ({ allModi
                                 {(fields, { add, remove }) => (
                                     <>
                                         {fields.length > 0 && (
-                                            <div style={{ display: 'flex', gap: 8, marginBottom: 4 ,marginLeft: 4,marginbottom:8}}>
+                                            <div style={{ display: 'flex', gap: 8, marginBottom: 8, marginLeft: 4 }}>
                                                 <span style={{ flex: 3, fontWeight: 'bold' }}>Modifier Name</span>
                                                 <span style={{ flex: 1, fontWeight: 'bold' }}>Qty</span>
                                                 <span style={{ flex: 1, fontWeight: 'bold' }}>Min Qty</span>

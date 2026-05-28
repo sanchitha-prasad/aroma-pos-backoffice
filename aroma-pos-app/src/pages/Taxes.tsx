@@ -21,7 +21,7 @@ const Taxes: React.FC = () => {
         try {
             const data = await TaxesService.getTaxes();
             if(data.success){
-                setTaxes(data.data);
+                setTaxes(data.data ?? []);
             }else{
                 showErrorMessage(popup, data.message, "Tax Fetch Failed");
             }

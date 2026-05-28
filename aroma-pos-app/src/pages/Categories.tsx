@@ -29,17 +29,17 @@ const Categories: React.FC = () => {
                 TaxesService.getTaxes()
             ]);
             if(cats.success){
-                setCategories(cats.data);
+                setCategories(cats.data ?? []);
             }else{
                 showErrorMessage(popup, cats.message, "Category Fetch Failed");
             }
             if(devs.success){
-                setDevices(devs.data);
+                setDevices(devs.data ?? []);
             }else{
                 showErrorMessage(popup, devs.message, "Device Fetch Failed");
             }
             if(taxData.success){
-                setTaxes(taxData.data);
+                setTaxes(taxData.data ?? []);
             }else{
                 showErrorMessage(popup, taxData.message, "Tax Fetch Failed");
             }

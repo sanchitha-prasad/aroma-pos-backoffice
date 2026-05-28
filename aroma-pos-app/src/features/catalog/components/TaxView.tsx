@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Table, Button, Space, Input, Modal, Typography, theme, Popconfirm, message, Select, InputNumber, Form, Tag } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, PercentageOutlined, DollarOutlined } from '@ant-design/icons';
 import { Tax } from '../../../shared/types';
-import { Option } from 'antd/es/mentions';
 
 interface TaxViewProps {
     taxes: Tax[];
@@ -36,7 +35,7 @@ const TaxView: React.FC<TaxViewProps> = ({ taxes, onSave, onDelete }) => {
     const handleOk = () => {
         (form as any).validateFields().then((values: any) => {
             const newTax: Tax = {
-                id: editingTax ? editingTax.id : null,
+                id: editingTax ? editingTax.id : '',
                 name: values.name,
                 isActive: true,
                 percentage: values.percentage

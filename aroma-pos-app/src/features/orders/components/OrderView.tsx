@@ -39,8 +39,8 @@ const OrderView: React.FC<OrderViewProps> = ({ orders }) => {
     const columns = [
         {
             title: 'Order #',
-            dataIndex: 'orderCode',
-            key: 'orderCode',
+            dataIndex: 'orderNumber',
+            key: 'orderNumber',
             render: (text: number) => <strong>#{text}</strong>
         },
         {
@@ -91,7 +91,7 @@ const OrderView: React.FC<OrderViewProps> = ({ orders }) => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
             <div>
                 <Title level={5}>Order Items</Title>
-                <Text level={5}>Ticket Number #{ticket.ticketCode}</Text>
+                <Text>Ticket Number #{ticket.ticketCode}</Text>
                 <Table
                     dataSource={ticket.items}
                     rowKey="id"
@@ -243,7 +243,7 @@ const OrderView: React.FC<OrderViewProps> = ({ orders }) => {
             </div>
 
             <Drawer
-                title={selectedOrder ? `Order #${selectedOrder.orderCode}` : 'Order Details'}
+                title={selectedOrder ? `Order #${selectedOrder.orderNumber}` : 'Order Details'}
                 width={600}
                 onClose={() => setIsDrawerOpen(false)}
                 open={isDrawerOpen}

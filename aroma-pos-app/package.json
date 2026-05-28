@@ -9,21 +9,23 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "react-router-dom": "6.23.1",
-    "react-router": "6.23.1",
-    "@remix-run/router": "1.16.1",
-    "antd": "5.19.3",
-    "@ant-design/colors": "7.0.2",
-    "@ant-design/icons": "5.3.7",
-    "dayjs": "^1.11.19",
-    "axios": "1.7.2"
+    "@ant-design/colors": "8.0.1",
+    "@ant-design/icons": "6.2.5",
+    "antd": "6.4.3",
+    "axios": "1.16.1",
+    "dayjs": "^1.11.21",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "react-router": "7.15.1",
+    "react-router-dom": "7.15.1"
   },
   "devDependencies": {
-    "@types/node": "^22.14.0",
-    "@vitejs/plugin-react": "^5.0.0",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+    "@types/node": "^25.9.1",
+    "@types/react": "^19.2.15",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.2",
+    "baseline-browser-mapping": "^2.10.32",
+    "typescript": "~6.0.3",
+    "vite": "^8.0.14"
   }
 }

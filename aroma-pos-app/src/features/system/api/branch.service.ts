@@ -2,8 +2,6 @@ import { apiClient } from "@/src/shared/services/api/client";
 import { handleRequest } from "@/src/shared/services/api/handleRequest";
 import { Branch, CreateBranchDto } from "@/src/shared/types";
 import { ServiceResponse } from "@/src/shared/types/serviceResponse";
-import { setDefaultAutoSelectFamily } from "net";
-
 export const BranchServices = {
 getBranches: async (): Promise<ServiceResponse<Branch[]>> => {
     return handleRequest<Branch[]>(apiClient.get('/api/branches'));

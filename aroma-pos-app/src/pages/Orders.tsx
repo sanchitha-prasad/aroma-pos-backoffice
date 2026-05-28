@@ -4,7 +4,7 @@ import OrderView from '../features/orders/components/OrderView';
 import { Order } from '../shared/types';
 import { orderService } from '../features/orders/api/order.service';
 import { showErrorMessage } from '../shared/types/ui/ErrorMessageModel';
-import Modal from 'antd/es/modal/Modal';
+import { Modal } from 'antd';
 
 const Orders: React.FC = () => {
     const [orders, setOrders] = useState<Order[]>([]);
@@ -20,7 +20,7 @@ const Orders: React.FC = () => {
         try {
             const data = await orderService.getOrders();
             if(data.success){
-setOrders(data.data);
+                setOrders(data.data ?? []);
             }else{
                 showErrorMessage(popup, data.message, "Tax Fetch Failed");
             }
