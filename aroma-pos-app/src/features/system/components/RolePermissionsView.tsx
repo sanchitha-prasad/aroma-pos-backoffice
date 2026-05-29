@@ -17,7 +17,7 @@ const RolePermissionsView: React.FC<RolePermissionsViewProps> = ({ rolePermissio
     const [permissions, setPermissions] = useState<Record<Role, string[]>>(rolePermissions);
     const [hasChanges, setHasChanges] = useState(false);
 
-    const roles: Role[] = ['Admin', 'Manager', 'Server', 'Kitchen'];
+    const roles: Role[] = ['SuperAdmin', 'Admin', 'Manager'];
 
     useEffect(() => {
         setPermissions(rolePermissions);
@@ -77,7 +77,7 @@ const RolePermissionsView: React.FC<RolePermissionsViewProps> = ({ rolePermissio
             render: (_: any, record: Permission) => {
                 const isChecked = permissions[role]?.includes(record.key);
                 
-                const isDisabled = role === 'Admin' && record.key === 'manage_roles';
+                const isDisabled = role === 'SuperAdmin';
 
                 return (
                     <Checkbox 

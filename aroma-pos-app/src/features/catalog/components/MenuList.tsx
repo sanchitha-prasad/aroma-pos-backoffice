@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Table, Button, Space, Popconfirm, List, theme, Tag, Tooltip, Input, Select } from 'antd';
 import { EditOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
 import { MenuItem, Category, ModifierGroup, Device } from '../../../shared/types';
-import { Option } from 'antd/es/mentions';
+const { Option } = Select;
 
 interface MenuListProps {
   items: MenuItem[];
@@ -284,7 +284,7 @@ const MenuList: React.FC<MenuListProps> = ({
         columns={columns} 
         dataSource={filteredItems} 
         rowKey="id"
-        pagination={{ pageSize: 8, position: ['bottomCenter'] }}
+        pagination={{ pageSize: 8, placement: 'bottomCenter' }}
         scroll={{ y: 'calc(100vh - 300px)' }}
         style={{ flex: 1 }}
       />

@@ -6,8 +6,8 @@ export const systemService = {
     getDeviceProtocols: () => apiClient.get<DeviceProtocol[]>('/api/devices/device-protocols'),
 
     // --- Roles & Permissions ---
-    getPermissions: () => apiClient.get<Record<Role, string[]>>('/api/permissions', { skipErrorRedirect: true }),
-    updatePermissions: (data: Record<Role, string[]>) => apiClient.put<void>('/api/permissions', data),
+    // getPermissions: () => apiClient.get<Record<Role, string[]>>('/api/permissions', { skipErrorRedirect: true, suppressErrorToast: true }),
+    // updatePermissions: (data: Record<Role, string[]>) => apiClient.put<void>('/api/permissions', data),
 
     // --- Activity Logs ---
     getActivities: () => apiClient.get<Activity[]>('/api/activities'),

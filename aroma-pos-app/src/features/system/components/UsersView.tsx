@@ -32,7 +32,7 @@ const EmployeesView: React.FC<EmployeesViewProps> = ({ onLogActivity, activities
     } else {
         setEditingEmployee(null);
         (form as any).resetFields();
-        (form as any).setFieldsValue({ status: 'Active', role: 'Server' });
+        (form as any).setFieldsValue({ status: 'Active', role: 'Cashier' });
     }
     setIsModalOpen(true);
   };
@@ -104,7 +104,7 @@ const EmployeesView: React.FC<EmployeesViewProps> = ({ onLogActivity, activities
       dataIndex: 'role',
       key: 'role',
       render: (role: string) => {
-        let color = role === 'Admin' ? 'purple' : role === 'Manager' ? 'blue' : 'default';
+        let color = role === 'SuperAdmin' ? 'red' : role === 'Admin' ? 'purple' : role === 'Manager' ? 'blue' : 'default';
         return <Tag color={color}>{role}</Tag>;
       },
     },
@@ -197,9 +197,11 @@ const EmployeesView: React.FC<EmployeesViewProps> = ({ onLogActivity, activities
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <Form.Item name="role" label="Role" rules={[{ required: true }]}>
                     <Select>
+                        <Option value="SuperAdmin">Super Admin</Option>
                         <Option value="Admin">Admin</Option>
                         <Option value="Manager">Manager</Option>
-                        <Option value="Server">Server</Option>
+                        <Option value="Cashier">Cashier</Option>
+                        <Option value="Waiter">Waiter</Option>
                         <Option value="Kitchen">Kitchen</Option>
                     </Select>
                 </Form.Item>

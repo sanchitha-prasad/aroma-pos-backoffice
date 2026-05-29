@@ -61,13 +61,13 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
 
     const renderSalesReports = () => {
         const availableTabs = [
-            { key: 'summary', label: 'Sales Summary', perm: 'rpt_sales_summary' },
-            { key: 'hourly', label: 'Hourly Sales', perm: 'rpt_sales_hourly' },
-            { key: 'tips', label: 'Tip Report', perm: 'rpt_sales_tips' },
-            { key: 'item', label: 'Sales by Item', perm: 'rpt_sales_item' },
-            { key: 'category', label: 'Sales by Category', perm: 'rpt_sales_category' },
-            { key: 'shift', label: 'Sales by Shift', perm: 'rpt_sales_shift' },
-            { key: 'orders', label: 'Order Summary', perm: 'rpt_sales_orders' },
+            { key: 'summary',  label: 'Sales Summary',     perm: 'BackOffice:report_sales:summary' },
+            { key: 'hourly',   label: 'Hourly Sales',       perm: 'BackOffice:report_sales:hourly' },
+            { key: 'tips',     label: 'Tip Report',         perm: 'BackOffice:report_sales:tips' },
+            { key: 'item',     label: 'Sales by Item',      perm: 'BackOffice:report_sales:item' },
+            { key: 'category', label: 'Sales by Category',  perm: 'BackOffice:report_sales:category' },
+            { key: 'shift',    label: 'Sales by Shift',     perm: 'BackOffice:report_sales:shift' },
+            { key: 'orders',   label: 'Order Summary',      perm: 'BackOffice:report_sales:orders' },
         ].filter(t => permissions.includes(t.perm));
 
         let content;
@@ -164,9 +164,9 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
 
     const renderEmployeeReports = () => {
         const availableTabs = [
-            { key: 'attendance', label: 'Attendance', perm: 'rpt_emp_attendance' },
-            { key: 'shifts', label: 'Shift Report', perm: 'rpt_emp_shifts' },
-            { key: 'performance', label: 'Sales by Employee', perm: 'rpt_emp_performance' },
+            { key: 'attendance',  label: 'Attendance',        perm: 'BackOffice:report_employee:attendance' },
+            { key: 'shifts',      label: 'Shift Report',       perm: 'BackOffice:report_employee:shifts' },
+            { key: 'performance', label: 'Sales by Employee',  perm: 'BackOffice:report_employee:performance' },
         ].filter(t => permissions.includes(t.perm));
 
         const data: any[] = [];
@@ -187,9 +187,9 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
 
     const renderPaymentReports = () => {
         const availableTabs = [
-            { key: 'payment_methods', label: 'Payment Methods', perm: 'rpt_pay_methods' },
-            { key: 'batch', label: 'Batch Report', perm: 'rpt_pay_batch' },
-            { key: 'summary', label: 'Batch Summary', perm: 'rpt_pay_summary' },
+            { key: 'payment_methods', label: 'Payment Methods', perm: 'BackOffice:report_payment:methods' },
+            { key: 'batch',           label: 'Batch Report',    perm: 'BackOffice:report_payment:batch' },
+            { key: 'summary',         label: 'Batch Summary',   perm: 'BackOffice:report_payment:summary' },
         ].filter(t => permissions.includes(t.perm));
 
         const data: any[] = [];
@@ -207,9 +207,9 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
 
     const renderAuditReports = () => {
         const availableTabs = [
-            { key: 'shift_summary', label: 'Shift Summary', perm: 'rpt_audit_shift' },
-            { key: 'drawer', label: 'Drawer Report', perm: 'rpt_audit_drawer' },
-            { key: 'logs', label: 'Audit Logs', perm: 'rpt_audit_logs' },
+            { key: 'shift_summary', label: 'Shift Summary', perm: 'BackOffice:report_audit:shift' },
+            { key: 'drawer',        label: 'Drawer Report', perm: 'BackOffice:report_audit:drawer' },
+            { key: 'logs',          label: 'Audit Logs',    perm: 'BackOffice:report_audit:logs' },
         ].filter(t => permissions.includes(t.perm));
 
         let content;

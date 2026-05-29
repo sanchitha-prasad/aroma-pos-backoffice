@@ -182,7 +182,7 @@ const ModifierManagementView: React.FC<ModifierManagementViewProps> = ({ allModi
                 </Button>
             </div>
 
-            <Card bodyStyle={{ padding: 0 }} style={{ overflow: 'hidden', borderRadius: 8 }}>
+            <Card styles={{ body: { padding: 0 } }} style={{ overflow: 'hidden', borderRadius: 8 }}>
                 <Tabs
                     activeKey={activeTab}
                     onChange={setActiveTab}
@@ -228,7 +228,7 @@ const ModifierManagementView: React.FC<ModifierManagementViewProps> = ({ allModi
                 onOk={handleSaveGroup}
                 onCancel={() => setIsGroupModalOpen(false)}
                 width={800}
-                maskClosable={false}
+                mask={{ closable: false }}
             >
                 <Form form={groupForm} layout="vertical">
                     <Row gutter={16}>

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { ConfigProvider, theme, message, Spin } from 'antd';
+import { App as AntdApp, ConfigProvider, theme, Spin } from 'antd';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { setGlobalMessageApi } from './shared/services/api/globalMessage';
 import MasterLayout from './layouts/MasterLayout';
 
 // Services
 import { authService } from './features/auth/api/auth.service';
-import { systemService } from './features/system/api/system.service';
+import { authStore } from './shared/services/auth/authStore';
 
 // Pages
 import Login from './pages/Login';
@@ -28,6 +29,12 @@ import { Employee, Role } from './shared/types';
 import { DEFAULT_ROLE_PERMISSIONS } from './shared/constants';
 import Variants from './pages/Variants';
 
+const MessageInitializer: React.FC = () => {
+  const { message } = AntdApp.useApp();
+  useEffect(() => { setGlobalMessageApi(message); }, [message]);
+  return null;
+};
+
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<Employee | null>(null);
   const [loadingPermissions, setLoadingPermissions] = useState(false);
@@ -43,9 +50,23 @@ const App: React.FC = () => {
   const [rolePermissions, setRolePermissions] = useState<Record<Role, string[]>>(DEFAULT_ROLE_PERMISSIONS);
 
   useEffect(() => {
-      const user = authService.getUserFromToken();
-      if (user) setCurrentUser(user);
-      setIsAuthChecked(true);
+      const initAuth = () => {
+          // In-memory session still intact (same-tab navigation)
+          let user = authService.getCurrentUser();
+
+          // Hard refresh — restore from sessionStorage so the user never sees
+          // the login page. The stored access token is used until it expires,
+          // at which point a 401 redirects to login naturally.
+          if (!user) {
+              authStore.restoreFromStorage();
+              user = authStore.currentUser;
+          }
+
+          if (user) setCurrentUser(user);
+          setIsAuthChecked(true);
+      };
+
+      initAuth();
   }, []);
 
   useEffect(() => {
@@ -55,14 +76,7 @@ const App: React.FC = () => {
   }, [currentUser]);
 
   const fetchPermissions = async () => {
-      try {
-          const perms = await systemService.getPermissions();
-          if (perms && Object.keys(perms).length > 0) {
-            setRolePermissions(perms);
-          }
-      } catch (error) {
-          console.warn("Using default permissions due to API error", error);
-      }
+      // permissions API not yet available — using defaults
   };
 
   useEffect(() => {
@@ -98,41 +112,46 @@ const App: React.FC = () => {
   if (!isAuthChecked) {
       return (
           <ConfigProvider theme={appTheme}>
-              <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                  <Spin size="large" description="Initializing..." />
-              </div>
+              <AntdApp>
+                  <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                      <Spin size="large" description="Initializing..." />
+                  </div>
+              </AntdApp>
           </ConfigProvider>
       );
   }
 
   return (
     <ConfigProvider theme={appTheme}>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={!currentUser ? <Login onLogin={handleLogin} /> : <Navigate to="/" replace />} />
-          
-          <Route path="/" element={currentUser ? <MasterLayout currentUser={currentUser} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} onLogout={handleLogout} rolePermissions={rolePermissions} /> : <Navigate to="/login" replace />}>
-            <Route index element={<Dashboard isDarkMode={isDarkMode} />} />
-            
-            <Route path="menu" element={<Menu currentUser={currentUser} />} />
-            <Route path="categories" element={<Categories />} />
-            <Route path="variants" element={<Variants />} />
-            <Route path="modifiers" element={<Modifiers />} />
-            <Route path="devices" element={<Devices />} />
-            <Route path="taxes" element={<Taxes />} />
-            <Route path="branches" element={<Branches />} />
-            <Route path="orders" element={<Orders />} />
-            <Route path="employees" element={<Employees />} />
-            <Route path="customers" element={<Customers />} />
-            
-            <Route path="roles" element={<RolePermissions />} />
-            <Route path="activities" element={<Activities />} />
-            
-            <Route path="configuration" element={<Configuration permissions={rolePermissions[currentUser?.role || 'Server']} />} />
-            <Route path="reports" element={<Reports isDarkMode={isDarkMode} permissions={rolePermissions[currentUser?.role || 'Server']} />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+      <AntdApp>
+        <MessageInitializer />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={!currentUser ? <Login onLogin={handleLogin} /> : <Navigate to="/" replace />} />
+
+            <Route path="/" element={currentUser ? <MasterLayout currentUser={currentUser} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} onLogout={handleLogout} rolePermissions={rolePermissions} /> : <Navigate to="/login" replace />}>
+              <Route index element={<Dashboard isDarkMode={isDarkMode} />} />
+
+              <Route path="menu" element={<Menu currentUser={currentUser} />} />
+              <Route path="categories" element={<Categories />} />
+              <Route path="variants" element={<Variants />} />
+              <Route path="modifiers" element={<Modifiers />} />
+              <Route path="devices" element={<Devices />} />
+              <Route path="taxes" element={<Taxes />} />
+              <Route path="branches" element={<Branches />} />
+              <Route path="orders" element={<Orders />} />
+              <Route path="employees" element={<Employees />} />
+              <Route path="customers" element={<Customers />} />
+
+              <Route path="roles" element={<RolePermissions />} />
+              <Route path="activities" element={<Activities />} />
+
+              <Route path="configuration" element={<Configuration permissions={rolePermissions[currentUser?.role || 'Manager']} />} />
+              <Route path="reports" element={<Reports isDarkMode={isDarkMode} permissions={rolePermissions[currentUser?.role || 'Manager']} />} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
+      </AntdApp>
     </ConfigProvider>
   );
 };

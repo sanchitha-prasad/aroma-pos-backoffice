@@ -71,7 +71,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
     const allTabs = [
         {
             key: '1',
-            permission: 'config_business',
+            permission: 'BackOffice:config:business',
             label: <span><ShopOutlined /> Business Profile</span>,
             children: (
                 <ScrollablePane>
@@ -150,7 +150,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
         },
         {
             key: '2',
-            permission: 'config_payments',
+            permission: 'BackOffice:config:payments',
             label: <span><CreditCardOutlined /> Payments</span>,
             children: (
                 <ScrollablePane>
@@ -220,7 +220,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
         },
         {
             key: '3',
-            permission: 'config_kds',
+            permission: 'BackOffice:config:kds',
             label: <span><DesktopOutlined /> KDS</span>,
             children: (
                 <ScrollablePane>
@@ -260,7 +260,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
         },
         {
             key: '4',
-            permission: 'config_alerts',
+            permission: 'BackOffice:config:alerts',
             label: <span><NotificationOutlined /> Alerts</span>,
             children: (
                 <ScrollablePane>
@@ -300,7 +300,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
         },
         {
             key: '5',
-            permission: 'config_loyalty',
+            permission: 'BackOffice:config:view',
             label: <span><GiftOutlined /> Loyalty</span>,
             children: (
                 <ScrollablePane>
@@ -336,7 +336,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
         },
         {
             key: '6',
-            permission: 'config_giftcards',
+            permission: 'BackOffice:config:view',
             label: <span><GiftOutlined /> Gift Cards</span>,
             children: (
                 <ScrollablePane>
@@ -364,7 +364,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
         },
         {
             key: '7',
-            permission: 'config_reservations',
+            permission: 'BackOffice:config:view',
             label: <span><CalendarOutlined /> Reservations</span>,
             children: (
                 <ScrollablePane>
@@ -402,7 +402,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
         },
         {
             key: '8',
-            permission: 'config_reports',
+            permission: 'BackOffice:config:reports',
             label: <span><BranchesOutlined /> Reports</span>,
             children: (
                 <ScrollablePane>
@@ -434,7 +434,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
         },
         {
             key: '9',
-            permission: 'config_qr',
+            permission: 'BackOffice:config:view',
             label: <span><QrcodeOutlined /> QR Ordering</span>,
             children: (
                 <ScrollablePane>
@@ -462,7 +462,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
         },
         {
             key: '10',
-            permission: 'config_multistore',
+            permission: 'BackOffice:config:view',
             label: <span><BranchesOutlined /> Multi-Store</span>,
             children: (
                 <ScrollablePane>
@@ -490,7 +490,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
         },
         {
             key: '11',
-            permission: 'config_shifts',
+            permission: 'BackOffice:config:shifts',
             label: <span><ClockCircleOutlined /> Shifts</span>,
             children: (
                 <ScrollablePane>

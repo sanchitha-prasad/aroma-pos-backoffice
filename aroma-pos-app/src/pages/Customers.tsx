@@ -37,8 +37,8 @@ const Customers: React.FC = () => {
     const [customers, setCustomers] = useState<Customer[]>([]);
     const [loading, setLoading] = useState(false);
 
-    const currentUser = authService.getUserFromToken();
-    const userRole = currentUser?.role || 'Server';
+    const currentUser = authService.getCurrentUser();
+    const userRole = currentUser?.role || 'Manager';
 
     const loadCustomers = async () => {
         try {

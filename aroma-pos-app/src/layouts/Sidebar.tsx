@@ -54,24 +54,24 @@ const Sidebar: React.FC<SidebarProps> = ({
   const navigate = useNavigate();
   const location = useLocation();
   const { token } = theme.useToken();
-  const role = currentUser?.role || 'Server';
-  
+  const role = currentUser?.role || 'Manager';
+
   const allItems = [
-    { key: '/', icon: <AppstoreOutlined />, label: 'Dashboard', permission: 'view_dashboard' },
-    { key: '/orders', icon: <ShoppingCartOutlined />, label: 'Orders', permission: 'view_orders' },
-    { key: '/menu', icon: <ReadOutlined />, label: 'Menu Items', permission: 'view_menu' },
-    { key: '/modifiers', icon: <ControlOutlined />, label: 'Modifiers', permission: 'view_modifiers' },
-    { key: '/categories', icon: <TagsOutlined />, label: 'Categories', permission: 'view_categories' },
-    { key: '/variants', icon: <TagsOutlined />, label: 'Variants', permission: 'view_variants' },
-    { key: '/taxes', icon: <PercentageOutlined />, label: 'Taxes', permission: 'view_taxes' },
-    { key: '/devices', icon: <DesktopOutlined />, label: 'Devices', permission: 'view_devices' },
-    { key: '/employees', icon: <TeamOutlined />, label: 'Employees', permission: 'view_employees' },
-    { key: '/customers', icon: <TeamOutlined />, label: 'Customers', permission: 'view_customers' }, //need to change permission later
-    { key: '/branches', icon: <ShopOutlined />, label: 'Branches', permission: 'view_branches' },
-    { key: '/roles', icon: <SafetyCertificateOutlined />, label: 'Roles & Permissions', permission: 'manage_roles' },
-    { key: '/activities', icon: <HistoryOutlined />, label: 'Activity Log', permission: 'view_activity' },
-    { key: '/reports', icon: <BarChartOutlined />, label: 'Reports', permission: 'view_reports' },
-    { key: '/configuration', icon: <ToolOutlined />, label: 'Configurations', permission: 'config_view' },
+    { key: '/', icon: <AppstoreOutlined />, label: 'Dashboard', permission: 'BackOffice:dashboard:view' },
+    { key: '/orders', icon: <ShoppingCartOutlined />, label: 'Orders', permission: 'BackOffice:orders:getall' },
+    { key: '/menu', icon: <ReadOutlined />, label: 'Menu Items', permission: 'BackOffice:menu:view' },
+    { key: '/modifiers', icon: <ControlOutlined />, label: 'Modifiers', permission: 'BackOffice:modifiers:getall' },
+    { key: '/categories', icon: <TagsOutlined />, label: 'Categories', permission: 'BackOffice:categories:getall' },
+    { key: '/variants', icon: <TagsOutlined />, label: 'Variants', permission: 'BackOffice:variants:getall' },
+    { key: '/taxes', icon: <PercentageOutlined />, label: 'Taxes', permission: 'BackOffice:taxes:getall' },
+    { key: '/devices', icon: <DesktopOutlined />, label: 'Devices', permission: 'BackOffice:devices:getall' },
+    { key: '/employees', icon: <TeamOutlined />, label: 'Employees', permission: 'BackOffice:employees:getall' },
+    { key: '/customers', icon: <TeamOutlined />, label: 'Customers', permission: 'ALWAYS_VISIBLE' },
+    { key: '/branches', icon: <ShopOutlined />, label: 'Branches', permission: 'BackOffice:branches:getall' },
+    { key: '/roles', icon: <SafetyCertificateOutlined />, label: 'Roles & Permissions', permission: 'BackOffice:employees:create' },
+    { key: '/activities', icon: <HistoryOutlined />, label: 'Activity Log', permission: 'BackOffice:activity:getall' },
+    { key: '/reports', icon: <BarChartOutlined />, label: 'Reports', permission: 'BackOffice:reports:view' },
+    { key: '/configuration', icon: <ToolOutlined />, label: 'Configurations', permission: 'BackOffice:config:view' },
     { 
         key: 'notifications', 
         icon: (
@@ -192,8 +192,8 @@ const Sidebar: React.FC<SidebarProps> = ({
             
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'space-between', marginBottom: 16 }}>
                 {!collapsed && <span style={{ color: secondaryTextColor, fontSize: 12 }}>Dark Mode</span>}
-                <Switch 
-                    size={collapsed ? "small" : "default"}
+                <Switch
+                    size={collapsed ? "small" : "medium"}
                     checkedChildren={<MoonOutlined />}
                     unCheckedChildren={<SunOutlined />}
                     checked={isDarkMode}

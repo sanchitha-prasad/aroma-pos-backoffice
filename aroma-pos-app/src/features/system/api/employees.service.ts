@@ -6,15 +6,15 @@ import { ServiceResponse } from "@/src/shared/types/serviceResponse";
 export const EmployeesService ={
 
     getEmployees: async() : Promise<ServiceResponse<Employee[]>> => {
-        return handleRequest<Employee[]>(apiClient.get('/api/employees'));
+        return handleRequest<Employee[]>(apiClient.get('/api/users'));
     },
     createEmployee: async (data: Omit<Employee, 'id'>): Promise<ServiceResponse<Employee>> => {
-        return handleRequest<Employee>(apiClient.post('/api/employees', data));
+        return handleRequest<Employee>(apiClient.post('/api/users', data));
     },
     updateEmployee: async (id: string, data: Partial<Employee>): Promise<ServiceResponse<Employee>> => {
-        return handleRequest<Employee>(apiClient.put(`/api/employees/${id}`, data));
+        return handleRequest<Employee>(apiClient.put(`/api/users/${id}`, data));
     },
     deleteEmployee: async (id: string): Promise<ServiceResponse<void>> => {
-        return handleRequest<void>(apiClient.delete(`/api/employees/${id}`));
+        return handleRequest<void>(apiClient.delete(`/api/users/${id}`));
     },
 }
