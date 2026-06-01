@@ -1,4 +1,5 @@
 // Catalog
+export * from './catalog/Menu';
 export * from './catalog/Variant';
 export * from './catalog/Modifier';
 export * from './catalog/ModifierItem';
@@ -9,6 +10,7 @@ export * from './catalog/ItemVariant';
 export * from './catalog/MenuItem';
 
 // System
+export * from './system/BranchCatalog';
 export * from './system/DeviceType';
 export * from './system/DeviceProtocol';
 export * from './system/DeviceStatus';

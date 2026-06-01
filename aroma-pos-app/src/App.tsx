@@ -28,6 +28,7 @@ import Customers from './pages/Customers';
 import { Employee, Role } from './shared/types';
 import { DEFAULT_ROLE_PERMISSIONS } from './shared/constants';
 import Variants from './pages/Variants';
+import Menus from './pages/Menus';
 
 const MessageInitializer: React.FC = () => {
   const { message } = AntdApp.useApp();
@@ -132,6 +133,7 @@ const App: React.FC = () => {
             <Route path="/" element={currentUser ? <MasterLayout currentUser={currentUser} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} onLogout={handleLogout} rolePermissions={rolePermissions} /> : <Navigate to="/login" replace />}>
               <Route index element={<Dashboard isDarkMode={isDarkMode} />} />
 
+              <Route path="menus" element={<Menus />} />
               <Route path="menu" element={<Menu currentUser={currentUser} />} />
               <Route path="categories" element={<Categories />} />
               <Route path="variants" element={<Variants />} />
