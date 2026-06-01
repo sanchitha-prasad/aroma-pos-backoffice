@@ -391,7 +391,7 @@ const RightPanel: React.FC<{
       <div style={{ flex: 1, overflowY: 'auto', padding: '4px 24px 32px' }}>
 
         {/* Assigned */}
-        <SectionLabel icon={<CheckCircleFilled />} label="Assigned to this branch" count={node.children.length} color="#389e0d" />
+        <SectionLabel icon={<CheckCircleFilled />} label="Items in this branch" count={node.children.length} color="#389e0d" />
 
         {filteredAssigned.length === 0 ? (
           <div style={{
@@ -456,7 +456,7 @@ const RightPanel: React.FC<{
         <Divider style={{ margin: '0 0 24px' }} />
 
         {/* Available */}
-        <SectionLabel icon={<PlusCircleOutlined />} label="Add from catalog" count={available.length} color={token.colorPrimary} />
+        <SectionLabel icon={<PlusCircleOutlined />} label="Add items to this branch" count={available.length} color={token.colorPrimary} />
 
         {available.length === 0 ? (
           <div style={{
@@ -925,10 +925,10 @@ const BranchCatalogView: React.FC<BranchCatalogViewProps> = ({ branch, open, onC
             <ShopOutlined style={{ color: '#fff', fontSize: 18 }} />
           </div>
           <div>
-            <Text style={{ fontSize: 17, fontWeight: 700, display: 'block', lineHeight: 1.2 }}>Branch Catalog</Text>
+            <Text style={{ fontSize: 17, fontWeight: 700, display: 'block', lineHeight: 1.2 }}>Branch Menu</Text>
             <Text type="secondary" style={{ fontSize: 13 }}>{branch.name}</Text>
           </div>
-          <Tag color="purple" style={{ fontSize: 11, marginLeft: 4 }}>Demo Data</Tag>
+          <Tag color="red" style={{ fontSize: 11, marginLeft: 4 }}>Live Data</Tag>
           <div style={{ flex: 1 }} />
           {/* Stats */}
           {([
