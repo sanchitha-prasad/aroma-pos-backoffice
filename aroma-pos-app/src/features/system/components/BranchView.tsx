@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Table, Button, Space, Input, Modal, Typography, theme, Popconfirm, Form, Select, Tag, Tabs, InputNumber, TimePicker } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, ShopOutlined, EnvironmentOutlined, PhoneOutlined, ClockCircleOutlined, SettingOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, ShopOutlined, EnvironmentOutlined, PhoneOutlined, ClockCircleOutlined, SettingOutlined, ApartmentOutlined } from '@ant-design/icons';
 import { Branch } from '../../../shared/types';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
+import BranchCatalogView from './BranchCatalogView';
 dayjs.extend(utc);
 
 const { Option } = Select;
@@ -19,6 +20,7 @@ const BranchView: React.FC<BranchViewProps> = ({ branches, onSave, onDelete }) =
     const { token } = theme.useToken();
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
+    const [catalogBranch, setCatalogBranch] = useState<Branch | null>(null);
     const [form] = Form.useForm();
 
     const showModal = (branch?: Branch) => {
@@ -118,9 +120,15 @@ const BranchView: React.FC<BranchViewProps> = ({ branches, onSave, onDelete }) =
         {
             title: 'Actions',
             key: 'actions',
-            width: '120px',
+            width: '160px',
             render: (_: any, record: Branch) => (
                 <Space>
+                    <Button
+                        type="text"
+                        icon={<ApartmentOutlined style={{ color: token.colorPrimary }} />}
+                        onClick={() => setCatalogBranch(record)}
+                        title="Customize catalog"
+                    />
                     <Button type="text" icon={<EditOutlined style={{ color: token.colorPrimary }} />} onClick={() => showModal(record)} />
                     <Popconfirm title="Delete Branch?" description="This action cannot be undone." onConfirm={() => onDelete(record.id)} okButtonProps={{ danger: true }}>
                         <Button type="text" icon={<DeleteOutlined style={{ color: 'red' }} />} />
@@ -149,8 +157,16 @@ const BranchView: React.FC<BranchViewProps> = ({ branches, onSave, onDelete }) =
                  />
             </div>
 
-            <Modal 
-                title={editingBranch ? "Edit Branch" : "Add Branch"} 
+            {catalogBranch && (
+                <BranchCatalogView
+                    branch={catalogBranch}
+                    open={!!catalogBranch}
+                    onClose={() => setCatalogBranch(null)}
+                />
+            )}
+
+            <Modal
+                title={editingBranch ? "Edit Branch" : "Add Branch"}
                 open={isModalVisible} 
                 onOk={handleOk} 
                 onCancel={() => setIsModalVisible(false)}

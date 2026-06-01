@@ -59,6 +59,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const allItems = [
     { key: '/', icon: <AppstoreOutlined />, label: 'Dashboard', permission: 'BackOffice:dashboard:view' },
     { key: '/orders', icon: <ShoppingCartOutlined />, label: 'Orders', permission: 'BackOffice:orders:getall' },
+    { key: '/menus', icon: <AppstoreOutlined />, label: 'Menus', permission: 'BackOffice:menu:view' },
     { key: '/menu', icon: <ReadOutlined />, label: 'Menu Items', permission: 'BackOffice:menu:view' },
     { key: '/modifiers', icon: <ControlOutlined />, label: 'Modifiers', permission: 'BackOffice:modifiers:getall' },
     { key: '/categories', icon: <TagsOutlined />, label: 'Categories', permission: 'BackOffice:categories:getall' },
