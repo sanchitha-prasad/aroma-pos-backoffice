@@ -42,7 +42,7 @@ const MasterLayout: React.FC<MasterLayoutProps> = ({ currentUser, isDarkMode, se
 
       <Layout style={{ position: 'relative' }}>
         <Drawer title="Notifications" placement="right" onClose={() => setIsNotifOpen(false)} open={isNotifOpen}>
-            <List
+            {/* <List
               itemLayout="horizontal"
               dataSource={notifications}
               renderItem={item => (
@@ -59,7 +59,26 @@ const MasterLayout: React.FC<MasterLayoutProps> = ({ currentUser, isDarkMode, se
                   />
                 </List.Item>
               )}
-            />
+            /> */}
+
+            <div> 
+              {notifications.map((item, index) => (
+                <List.Item key={index}>
+                  <List.Item.Meta
+                    avatar={ <Avatar style={{ backgroundColor: '#6132C0' }} icon={<BellOutlined />} />}
+                    title={item.title}
+                    description={
+                      <div>
+                        <div>{item.desc}</div>
+                        <Text type="secondary" style={{ fontSize: 11 }}>
+                          {item.time}
+                        </Text>
+                      </div>
+                    }
+                  />
+                </List.Item>
+              ))}
+            </div>
         </Drawer>
         <Content style={{ margin: '24px 32px 24px 24px', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 48px)' }}>
             <Outlet />

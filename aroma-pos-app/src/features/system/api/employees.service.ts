@@ -5,16 +5,16 @@ import { ServiceResponse } from "@/src/shared/types/serviceResponse";
 
 export const EmployeesService ={
 
-    getEmployees: async() : Promise<ServiceResponse<Employee[]>> => {
-        return handleRequest<Employee[]>(apiClient.get('/api/users'));
+    getEmployees: async (tenantId: string): Promise<ServiceResponse<Employee[]>> => {
+        return handleRequest<Employee[]>( apiClient.get(`/api/tenants/${tenantId}/users`) );
+},
+    createEmployee: async (tenantId: string, data: Omit<Employee, 'id'>): Promise<ServiceResponse<Employee>> => {
+        return handleRequest<Employee>(apiClient.post(`/api/tenants/${tenantId}/users`, data));
     },
-    createEmployee: async (data: Omit<Employee, 'id'>): Promise<ServiceResponse<Employee>> => {
-        return handleRequest<Employee>(apiClient.post('/api/users', data));
+    updateEmployee: async (tenantId: string, id: string, data: Partial<Employee>): Promise<ServiceResponse<Employee>> => {
+        return handleRequest<Employee>(apiClient.put(`/api/tenants/${tenantId}/users/${id}`, data));
     },
-    updateEmployee: async (id: string, data: Partial<Employee>): Promise<ServiceResponse<Employee>> => {
-        return handleRequest<Employee>(apiClient.put(`/api/users/${id}`, data));
-    },
-    deleteEmployee: async (id: string): Promise<ServiceResponse<void>> => {
-        return handleRequest<void>(apiClient.delete(`/api/users/${id}`));
+    deleteEmployee: async (tenantId: string, id: string): Promise<ServiceResponse<void>> => {
+        return handleRequest<void>(apiClient.delete(`/api/tenants/${tenantId}/users/${id}`));
     },
 }

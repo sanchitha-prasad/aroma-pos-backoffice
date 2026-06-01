@@ -10,6 +10,6 @@ export const systemService = {
     // updatePermissions: (data: Record<Role, string[]>) => apiClient.put<void>('/api/permissions', data),
 
     // --- Activity Logs ---
-    getActivities: () => apiClient.get<Activity[]>('/api/activities'),
-    logActivity: (data: { action: string, target: string, user: string }) => apiClient.post<void>('/api/activities', data),
+    // getActivities: () => apiClient.get<Activity[]>('/api/activities'),
+    // logActivity: (data: { action: string, target: string, user: string }) => apiClient.post<void>('/api/activities', data),
 };

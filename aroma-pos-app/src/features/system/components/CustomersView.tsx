@@ -182,7 +182,7 @@ const cancelStatusChange = () => {
             title: 'Contact Info',
             key: 'contact',
             render: (_: any, record: Customer) => (
-                <Space direction="vertical" size={0}>
+                <Space orientation="vertical" size={0}>
                     <Text style={{ fontSize: 13 }}>
                         <MailOutlined /> {record.email || 'N/A'}
                     </Text>
@@ -327,7 +327,7 @@ const cancelStatusChange = () => {
                 onOk={() => form.submit()}
                 onCancel={closeModal}
                 confirmLoading={saving}
-                destroyOnClose
+                destroyOnHidden
             >
                 <Form form={form} layout="vertical" onFinish={handleFinish}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>

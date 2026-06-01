@@ -36,7 +36,7 @@ const BranchView: React.FC<BranchViewProps> = ({ branches, onSave, onDelete }) =
             (form as any).resetFields();
             (form as any).setFieldsValue({ 
                 isActive: true,
-                address: { country: 'USA' } 
+                // address: { country: 'USA' } 
             });
         }
         setIsModalVisible(true);
@@ -90,7 +90,7 @@ const BranchView: React.FC<BranchViewProps> = ({ branches, onSave, onDelete }) =
             render: (text: string, record: Branch) => (
                 <Space>
                     <EnvironmentOutlined style={{ color: token.colorTextSecondary }} />
-                    <span>{text}, {record.address.country}</span>
+                    {/* <span>{text}, {record.address.country}</span> */}
                 </Space>
             )
         },
@@ -155,7 +155,7 @@ const BranchView: React.FC<BranchViewProps> = ({ branches, onSave, onDelete }) =
                 onOk={handleOk} 
                 onCancel={() => setIsModalVisible(false)}
                 width={700}
-                maskClosable={false}
+                mask={{ closable: false }}
             >
                 <Form form={form} layout="vertical">
                     <Tabs defaultActiveKey="1" items={[
@@ -208,9 +208,9 @@ const BranchView: React.FC<BranchViewProps> = ({ branches, onSave, onDelete }) =
                                             <Input />
                                         </Form.Item>
                                     </div>
-                                    <Form.Item name={['address', 'country']} label="Country" rules={[{ required: true }]}>
+                                    {/* <Form.Item name={['address', 'country']} label="Country" rules={[{ required: true }]}>
                                         <Input />
-                                    </Form.Item>
+                                    </Form.Item> */}
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                                         <Form.Item name={['address', 'latitude']} label="Latitude" rules={[{ required: true }]}>
                                             <Input placeholder="e.g. 6.9271" />

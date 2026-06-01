@@ -398,7 +398,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
             <Layout>
                 <Content style={{ padding: '24px', overflowY: 'auto', background: token.colorBgLayout }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                        <Space direction="vertical" size={0}>
+                        <Space orientation="vertical" size={0}>
                             <Title level={3} style={{ margin: 0, textTransform: 'capitalize' }}>{mainCategory} Reports</Title>
                             <Text type="secondary">View and export detailed analytics</Text>
                         </Space>
@@ -410,9 +410,9 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
                     </div>
 
                     <Card 
-                        bordered={false} 
+                        variant="borderless" 
                         style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.05)', borderRadius: 8 }}
-                        bodyStyle={{ padding: 0 }}
+                        styles={{ body: { padding: 0 } }}
                     >
                         {currentData.tabs.length > 0 ? (
                             <Tabs 
@@ -429,7 +429,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
                                                         <Statistic title="Total Records" value={reportConfig.data.length || 0} />
                                                     </Col>
                                                     <Col span={6}>
-                                                        <Statistic title="Generated At" value={dayjs().format('HH:mm A')} valueStyle={{ fontSize: 16 }} />
+                                                        <Statistic title="Generated At" value={dayjs().format('HH:mm A')} styles={{ content: { fontSize: 16 } }} />
                                                     </Col>
                                                 </Row>
                                             </div>

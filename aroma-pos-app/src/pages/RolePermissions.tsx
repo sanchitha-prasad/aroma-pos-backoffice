@@ -16,8 +16,8 @@ const RolePermissions: React.FC = () => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const data = await systemService.getPermissions();
-            setRolePermissions(data);
+            // const data = await systemService.getPermissions();
+            // setRolePermissions(data);
         } catch (error) {
             message.error("Failed to load permissions");
         } finally {
@@ -27,7 +27,7 @@ const RolePermissions: React.FC = () => {
 
     const handleSave = async (updatedPermissions: Record<Role, string[]>) => {
         try {
-            await systemService.updatePermissions(updatedPermissions);
+            // await systemService.updatePermissions(updatedPermissions);
             setRolePermissions(updatedPermissions);
         } catch (error) {
         }

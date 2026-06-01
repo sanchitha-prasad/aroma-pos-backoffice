@@ -97,7 +97,7 @@ const EmployeesView: React.FC<EmployeesViewProps> = ({ onLogActivity, activities
       title: 'POS Login',
       dataIndex: 'loginNumber',
       key: 'loginNumber',
-      render: (num: string) => <Tag icon={<NumberOutlined />} bordered={false}>{num}</Tag>
+      render: (num: string) => <Tag icon={<NumberOutlined />} variant="filled">{num}</Tag>
     },
     {
       title: 'Role',
@@ -226,7 +226,7 @@ const EmployeesView: React.FC<EmployeesViewProps> = ({ onLogActivity, activities
         footer={null}
         onCancel={() => setIsActivityModalOpen(false)}
         width={600}
-        bodyStyle={{ maxHeight: '60vh', overflowY: 'auto', padding: '24px' }}
+        styles={{ body: { maxHeight: '60vh', overflowY: 'auto', padding: '24px' } }}
       >
         {userActivities.length > 0 ? (
             <Timeline

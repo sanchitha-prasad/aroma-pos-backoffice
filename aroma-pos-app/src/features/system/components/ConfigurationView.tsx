@@ -16,7 +16,8 @@ import {
     Upload,
     Card,
     message,
-    Empty
+    Empty,
+    Space
 } from 'antd';
 import { 
     UploadOutlined, 
@@ -307,31 +308,42 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                     <div style={{ maxWidth: 800 }}>
                         <Title level={4}>Customer Loyalty & Rewards</Title>
                         <Divider />
-                        <Form layout="vertical">
-                            <Row gutter={24}>
-                                <Col span={12}>
-                                    <Form.Item label="Points Earning Rule">
-                                        <Input addonBefore="Earn 1 point per" addonAfter="$ spent" defaultValue="1" />
-                                    </Form.Item>
-                                </Col>
-                                <Col span={12}>
-                                    <Form.Item label="Redemption Rule">
-                                        <Input addonBefore="Redeem 100 points for" addonAfter="$ credit" defaultValue="5" />
-                                    </Form.Item>
-                                </Col>
-                            </Row>
 
-                            <Form.Item label="Loyalty Tiers">
-                                <Select mode="tags" defaultValue={['Silver', 'Gold', 'VIP']} />
+                        <Form layout="vertical">
+                        <Row gutter={24}>
+                            <Col span={12}>
+                            <Form.Item label="Points Earning Rule">
+                                <Space.Compact style={{ width: "100%" }}>
+                                <Input value="Earn 1 point per" disabled style={{ width: "60%" }} />
+                                <Input defaultValue="1" style={{ width: "20%" }} />
+                                <Input value="$ spent" disabled style={{ width: "20%" }} />
+                                </Space.Compact>
                             </Form.Item>
-                            
-                            <Form.Item label="Birthday Reward">
-                                <Input placeholder="e.g. Free Dessert" />
+                            </Col>
+
+                            <Col span={12}>
+                            <Form.Item label="Redemption Rule">
+                                <Space.Compact style={{ width: "100%" }}>
+                                <Input value="Redeem 100 points for" disabled style={{ width: "70%" }} />
+                                <Input defaultValue="5" style={{ width: "15%" }} />
+                                <Input value="$ credit" disabled style={{ width: "15%" }} />
+                                </Space.Compact>
                             </Form.Item>
+                            </Col>
+                        </Row>
+
+                        <Form.Item label="Loyalty Tiers">
+                            <Select mode="tags" defaultValue={["Silver", "Gold", "VIP"]} />
+                        </Form.Item>
+
+                        <Form.Item label="Birthday Reward">
+                            <Input placeholder="e.g. Free Dessert" />
+                        </Form.Item>
                         </Form>
+
                         {renderSaveButton()}
                     </div>
-                </ScrollablePane>
+                    </ScrollablePane>
             )
         },
         {
@@ -550,7 +562,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                 padding: '24px 0'
             }}>
                 <Tabs 
-                    tabPosition="left" 
+                    tabPlacement="start" 
                     items={visibleTabs} 
                     style={{ height: '100%' }}
                     tabBarStyle={{ width: 220 }}

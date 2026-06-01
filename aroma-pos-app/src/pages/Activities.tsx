@@ -11,8 +11,8 @@ const Activities: React.FC = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const data = await systemService.getActivities();
-                setActivities(data);
+                // const data = await systemService.getActivities();
+                // setActivities(data);
             } catch (error) {
                 console.error("Failed to load activities");
             } finally {

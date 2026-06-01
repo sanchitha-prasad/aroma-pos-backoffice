@@ -9,7 +9,7 @@ const Branches: React.FC = () => {
     const [branches, setBranches] = useState<Branch[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const [popup, contextHolder] = Modal.useModal();
+    // const [popup, contextHolder] = Modal.useModal();
 
 
     useEffect(() => {
@@ -23,7 +23,7 @@ const Branches: React.FC = () => {
             if (data.success) {
                 setBranches(data.data ?? []);
             } else {
-                showErrorMessage(popup, data.message, "Branch Fetch Failed");
+                message.error("Branch Fetch Failed");
             }
         } catch (error) {
             message.error("Failed to load branches");
@@ -40,7 +40,7 @@ const Branches: React.FC = () => {
                 message.success("Branch saved");
                 fetchData();
             } else {
-                showErrorMessage(popup, data.message, "Save Failed");
+                message.error("Save Failed");
             }
         } catch (e) { }
     };
@@ -52,7 +52,7 @@ const Branches: React.FC = () => {
                 message.success("Branch deleted");
                 fetchData();
             } else {
-                showErrorMessage(popup, data.message, "Delete Failed");
+                message.error("Delete Failed");
             }
         } catch (e) { }
     };
@@ -61,9 +61,9 @@ const Branches: React.FC = () => {
 
     return (
         <>
-            {contextHolder}
+            {/* {contextHolder} */}
             <BranchView
-                branches={branches}
+                branches={branches ?? []}
                 onSave={handleSave}
                 onDelete={handleDelete}
             />

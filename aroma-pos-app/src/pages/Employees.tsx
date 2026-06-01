@@ -5,28 +5,49 @@ import { Activity, Branch, Employee } from '../shared/types';
 import { systemService } from '../features/system/api/system.service';
 import { EmployeesService } from '../features/system/api/employees.service';
 import { BranchServices } from '../features/system/api/branch.service';
+import { AsyncLocalStorage } from 'node:async_hooks';
+
+
+const  stringEmpty = "";
 
 const Employees: React.FC = () => {
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [branches, setBranches] = useState<Branch[]>([]);
     const [activities, setActivities] = useState<Activity[]>([]);
     const [loading, setLoading] = useState(true);
+    const [tenantId, setTenantId] = useState<string>(stringEmpty);
 
-    useEffect(() => {
-        fetchData();
-    }, []);
+   useEffect(() => {
+        const loadTenant = () => {
+            const id = sessionStorage.getItem("_stid");
 
-    const fetchData = async () => {
+            if (!id) {
+                message.error("Tenant not found. Please login again.");
+                return null;
+            }
+
+            setTenantId(id);
+            return id;
+        };
+
+        const id = loadTenant();
+
+        if (id) {
+            fetchData(id);
+        }
+    }, [tenantId]);
+
+    const fetchData = async (tenantId: string) => {
         setLoading(true);
         try {
-            const [empData, branchData, actData] = await Promise.all([
-                EmployeesService.getEmployees(),
+            const [empData, branchData] = await Promise.all([
+                EmployeesService.getEmployees(tenantId), // Pass tenantId if needed
                 BranchServices.getBranches(),
-                systemService.getActivities()
+                // systemService.getActivities()
             ]);
             if (empData.success) setEmployees(empData.data ?? []);
             if (branchData.success) setBranches(branchData.data ?? []);
-            setActivities(actData);
+            // setActivities(actData);
         } catch (error) {
             message.error("Failed to load employee data");
         } finally {
@@ -37,26 +58,26 @@ const Employees: React.FC = () => {
     const handleSave = async (emp: Employee) => {
         try {
             if (emp.id) {
-                await EmployeesService.updateEmployee(emp.id, emp);
+                await EmployeesService.updateEmployee(tenantId, emp.id, emp);
             } else {
                 const { id, ...createData } = emp;
-                await EmployeesService.createEmployee(createData);
+                await EmployeesService.createEmployee(tenantId, createData);
             }
             message.success("Employee saved");
-            fetchData();
+            fetchData(tenantId);
         } catch (e) { }
     };
 
     const handleDelete = async (id: string) => {
         try {
-            await EmployeesService.deleteEmployee(id);
+            await EmployeesService.deleteEmployee(tenantId, id);
             setEmployees(prev => prev.filter(x => x.id !== id));
             message.success("Employee deleted");
         } catch (e) { }
     };
 
     const handleLogActivity = (action: string, target: string) => {
-        systemService.logActivity({ action, target, user: 'User' });
+        // systemService.logActivity({ action, target, user: 'User' });
         const newAct: Activity = {
             id: Date.now().toString(),
             user: 'User',

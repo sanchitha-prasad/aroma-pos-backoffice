@@ -244,7 +244,7 @@ const OrderView: React.FC<OrderViewProps> = ({ orders }) => {
 
             <Drawer
                 title={selectedOrder ? `Order #${selectedOrder.orderNumber}` : 'Order Details'}
-                width={600}
+                size="large"
                 onClose={() => setIsDrawerOpen(false)}
                 open={isDrawerOpen}
             >
