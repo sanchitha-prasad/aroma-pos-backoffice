@@ -337,7 +337,16 @@ const BranchView: React.FC<BranchViewProps> = ({
                 </Button>
             </div>
 
-            <Table dataSource={branches} columns={columns} rowKey="id" />
+            <div style={{ background: token.colorBgContainer, borderRadius: 12, border: `1px solid ${token.colorBorderSecondary}`, overflow: 'hidden' }}>
+                 <Table 
+                    className="custom-table" 
+                    dataSource={branches} 
+                    columns={columns} 
+                    rowKey="id" 
+                    pagination={{ pageSize: 10 }} 
+                 />
+            </div>
+            {/* <Table dataSource={branches} columns={columns} rowKey="id" /> */}
 
             {catalogBranch && (
                 <BranchCatalogView
