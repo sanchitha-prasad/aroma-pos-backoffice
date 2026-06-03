@@ -2,7 +2,7 @@ import React, { useEffect,useMemo, useState } from 'react';
 import { Form, Input, InputNumber, Select, Button, theme, message, Popconfirm, Typography, Tabs, Table, Switch, Modal } from 'antd';
 import { DeleteOutlined, SaveOutlined, PlusOutlined } from '@ant-design/icons';
 import { MenuItem, ModifierGroup, Category, Device, ItemVariant, Variant } from '../../../shared/types';
-import { VariantService } from '../api/variants.service';
+import { useVariants } from '../hooks/useVariants';
 
 const { Option } = Select;
 import { showErrorMessage } from '@/src/shared/types/ui/ErrorMessageModel';
@@ -26,26 +26,11 @@ const MenuForm: React.FC<MenuFormProps> = ({ initialData, categories, modifierGr
     const [form] = Form.useForm();
     const { token } = theme.useToken();
     const [variants, setVariants] = useState<ItemVariant[]>([]);
-    const [availableVariants, setAvailableVariants] = useState<Variant[]>([]);
+    const { data: availableVariants = [] } = useVariants();
     const [activeTab, setActiveTab] = useState('1');
     const { currencySymbol } = useCurrency();
 
     const [popup, contextHolder] = Modal.useModal();
-
-    useEffect(() => {
-        const fetchVariants = async () => {
-            const data = await VariantService.getVariants();
-
-            if (data.success) {
-                console.log(data);
-                setAvailableVariants(data.data || []);
-            } else {
-                showErrorMessage(popup, data.message, "Variant Fetch Failed");
-            }
-        };
-        fetchVariants();
-
-    }, []);
 
     useEffect(() => {
         if (initialData) {
