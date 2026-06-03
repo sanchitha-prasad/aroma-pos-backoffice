@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
-
 import {
-    Table,
     Button,
     Space,
     Input,
@@ -17,21 +15,22 @@ import {
     TimePicker,
     Switch,
     Row,
-    Col
+    Col,
 } from 'antd';
-
 import {
     PlusOutlined,
     EditOutlined,
     DeleteOutlined,
     ShopOutlined,
     ApartmentOutlined,
-    ClockCircleOutlined
+    ClockCircleOutlined,
 } from '@ant-design/icons';
+import type { ColumnsType } from 'antd/es/table';
+import dayjs from 'dayjs';
 
 import { Branch } from '../../../shared/types';
 import { apiClient } from '../../../shared/services/api/client';
-import dayjs from 'dayjs';
+import RichTable from '../../../shared/components/rich-table/RichTable';
 import BranchCatalogView from './BranchCatalogView';
 
 const { Option } = Select;
@@ -44,18 +43,8 @@ const DAYS = [
     { label: 'Wed', value: 3 },
     { label: 'Thu', value: 4 },
     { label: 'Fri', value: 5 },
-    { label: 'Sat', value: 6 }
+    { label: 'Sat', value: 6 },
 ];
-
-const dayMap: Record<string, number> = {
-    Sunday: 0,
-    Monday: 1,
-    Tuesday: 2,
-    Wednesday: 3,
-    Thursday: 4,
-    Friday: 5,
-    Saturday: 6
-};
 
 const safe = (v: any) =>
     v === undefined || v === null || v === '' ? '' : String(v);
@@ -69,24 +58,15 @@ const AvailabilityEditor: React.FC<{
 }> = ({ value, onChange }) => {
     const { token } = theme.useToken();
 
-    const get = (d: number) =>
-        value?.find(v => v.dayOfWeek === d);
+    const get = (d: number) => value?.find(v => v.dayOfWeek === d);
 
     const toggle = (d: number, enabled: boolean) => {
         const current = value || [];
-
         if (enabled) {
-            const exists = current.some(v => v.dayOfWeek === d);
-            if (exists) return;
-
+            if (current.some(v => v.dayOfWeek === d)) return;
             onChange([
                 ...current,
-                {
-                    dayOfWeek: d,
-                    timePeriods: [
-                        { startTime: '09:00:00', endTime: '22:00:00' }
-                    ]
-                }
+                { dayOfWeek: d, timePeriods: [{ startTime: '09:00:00', endTime: '22:00:00' }] },
             ]);
         } else {
             onChange(current.filter(v => v.dayOfWeek !== d));
@@ -108,7 +88,6 @@ const AvailabilityEditor: React.FC<{
             {DAYS.map(d => {
                 const entry = get(d.value);
                 const active = !!entry;
-
                 return (
                     <div
                         key={d.value}
@@ -119,18 +98,11 @@ const AvailabilityEditor: React.FC<{
                             padding: 12,
                             border: `1px solid ${token.colorBorderSecondary}`,
                             borderRadius: 8,
-                            background: active
-                                ? token.colorPrimaryBg
-                                : token.colorFillQuaternary
+                            background: active ? token.colorPrimaryBg : token.colorFillQuaternary,
                         }}
                     >
-                        <Switch
-                            checked={active}
-                            onChange={v => toggle(d.value, v)}
-                        />
-
+                        <Switch checked={active} onChange={v => toggle(d.value, v)} />
                         <strong style={{ width: 50 }}>{d.label}</strong>
-
                         {active ? (
                             <TimePicker.RangePicker
                                 style={{ width: '100%' }}
@@ -141,15 +113,11 @@ const AvailabilityEditor: React.FC<{
                                         : null,
                                     entry?.timePeriods?.[0]?.endTime
                                         ? dayjs(entry.timePeriods[0].endTime, 'HH:mm:ss')
-                                        : null
+                                        : null,
                                 ]}
                                 onChange={t => {
                                     if (t?.[0] && t?.[1]) {
-                                        updateTime(
-                                            d.value,
-                                            t[0].format('HH:mm:ss'),
-                                            t[1].format('HH:mm:ss')
-                                        );
+                                        updateTime(d.value, t[0].format('HH:mm:ss'), t[1].format('HH:mm:ss'));
                                     }
                                 }}
                             />
@@ -168,104 +136,84 @@ const AvailabilityEditor: React.FC<{
 // =====================
 interface BranchViewProps {
     branches: Branch[];
+    loading?: boolean;
     onSave: (branch: Branch) => void;
     onDelete: (id: string) => void;
 }
 
-const BranchView: React.FC<BranchViewProps> = ({
-    branches,
-    onSave,
-    onDelete
-}) => {
+const BranchView: React.FC<BranchViewProps> = ({ branches, loading = false, onSave, onDelete }) => {
     const { token } = theme.useToken();
 
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
     const [catalogBranch, setCatalogBranch] = useState<Branch | null>(null);
-
     const [tenantSettings, setTenantSettings] = useState<Record<string, string>>({});
+
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
 
     const [form] = Form.useForm();
     const availabilities = Form.useWatch('availabilities', form) || [];
 
-    // =====================
-    // FETCH TENANT SETTINGS
-    // =====================
     const fetchTenantSettings = async () => {
         try {
             const data = await apiClient.get<any[]>('/api/tenant-settings');
             const settings: Record<string, string> = {};
-            (data || []).forEach((item: any) => {
-                settings[item.key] = item.value;
-            });
-
+            (data || []).forEach((item: any) => { settings[item.key] = item.value; });
             setTenantSettings(settings);
             return settings;
-        } catch (error) {
-            console.error('Failed to load tenant settings', error);
+        } catch {
             return {};
         }
     };
 
-    useEffect(() => {
-        fetchTenantSettings();
-    }, []);
+    useEffect(() => { fetchTenantSettings(); }, []);
 
-   const showModal = async (branch?: Branch) => {
-    const settings = branch?.configuration?.settings ?? [];
+    const showModal = async (branch?: Branch) => {
+        const settings = branch?.configuration?.settings ?? [];
+        const getSetting = (key: string) => settings.find(s => s.key === key)?.value;
 
-    const getSetting = (key: string) =>
-        settings.find(s => s.key === key)?.value;
+        if (branch) {
+            setEditingBranch(branch);
+            form.setFieldsValue({
+                ...branch,
+                serviceCharge: getSetting('ServiceCharge'),
+                merchantFeePercentage: getSetting('MerchantFeePercentage'),
+                serviceChargeType: getSetting('ServiceChargeType'),
+                isKdsAvailable: getSetting('IsKdsAvailable') === 'true',
+                isExpeditorAvailable: getSetting('IsExpeditorAvailable') === 'true',
+                posSessionTimeout: Number(getSetting('PosSessionTimeout')) || 0,
+                timeZone: getSetting('TimeZone') || 'Asia/Colombo',
+                currency: getSetting('Currency') || 'LKR',
+                language: getSetting('Language') || 'English',
+            });
+            setIsModalVisible(true);
+            return;
+        }
 
-    if (branch) {
-        setEditingBranch(branch);
+        let activeSettings = tenantSettings;
+        if (!Object.keys(activeSettings).length) {
+            activeSettings = await fetchTenantSettings();
+        }
 
+        setEditingBranch(null);
+        form.resetFields();
         form.setFieldsValue({
-            ...branch,
-            serviceCharge: getSetting('ServiceCharge'),
-            merchantFeePercentage: getSetting('MerchantFeePercentage'),
-            serviceChargeType: getSetting('ServiceChargeType'),
-            isKdsAvailable: getSetting('IsKdsAvailable') === 'true',
-            isExpeditorAvailable: getSetting('IsExpeditorAvailable') === 'true',
-            posSessionTimeout: Number(getSetting('PosSessionTimeout')) || 0,
-            timeZone: getSetting('TimeZone') || 'Asia/Colombo',
-            currency: getSetting('Currency') || 'LKR',
-            language: getSetting('Language') || 'English'
+            isActive: true,
+            availabilities: [],
+            serviceCharge: Number(activeSettings['ServiceCharge'] ?? 0),
+            merchantFeePercentage: Number(activeSettings['MerchantFeePercentage'] ?? 0),
+            serviceChargeType: activeSettings['ServiceChargeType'] ?? 'Percentage',
+            isKdsAvailable: activeSettings['IsKdsAvailable'] === 'true',
+            isExpeditorAvailable: activeSettings['IsExpeditorAvailable'] === 'true',
+            posSessionTimeout: Number(activeSettings['PosSessionTimeout'] ?? 0),
+            timeZone: activeSettings['DefaultTimeZone'] ?? 'Asia/Colombo',
+            currency: activeSettings['DefaultCurrency'] ?? 'LKR',
+            language: activeSettings['Language'] ?? 'English',
         });
-
         setIsModalVisible(true);
-        return;
-    }
-
-    // ✅ WAIT FOR TENANT SETTINGS BEFORE OPENING NEW FORM
-    let activeSettings = tenantSettings;
-    if (!Object.keys(activeSettings).length) {
-        activeSettings = await fetchTenantSettings();
-    }
-
-    setEditingBranch(null);
-    form.resetFields();
-
-    form.setFieldsValue({
-        isActive: true,
-        availabilities: [],
-
-        serviceCharge: Number(activeSettings['ServiceCharge'] ?? 0),
-        merchantFeePercentage: Number(activeSettings['MerchantFeePercentage'] ?? 0),
-        serviceChargeType: activeSettings['ServiceChargeType'] ?? 'Percentage',
-
-        isKdsAvailable: activeSettings['IsKdsAvailable'] === 'true',
-        isExpeditorAvailable: activeSettings['IsExpeditorAvailable'] === 'true',
-
-        posSessionTimeout: Number(activeSettings['PosSessionTimeout'] ?? 0),
-
-        timeZone: activeSettings['DefaultTimeZone'] ?? 'Asia/Colombo',
-        currency: activeSettings['DefaultCurrency'] ?? 'LKR',
-        language: activeSettings['Language'] ?? 'English'
-    });
-
-    setIsModalVisible(true);
-};
+    };
 
     const handleOk = () => {
         form.validateFields().then(values => {
@@ -287,22 +235,18 @@ const BranchView: React.FC<BranchViewProps> = ({
                         { key: 'PosSessionTimeout', value: safe(values.posSessionTimeout) },
                         {
                             key: 'OperationStartTime',
-                            value: values.operationStartTime
-                                ? values.operationStartTime.format('HH:mm:ss')
-                                : ''
+                            value: values.operationStartTime ? values.operationStartTime.format('HH:mm:ss') : '',
                         },
                         {
                             key: 'OperationEndTime',
-                            value: values.operationEndTime
-                                ? values.operationEndTime.format('HH:mm:ss')
-                                : ''
+                            value: values.operationEndTime ? values.operationEndTime.format('HH:mm:ss') : '',
                         },
                         { key: 'TimeZone', value: safe(values.timeZone || 'Asia/Colombo') },
                         { key: 'Currency', value: safe(values.currency || 'LKR') },
-                        { key: 'Language', value: safe(values.language || 'English') }
-                    ]
+                        { key: 'Language', value: safe(values.language || 'English') },
+                    ],
                 },
-                availabilities: values.availabilities ?? []
+                availabilities: values.availabilities ?? [],
             };
 
             onSave(branch);
@@ -310,11 +254,11 @@ const BranchView: React.FC<BranchViewProps> = ({
         });
     };
 
-    const columns = [
+    const columns: ColumnsType<Branch> = [
         {
             title: 'Code',
             dataIndex: 'code',
-            render: (t: string) => <Tag>{t}</Tag>
+            render: (t: string) => <Tag>{t}</Tag>,
         },
         {
             title: 'Branch Name',
@@ -324,7 +268,7 @@ const BranchView: React.FC<BranchViewProps> = ({
                     <ShopOutlined style={{ color: token.colorPrimary }} />
                     <strong>{text}</strong>
                 </Space>
-            )
+            ),
         },
         { title: 'City', dataIndex: ['address', 'city'] },
         { title: 'Phone', dataIndex: 'phoneNumber' },
@@ -332,10 +276,8 @@ const BranchView: React.FC<BranchViewProps> = ({
             title: 'Status',
             dataIndex: 'isActive',
             render: (v: boolean) => (
-                <Tag color={v ? 'green' : 'red'}>
-                    {v ? 'Active' : 'Inactive'}
-                </Tag>
-            )
+                <Tag color={v ? 'green' : 'red'}>{v ? 'Active' : 'Inactive'}</Tag>
+            ),
         },
         {
             title: 'Actions',
@@ -351,38 +293,37 @@ const BranchView: React.FC<BranchViewProps> = ({
                         icon={<EditOutlined />}
                         onClick={() => showModal(record)}
                     />
-                    <Popconfirm
-                        title="Delete branch?"
-                        onConfirm={() => onDelete(record.id)}
-                    >
+                    <Popconfirm title="Delete branch?" onConfirm={() => onDelete(record.id)}>
                         <Button type="text" danger icon={<DeleteOutlined />} />
                     </Popconfirm>
                 </Space>
-            )
-        }
+            ),
+        },
     ];
 
+    const paged = branches.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
     return (
-        <div style={{ padding: 24 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Title level={3}>Branch Management</Title>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: 24, gap: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+                <Title level={3} style={{ margin: 0 }}>Branch Management</Title>
                 <Button type="primary" icon={<PlusOutlined />} onClick={() => showModal()}>
                     Add Branch
                 </Button>
             </div>
 
-            <div style={{
-                background: token.colorBgContainer,
-                borderRadius: 12,
-                border: `1px solid ${token.colorBorderSecondary}`,
-                overflow: 'hidden'
-            }}>
-                <Table
-                    className="custom-table"
-                    dataSource={branches}
+            <div style={{ flex: 1, minHeight: 0 }}>
+                <RichTable<Branch>
+                    data={paged}
                     columns={columns}
                     rowKey="id"
-                    pagination={{ pageSize: 10 }}
+                    isLoading={loading}
+                    currentPage={currentPage}
+                    pageSize={pageSize}
+                    totalItems={branches.length}
+                    onPageChange={setCurrentPage}
+                    onPageSizeChange={size => { setPageSize(size); setCurrentPage(1); }}
+                    totalLabel="branches"
                 />
             </div>
 
@@ -400,12 +341,7 @@ const BranchView: React.FC<BranchViewProps> = ({
                 onCancel={() => setIsModalVisible(false)}
                 width={900}
                 title={
-                    <div style={{
-                        textAlign: 'center',
-                        width: '100%',
-                        fontWeight: 700,
-                        fontSize: 20
-                    }}>
+                    <div style={{ textAlign: 'center', width: '100%', fontWeight: 700, fontSize: 20 }}>
                         {editingBranch ? editingBranch.name : 'Add Branch'}
                     </div>
                 }
@@ -430,7 +366,6 @@ const BranchView: React.FC<BranchViewProps> = ({
                                                 </Form.Item>
                                             </Col>
                                         </Row>
-
                                         <Row gutter={16}>
                                             <Col span={12}>
                                                 <Form.Item name="phoneNumber" label="Phone Number" rules={[{ required: true }]}>
@@ -443,7 +378,6 @@ const BranchView: React.FC<BranchViewProps> = ({
                                                 </Form.Item>
                                             </Col>
                                         </Row>
-
                                         <Form.Item name="isActive" label="Status">
                                             <Select>
                                                 <Option value={true}>Active</Option>
@@ -451,9 +385,8 @@ const BranchView: React.FC<BranchViewProps> = ({
                                             </Select>
                                         </Form.Item>
                                     </>
-                                )
+                                ),
                             },
-
                             {
                                 key: '2',
                                 label: 'Address',
@@ -471,7 +404,6 @@ const BranchView: React.FC<BranchViewProps> = ({
                                                 </Form.Item>
                                             </Col>
                                         </Row>
-
                                         <Row gutter={16}>
                                             <Col span={12}>
                                                 <Form.Item name={['address', 'city']} label="City">
@@ -484,7 +416,6 @@ const BranchView: React.FC<BranchViewProps> = ({
                                                 </Form.Item>
                                             </Col>
                                         </Row>
-
                                         <Row gutter={16}>
                                             <Col span={12}>
                                                 <Form.Item name={['address', 'country']} label="Country">
@@ -497,14 +428,12 @@ const BranchView: React.FC<BranchViewProps> = ({
                                                 </Form.Item>
                                             </Col>
                                         </Row>
-
                                         <Form.Item name={['address', 'longitude']} label="Longitude">
                                             <Input />
                                         </Form.Item>
                                     </>
-                                )
+                                ),
                             },
-
                             {
                                 key: '3',
                                 label: 'Settings',
@@ -522,14 +451,12 @@ const BranchView: React.FC<BranchViewProps> = ({
                                                 </Form.Item>
                                             </Col>
                                         </Row>
-
                                         <Form.Item name="serviceChargeType" label="Service Charge Type">
                                             <Select>
                                                 <Option value="Percentage">Percentage</Option>
                                                 <Option value="Fixed">Fixed</Option>
                                             </Select>
                                         </Form.Item>
-
                                         <Row gutter={16}>
                                             <Col span={12}>
                                                 <Form.Item name="isKdsAvailable" valuePropName="checked" label="KDS Available">
@@ -542,7 +469,6 @@ const BranchView: React.FC<BranchViewProps> = ({
                                                 </Form.Item>
                                             </Col>
                                         </Row>
-
                                         <Row gutter={16}>
                                             <Col span={12}>
                                                 <Form.Item name="posSessionTimeout" label="POS Session Timeout">
@@ -555,7 +481,6 @@ const BranchView: React.FC<BranchViewProps> = ({
                                                 </Form.Item>
                                             </Col>
                                         </Row>
-
                                         <Row gutter={16}>
                                             <Col span={12}>
                                                 <Form.Item name="currency" label="Currency">
@@ -569,9 +494,8 @@ const BranchView: React.FC<BranchViewProps> = ({
                                             </Col>
                                         </Row>
                                     </>
-                                )
+                                ),
                             },
-
                             {
                                 key: '4',
                                 label: (
@@ -583,13 +507,11 @@ const BranchView: React.FC<BranchViewProps> = ({
                                     <Form.Item name="availabilities">
                                         <AvailabilityEditor
                                             value={availabilities}
-                                            onChange={v =>
-                                                form.setFieldsValue({ availabilities: v })
-                                            }
+                                            onChange={v => form.setFieldsValue({ availabilities: v })}
                                         />
                                     </Form.Item>
-                                )
-                            }
+                                ),
+                            },
                         ]}
                     />
                 </Form>

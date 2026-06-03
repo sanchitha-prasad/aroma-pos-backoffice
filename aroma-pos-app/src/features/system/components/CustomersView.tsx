@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-    Table,
     Button,
     Tag,
     Space,
@@ -11,21 +10,26 @@ import {
     Input,
     Select,
     Dropdown,
-    MenuProps,
-    Empty
+    Empty,
 } from 'antd';
+import type { MenuProps } from 'antd';
 import {
     UserAddOutlined,
     EditOutlined,
     PhoneOutlined,
     MailOutlined,
     IdcardOutlined,
-    DownOutlined
+    DownOutlined,
+    SearchOutlined,
 } from '@ant-design/icons';
+import type { ColumnsType } from 'antd/es/table';
 import { CustomerStatus } from '@/src/shared/enums';
-import { Customer } from '../../../shared/types/system/Customer';
+import type { Customer } from '../../../shared/types/system/Customer';
+import RichTable from '../../../shared/components/rich-table/RichTable';
+import StatusDot from '../../../shared/components/rich-table/StatusDot';
+import type { StatusDotVariant } from '../../../shared/components/rich-table/StatusDot';
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 const { Option } = Select;
 
 interface CustomersViewProps {
@@ -36,20 +40,45 @@ interface CustomersViewProps {
     onStatusChange: (id: string, newStatus: CustomerStatus) => Promise<void>;
 }
 
+const STATUS_META: Record<
+    CustomerStatus,
+    { dotVariant: StatusDotVariant; label: string; tagColor: string }
+> = {
+    [CustomerStatus.Active]: { dotVariant: 'success', label: 'Active', tagColor: 'green' },
+    [CustomerStatus.Inactive]: { dotVariant: 'warning', label: 'Inactive', tagColor: 'warning' },
+    [CustomerStatus.Blocked]: { dotVariant: 'error', label: 'Blocked', tagColor: 'error' },
+};
+
+const FILTER_ALL = 'all';
+
 const CustomersView: React.FC<CustomersViewProps> = ({
     customers,
     loading = false,
     userRole,
     onSave,
-    onStatusChange
+    onStatusChange,
 }) => {
     const { token } = theme.useToken();
+    const isAdmin = userRole === 'Admin' || userRole === 'Super Admin';
+
+    // ── Pagination ───────────────────────────────────────────────────────────
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
+
+    // ── Filters ───────────────────────────────────────────────────────────────
+    const [activeFilter, setActiveFilter] = useState(FILTER_ALL);
+    const [search, setSearch] = useState('');
+
+    // ── Add / Edit modal ──────────────────────────────────────────────────────
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
     const [saving, setSaving] = useState(false);
     const [form] = Form.useForm();
 
-    const isAdmin = userRole === 'Admin' || userRole === 'Super Admin';
+    // ── Status change confirmation modal ─────────────────────────────────────
+    const [statusModalOpen, setStatusModalOpen] = useState(false);
+    const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+    const [pendingStatus, setPendingStatus] = useState<CustomerStatus | null>(null);
 
     useEffect(() => {
         if (isModalOpen && editingCustomer) {
@@ -59,16 +88,74 @@ const CustomersView: React.FC<CustomersViewProps> = ({
                 code: editingCustomer.code,
                 email: editingCustomer.email,
                 phoneNumber: editingCustomer.phoneNumber,
-                status: editingCustomer.status
+                status: editingCustomer.status,
             });
         } else if (isModalOpen && !editingCustomer) {
             form.resetFields();
         }
     }, [isModalOpen, editingCustomer, form]);
 
+    // ── Derived data ──────────────────────────────────────────────────────────
+    const filtered = useMemo(() => {
+        let result = customers;
+
+        if (activeFilter !== FILTER_ALL) {
+            const statusNum = parseInt(activeFilter, 10) as CustomerStatus;
+            result = result.filter((c) => c.status === statusNum);
+        }
+
+        if (search.trim()) {
+            const q = search.trim().toLowerCase();
+            result = result.filter(
+                (c) =>
+                    `${c.firstName} ${c.lastName ?? ''}`.toLowerCase().includes(q) ||
+                    (c.email ?? '').toLowerCase().includes(q) ||
+                    c.phoneNumber.includes(q) ||
+                    c.code.toLowerCase().includes(q),
+            );
+        }
+
+        return result;
+    }, [customers, activeFilter, search]);
+
+    const paginated = useMemo(
+        () => filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize),
+        [filtered, currentPage, pageSize],
+    );
+
+    const handleFilterChange = (key: string) => {
+        setActiveFilter(key);
+        setCurrentPage(1);
+    };
+
+    const handleSearch = (value: string) => {
+        setSearch(value);
+        setCurrentPage(1);
+    };
+
+    // ── Quick filter counts ───────────────────────────────────────────────────
+    const quickFilters = [
+        { key: FILTER_ALL, label: 'All', count: customers.length },
+        {
+            key: String(CustomerStatus.Active),
+            label: 'Active',
+            count: customers.filter((c) => c.status === CustomerStatus.Active).length,
+        },
+        {
+            key: String(CustomerStatus.Inactive),
+            label: 'Inactive',
+            count: customers.filter((c) => c.status === CustomerStatus.Inactive).length,
+        },
+        {
+            key: String(CustomerStatus.Blocked),
+            label: 'Blocked',
+            count: customers.filter((c) => c.status === CustomerStatus.Blocked).length,
+        },
+    ];
+
+    // ── Handlers ──────────────────────────────────────────────────────────────
     const openAddModal = () => {
         setEditingCustomer(null);
-        // form.resetFields();
         setIsModalOpen(true);
     };
 
@@ -83,65 +170,30 @@ const CustomersView: React.FC<CustomersViewProps> = ({
         form.resetFields();
     };
 
-    const getStatusDetails = (status: CustomerStatus) => {
-        switch (status) {
-            case CustomerStatus.Active:
-                return { dotColor: '#52c41a', label: 'Active', tagColor: 'green' };
-            case CustomerStatus.Inactive:
-                return { dotColor: '#faad14', label: 'Inactive', tagColor: 'warning' };
-            case CustomerStatus.Blocked:
-                return { dotColor: '#ff4d4f', label: 'Blocked', tagColor: 'error' };
-            default:
-                return { dotColor: '#d9d9d9', label: 'Unknown', tagColor: 'default' };
-        }
+    const handleStatusClick = (record: Customer, newStatus: CustomerStatus) => {
+        setSelectedCustomer(record);
+        setPendingStatus(newStatus);
+        setStatusModalOpen(true);
     };
 
-    ///////////////////////////////////////////
-    const [statusModalOpen, setStatusModalOpen] = useState(false);
-    const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-    const [pendingStatus, setPendingStatus] = useState<CustomerStatus | null>(null);
+    const confirmStatusChange = async () => {
+        if (!selectedCustomer || pendingStatus === null) return;
+        await onStatusChange(selectedCustomer.id, pendingStatus);
+        setStatusModalOpen(false);
+        setSelectedCustomer(null);
+        setPendingStatus(null);
+    };
 
-    const handleStatusClick = (record: Customer, newStatus: CustomerStatus) => {
-    setSelectedCustomer(record);
-    setPendingStatus(newStatus);
-    setStatusModalOpen(true);
-};
-
-const confirmStatusChange = async () => {
-    if (!selectedCustomer || pendingStatus === null) return;
-
-    await onStatusChange(selectedCustomer.id, pendingStatus);
-    setStatusModalOpen(false);
-    setSelectedCustomer(null);
-    setPendingStatus(null);
-};
-
-const cancelStatusChange = () => {
-    setStatusModalOpen(false);
-    setSelectedCustomer(null);
-    setPendingStatus(null);
-};
-
-    ///////////////////////////////////////////
-    // const handleStatusClick = (record: Customer, newStatus: CustomerStatus) => {
-    //     const details = getStatusDetails(newStatus);
-
-    //     Modal.confirm({
-    //         title: 'Confirm Status Change',
-    //         content: `Are you sure you want to change this customer status to ${details.label}?`,
-    //         okText: 'Yes',
-    //         cancelText: 'No',
-    //         onOk: async () => {
-    //             await onStatusChange(record.id, newStatus);
-    //         },
-    //     });
-    // };
+    const cancelStatusChange = () => {
+        setStatusModalOpen(false);
+        setSelectedCustomer(null);
+        setPendingStatus(null);
+    };
 
     const handleFinish = async (values: any) => {
         try {
             setSaving(true);
-
-            const customerToSave: Customer = {
+            await onSave({
                 id: editingCustomer?.id || '',
                 code: editingCustomer?.code || '',
                 firstName: values.firstName,
@@ -153,20 +205,20 @@ const cancelStatusChange = () => {
                     : CustomerStatus.Active,
                 createdOnUtc: editingCustomer?.createdOnUtc || '',
                 updatedOnUtc: editingCustomer?.updatedOnUtc,
-            };
-
-            await onSave(customerToSave);
+            });
             closeModal();
         } finally {
             setSaving(false);
         }
     };
 
-    const columns = [
+    // ── Columns ───────────────────────────────────────────────────────────────
+    const columns: ColumnsType<Customer> = [
         {
             title: 'Code',
             dataIndex: 'code',
             key: 'code',
+            width: 120,
             render: (text: string) => <Tag icon={<IdcardOutlined />}>{text}</Tag>,
         },
         {
@@ -182,145 +234,123 @@ const cancelStatusChange = () => {
             title: 'Contact Info',
             key: 'contact',
             render: (_: any, record: Customer) => (
-                <Space orientation="vertical" size={0}>
-                    <Text style={{ fontSize: 13 }}>
-                        <MailOutlined /> {record.email || 'N/A'}
-                    </Text>
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                        <PhoneOutlined /> {record.phoneNumber}
-                    </Text>
+                <Space direction="vertical" size={0}>
+                    <span style={{ fontSize: 13 }}>
+                        <MailOutlined style={{ marginRight: 4 }} />
+                        {record.email || 'N/A'}
+                    </span>
+                    <span style={{ fontSize: 12, color: token.colorTextSecondary }}>
+                        <PhoneOutlined style={{ marginRight: 4 }} />
+                        {record.phoneNumber}
+                    </span>
                 </Space>
-            )
+            ),
         },
         {
             title: 'Status',
             dataIndex: 'status',
             key: 'status',
+            width: 140,
             render: (status: CustomerStatus, record: Customer) => {
-                const details = getStatusDetails(status);
+                const meta = STATUS_META[status] ?? { dotVariant: 'default', label: 'Unknown', tagColor: 'default' };
 
                 const statusMenuItems: MenuProps['items'] = [
-                    {
-                        key: String(CustomerStatus.Active),
-                        label: 'Active',
-                        disabled: status === CustomerStatus.Active
-                    },
-                    {
-                        key: String(CustomerStatus.Inactive),
-                        label: 'Inactive',
-                        disabled: status === CustomerStatus.Inactive
-                    },
-                    {
-                        key: String(CustomerStatus.Blocked),
-                        label: 'Blocked',
-                        disabled: status === CustomerStatus.Blocked
-                    }
+                    { key: String(CustomerStatus.Active), label: 'Active', disabled: status === CustomerStatus.Active },
+                    { key: String(CustomerStatus.Inactive), label: 'Inactive', disabled: status === CustomerStatus.Inactive },
+                    { key: String(CustomerStatus.Blocked), label: 'Blocked', disabled: status === CustomerStatus.Blocked },
                 ];
 
-                return (
-                    <Space>
-                        <div
-                            style={{
-                                width: 8,
-                                height: 8,
-                                borderRadius: '50%',
-                                backgroundColor: details.dotColor
-                            }}
-                        />
-
-                        {isAdmin ? (
-                            <Dropdown
-                                trigger={['click']}
-                                menu={{
-                                    items: statusMenuItems,
-                                    onClick: ({ key, domEvent }) => {
-                                        domEvent.stopPropagation();
-
-                                        const selectedStatus = parseInt(key, 10) as CustomerStatus;
-
-                                        if (selectedStatus !== status) {
-                                            handleStatusClick(record, selectedStatus);
-                                        }
-                                    }
-                                }}
-                            >
-                                <Tag
-                                    color={details.tagColor}
-                                    style={{
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 4,
-                                        marginInlineEnd: 0
-                                    }}
-                                >
-                                    {details.label} <DownOutlined style={{ fontSize: 10 }} />
-                                </Tag>
-                            </Dropdown>
-                        ) : (
-                            <Tag color={details.tagColor}>{details.label}</Tag>
-                        )}
-                    </Space>
+                return isAdmin ? (
+                    <Dropdown
+                        trigger={['click']}
+                        menu={{
+                            items: statusMenuItems,
+                            onClick: ({ key, domEvent }) => {
+                                domEvent.stopPropagation();
+                                const s = parseInt(key, 10) as CustomerStatus;
+                                if (s !== status) handleStatusClick(record, s);
+                            },
+                        }}
+                    >
+                        <span style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            <StatusDot variant={meta.dotVariant} label={meta.label} />
+                            <DownOutlined style={{ fontSize: 10, color: token.colorTextSecondary }} />
+                        </span>
+                    </Dropdown>
+                ) : (
+                    <StatusDot variant={meta.dotVariant} label={meta.label} />
                 );
             },
         },
         {
             title: 'Actions',
             key: 'actions',
+            width: 80,
             render: (_: any, record: Customer) => (
-                <Space size="small">
-                    <Button
-                        type="text"
-                        icon={<EditOutlined style={{ color: token.colorPrimary }} />}
-                        onClick={() => openEditModal(record)}
-                        title="Edit"
-                    />
-                </Space>
+                <Button
+                    type="text"
+                    icon={<EditOutlined style={{ color: token.colorPrimary }} />}
+                    onClick={() => openEditModal(record)}
+                    title="Edit"
+                />
             ),
         },
     ];
 
+    // ── Filter bar ────────────────────────────────────────────────────────────
+    const filterBar = (
+        <Input
+            prefix={<SearchOutlined style={{ color: token.colorTextPlaceholder }} />}
+            placeholder="Search by name, email, phone or code…"
+            value={search}
+            onChange={(e) => handleSearch(e.target.value)}
+            allowClear
+            style={{ maxWidth: 340 }}
+        />
+    );
+
     return (
-        <div style={{ height: '100%', padding: 24, overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>
+        <div style={{ height: '100%', padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* ── Header ── */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                 <Title level={2} style={{ margin: 0 }}>Customer Management</Title>
                 <Button type="primary" icon={<UserAddOutlined />} onClick={openAddModal}>
                     Add Customer
                 </Button>
             </div>
 
-            <div
-                style={{
-                    background: token.colorBgContainer,
-                    borderRadius: 8,
-                    overflow: 'hidden',
-                    border: `1px solid ${token.colorBorder}`
-                }}
-            >
-                <Table
-                    className="custom-table"
-                    dataSource={customers}
+            {/* ── Table ── */}
+            <div style={{ flex: 1, minHeight: 0 }}>
+                <RichTable<Customer>
+                    data={paginated}
                     columns={columns}
                     rowKey="id"
-                    loading={loading}
-                    pagination={{ pageSize: 10 }}
-                    locale={{
-                        emptyText: <Empty description="No customers found" />
-                    }}
+                    isLoading={loading}
+                    quickFilters={quickFilters}
+                    activeFilterKey={activeFilter}
+                    onFilterChange={handleFilterChange}
+                    filterBar={filterBar}
+                    currentPage={currentPage}
+                    pageSize={pageSize}
+                    totalItems={filtered.length}
+                    onPageChange={setCurrentPage}
+                    onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
+                    totalLabel="customers"
+                    scrollY="calc(100vh - 320px)"
                 />
             </div>
 
+            {/* ── Status confirmation modal ── */}
             <Modal
                 title="Confirm Status Change"
                 open={statusModalOpen}
                 onOk={confirmStatusChange}
                 onCancel={cancelStatusChange}
             >
-                <p>
-                    Are you sure you want to change this customer status?
-                </p>
+                <p>Are you sure you want to change this customer&apos;s status?</p>
             </Modal>
 
+            {/* ── Add / Edit modal ── */}
             <Modal
                 title={editingCustomer ? 'Update Customer' : 'Add New Customer'}
                 open={isModalOpen}
@@ -338,7 +368,6 @@ const cancelStatusChange = () => {
                         >
                             <Input placeholder="Marie" />
                         </Form.Item>
-
                         <Form.Item name="lastName" label="Last Name">
                             <Input placeholder="Curie" />
                         </Form.Item>
@@ -365,23 +394,14 @@ const cancelStatusChange = () => {
                             { required: true, message: 'Phone number is required' },
                             {
                                 validator: (_, value) => {
-                                    if (!value || !value.trim()) {
-                                        return Promise.reject(new Error('Phone number is required'));
-                                    }
-
+                                    if (!value?.trim()) return Promise.reject(new Error('Phone number is required'));
                                     const normalized = value.replace(/[\s\-()]/g, '');
-
-                                    const phoneRegex = /^\+?[1-9]\d{9,14}$/;
-
-                                    if (!phoneRegex.test(normalized)) {
-                                        return Promise.reject(
-                                            new Error('Phone number must be a valid international number.')
-                                        );
+                                    if (!/^\+?[1-9]\d{9,14}$/.test(normalized)) {
+                                        return Promise.reject(new Error('Phone number must be a valid international number.'));
                                     }
-
                                     return Promise.resolve();
-                                }
-                            }
+                                },
+                            },
                         ]}
                     >
                         <Input placeholder="+94112345678" />
