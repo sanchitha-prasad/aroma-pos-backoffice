@@ -163,6 +163,10 @@ class ApiClient {
         return this.axiosInstance.put(endpoint, data, config) as Promise<T>;
     }
 
+    public async patch<T>(endpoint: string, data?: any, config?: CustomRequestConfig): Promise<T> {
+        return this.axiosInstance.patch(endpoint, data, config) as Promise<T>;
+    }
+
     public async delete<T>(endpoint: string, config?: CustomRequestConfig): Promise<T> {
         return this.axiosInstance.delete(endpoint, config) as Promise<T>;
     }

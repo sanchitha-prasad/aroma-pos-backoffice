@@ -1,0 +1,59 @@
+/* ── Rich Table styles ────────────────────────────────────────────────────── */
+
+/* Row hover: soft purple tint */
+.rich-table .ant-table-tbody > tr:hover > td {
+    background: #6132C008 !important;
+}
+
+/* Subtle row border */
+.rich-table .ant-table-tbody > tr > td {
+    border-bottom: 1px solid #f0f0f0;
+    transition: background 0.15s;
+}
+
+/* Remove default Ant table rounded header gaps */
+.rich-table .ant-table-container {
+    border-radius: 0 !important;
+}
+
+/* Column header: slightly heavier text */
+.rich-table .ant-table-thead > tr > th {
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #8c8c8c;
+    background: #fafafa;
+    padding: 10px 16px;
+    border-bottom: 1px solid #f0f0f0 !important;
+}
+
+/* Table body cells: comfortable padding */
+.rich-table .ant-table-tbody > tr > td {
+    padding: 13px 16px;
+    vertical-align: middle;
+}
+
+/* Pinned "Actions" column: clean right shadow */
+.rich-table .ant-table-cell-fix-right {
+    background: inherit;
+}
+
+/* Dark mode overrides */
+.dark-mode .rich-table .ant-table-tbody > tr:hover > td {
+    background: #6132C018 !important;
+}
+.dark-mode .rich-table .ant-table-thead > tr > th {
+    background: #1a1a2e;
+    color: #888;
+    border-bottom-color: #2a2a3e !important;
+}
+.dark-mode .rich-table .ant-table-tbody > tr > td {
+    border-bottom-color: #2a2a3e;
+}
+
+/* ── Quick filter pill button hover ────────────────────────────────────────── */
+.quick-filter-btn:hover:not(.active) {
+    border-color: #6132C0 !important;
+    color: #6132C0 !important;
+}

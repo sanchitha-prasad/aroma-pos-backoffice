@@ -1,5 +1,6 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
+import './src/styles/global.css';
 import App from './src/App';
 
 const rootElement = document.getElementById('root');
