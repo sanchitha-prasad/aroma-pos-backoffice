@@ -68,7 +68,7 @@ const CustomersView: React.FC<CustomersViewProps> = ({
 
     const openAddModal = () => {
         setEditingCustomer(null);
-        form.resetFields();
+        // form.resetFields();
         setIsModalOpen(true);
     };
 

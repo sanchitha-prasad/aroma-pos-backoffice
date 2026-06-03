@@ -1,5 +1,8 @@
 export interface BranchConfiguration {
-  maxFloors: number;
-  operationStartOnUtc: string;
-  operationEndOnUtc: string;
+  settings: BranchSetting[];
+}
+
+export interface BranchSetting {
+  key: string;
+  value: string;
 }

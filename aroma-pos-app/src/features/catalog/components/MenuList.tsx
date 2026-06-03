@@ -99,52 +99,74 @@ const MenuList: React.FC<MenuListProps> = ({
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto' }}>
-            <List
-                dataSource={filteredItems}
-                rowKey="id"
-                renderItem={item => {
-                    const isSelected = item.id === selectedId;
-                    return (
-                        <List.Item 
-                            onClick={() => onEdit(item)}
-                            style={{ 
-                                padding: '16px 20px', 
-                                cursor: 'pointer',
-                                background: isSelected ? token.colorFillSecondary : 'transparent',
-                                borderLeft: isSelected ? `4px solid ${token.colorPrimary}` : '4px solid transparent',
-                                transition: 'all 0.2s',
-                                borderBottom: `1px solid ${token.colorBorderSecondary}`
-                             }}
-                             onMouseEnter={(e) => {
-                                 if (!isSelected) e.currentTarget.style.background = token.colorFillTertiary;
-                             }}
-                             onMouseLeave={(e) => {
-                                 if (!isSelected) e.currentTarget.style.background = 'transparent';
-                             }}
+            {filteredItems.map((item) => {
+                const isSelected = item.id === selectedId;
+
+                return (
+                <List.Item
+                    key={item.id}
+                    onClick={() => onEdit(item)}
+                    style={{
+                    padding: '16px 20px',
+                    cursor: 'pointer',
+                    background: isSelected ? token.colorFillSecondary : 'transparent',
+                    borderLeft: isSelected
+                        ? `4px solid ${token.colorPrimary}`
+                        : '4px solid transparent',
+                    transition: 'all 0.2s',
+                    borderBottom: `1px solid ${token.colorBorderSecondary}`,
+                    }}
+                    onMouseEnter={(e) => {
+                    if (!isSelected) {
+                        e.currentTarget.style.background = token.colorFillTertiary;
+                    }
+                    }}
+                    onMouseLeave={(e) => {
+                    if (!isSelected) {
+                        e.currentTarget.style.background = 'transparent';
+                    }
+                    }}
+                >
+                    <div style={{ width: '100%' }}>
+                    <div
+                        style={{
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        color: isSelected ? token.colorPrimary : token.colorText,
+                        fontWeight: isSelected ? 600 : 500,
+                        fontSize: 14,
+                        }}
+                    >
+                        {item.name}
+                    </div>
+
+                    <div
+                        style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        marginTop: 4,
+                        }}
+                    >
+                        <span style={{ fontSize: 12, color: token.colorTextSecondary }}>
+                        {getCatName(item.categoryId)}
+                        </span>
+
+                        <span
+                        style={{
+                            fontSize: 12,
+                            fontWeight: 500,
+                            color: token.colorTextSecondary,
+                        }}
                         >
-                            <div style={{ width: '100%' }}>
-                                <div style={{ 
-                                    whiteSpace: 'nowrap', 
-                                    overflow: 'hidden', 
-                                    textOverflow: 'ellipsis', 
-                                    color: isSelected ? token.colorPrimary : token.colorText,
-                                    fontWeight: isSelected ? 600 : 500,
-                                    fontSize: 14
-                                }}>
-                                    {item.name}
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-                                    <span style={{ fontSize: 12, color: token.colorTextSecondary }}>{getCatName(item.categoryId)}</span>
-                                    <span style={{ fontSize: 12, fontWeight: 500, color: token.colorTextSecondary }}>
-                                        {getPriceRange(item)}
-                                    </span>
-                                </div>
-                            </div>
-                        </List.Item>
-                    );
-                }}
-            />
-        </div>
+                        {getPriceRange(item)}
+                        </span>
+                    </div>
+                    </div>
+                </List.Item>
+                );
+            })}
+            </div>
       </div>
     );
   }
@@ -284,7 +306,7 @@ const MenuList: React.FC<MenuListProps> = ({
         columns={columns} 
         dataSource={filteredItems} 
         rowKey="id"
-        pagination={{ pageSize: 8, placement: 'bottomCenter' }}
+        pagination={{ pageSize: 8}}
         scroll={{ y: 'calc(100vh - 300px)' }}
         style={{ flex: 1 }}
       />
