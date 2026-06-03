@@ -38,7 +38,7 @@ function getCategoryDevices(
 ): string[] {
     const cat = categories.find(c => c.id === categoryId);
     if (!cat) return [];
-    const ids = type === 'KDS' ? cat.KitichenDisplayIds : cat.PrinterIds;
+    const ids = type === 'KDS' ? cat.kitchenDisplayIds : cat.printerIds;
     if (!ids || ids.length === 0) return [];
     return ids.map(id => devices.find(d => d.id === id)?.name).filter((n): n is string => !!n);
 }

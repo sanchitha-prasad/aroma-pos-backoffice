@@ -46,7 +46,7 @@ const MenuList: React.FC<MenuListProps> = ({
       if (!category) return null;
       
       // FIX 2: Check if arrays exist before accessing
-      const deviceIds = type === 'KDS' ? category.KitichenDisplayIds : category.PrinterIds;
+      const deviceIds = type === 'KDS' ? category.kitchenDisplayIds : category.printerIds;
       
       if (!deviceIds || deviceIds.length === 0) return null;
 
