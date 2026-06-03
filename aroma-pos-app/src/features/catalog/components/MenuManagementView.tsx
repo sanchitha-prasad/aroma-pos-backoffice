@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Button,
   Empty,
@@ -26,6 +26,7 @@ import {
   MinusCircleOutlined,
   PlusOutlined,
   ReadOutlined,
+  ReloadOutlined,
   TagsOutlined,
 } from '@ant-design/icons';
 import { Category, MenuEntity } from '../../../shared/types';
@@ -36,19 +37,26 @@ interface MenuManagementViewProps {
   menus: MenuEntity[];
   categories: Category[];
   loading: boolean;
-  onMenusChange: (menus: MenuEntity[]) => void;
+  isFetching?: boolean;
   onRefresh: () => void;
+  onCreateMenu: (values: Omit<MenuEntity, 'id' | 'categories'>) => Promise<void>;
+  onUpdateMenu: (id: string, values: Partial<Omit<MenuEntity, 'id' | 'categories'>>) => Promise<void>;
+  onDeleteMenu: (id: string) => Promise<void>;
+  onAssignCategory: (menuId: string, categoryId: string) => Promise<void>;
+  onRemoveCategory: (menuId: string, categoryId: string) => Promise<void>;
 }
-
-// tiny id helper for dummy mode
-const uid = () => `menu-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
 const MenuManagementView: React.FC<MenuManagementViewProps> = ({
   menus,
   categories,
   loading,
-  onMenusChange,
+  isFetching,
   onRefresh,
+  onCreateMenu,
+  onUpdateMenu,
+  onDeleteMenu,
+  onAssignCategory,
+  onRemoveCategory,
 }) => {
   const { token } = theme.useToken();
 
@@ -57,25 +65,25 @@ const MenuManagementView: React.FC<MenuManagementViewProps> = ({
   const [editingMenu, setEditingMenu]   = useState<MenuEntity | null>(null);
   const [assignOpen, setAssignOpen]     = useState(false);
   const [assignCatId, setAssignCatId]   = useState<string | undefined>(undefined);
+  const [saving, setSaving]             = useState(false);
 
   const [form] = Form.useForm();
 
-  // ── Helpers ───────────────────────────────────────────────────────────────────
-
-  const syncSelected = (updated: MenuEntity[]) => {
-    onMenusChange(updated);
+  // Keep selectedMenu in sync when TanStack Query refreshes the list
+  useEffect(() => {
     if (selectedMenu) {
-      const refreshed = updated.find((m) => m.id === selectedMenu.id);
+      const refreshed = menus.find((m) => m.id === selectedMenu.id);
       setSelectedMenu(refreshed ?? null);
     }
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [menus]);
 
-  const assignedIds  = new Set((selectedMenu?.categories ?? []).map((c) => c.categoryId));
-  const unassigned   = categories.filter((c) => !assignedIds.has(c.id));
-  const getCatName   = (id: string) => categories.find((c) => c.id === id)?.name ?? id;
-  const getCat       = (id: string) => categories.find((c) => c.id === id);
+  const assignedIds = new Set((selectedMenu?.categories ?? []).map((c) => c.categoryId));
+  const unassigned  = categories.filter((c) => !assignedIds.has(c.id));
+  const getCatName  = (id: string) => categories.find((c) => c.id === id)?.name ?? id;
+  const getCat      = (id: string) => categories.find((c) => c.id === id);
 
-  // ── Menu CRUD (local state — swap with API calls later) ───────────────────────
+  // ── Menu CRUD ─────────────────────────────────────────────────────────────────
 
   const openCreate = () => {
     setEditingMenu(null);
@@ -93,56 +101,56 @@ const MenuManagementView: React.FC<MenuManagementViewProps> = ({
 
   const handleSaveMenu = async () => {
     const values = await form.validateFields();
-    if (editingMenu) {
-      const updated = menus.map((m) =>
-        m.id === editingMenu.id ? { ...m, ...values } : m
-      );
-      syncSelected(updated);
-      message.success('Menu updated');
-    } else {
-      const newMenu: MenuEntity = { id: uid(), categories: [], ...values };
-      syncSelected([...menus, newMenu]);
-      message.success('Menu created');
+    setSaving(true);
+    try {
+      if (editingMenu) {
+        await onUpdateMenu(editingMenu.id, values);
+        message.success('Menu updated');
+      } else {
+        await onCreateMenu(values);
+        message.success('Menu created');
+      }
+      setFormOpen(false);
+    } catch {
+      // axios interceptor already shows a toast
+    } finally {
+      setSaving(false);
     }
-    setFormOpen(false);
-    // TODO: call MenuService.createMenu / updateMenu here
   };
 
-  const handleDeleteMenu = (id: string, e?: React.MouseEvent) => {
+  const handleDeleteMenu = async (id: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
-    const updated = menus.filter((m) => m.id !== id);
-    onMenusChange(updated);
-    if (selectedMenu?.id === id) setSelectedMenu(null);
-    message.success('Menu deleted');
-    // TODO: call MenuService.deleteMenu(id)
+    try {
+      await onDeleteMenu(id);
+      if (selectedMenu?.id === id) setSelectedMenu(null);
+      message.success('Menu deleted');
+    } catch {
+      // axios interceptor already shows a toast
+    }
   };
 
   // ── Category assignment ───────────────────────────────────────────────────────
 
-  const handleAssign = () => {
+  const handleAssign = async () => {
     if (!selectedMenu || !assignCatId) return;
-    const updated = menus.map((m) =>
-      m.id === selectedMenu.id
-        ? { ...m, categories: [...(m.categories ?? []), { categoryId: assignCatId }] }
-        : m
-    );
-    syncSelected(updated);
-    setAssignOpen(false);
-    setAssignCatId(undefined);
-    message.success(`"${getCatName(assignCatId)}" assigned`);
-    // TODO: call MenuService.assignCategory(selectedMenu.id, assignCatId)
+    try {
+      await onAssignCategory(selectedMenu.id, assignCatId);
+      setAssignOpen(false);
+      setAssignCatId(undefined);
+      message.success(`"${getCatName(assignCatId)}" assigned`);
+    } catch {
+      // axios interceptor already shows a toast
+    }
   };
 
-  const handleRemoveCategory = (categoryId: string) => {
+  const handleRemoveCategory = async (categoryId: string) => {
     if (!selectedMenu) return;
-    const updated = menus.map((m) =>
-      m.id === selectedMenu.id
-        ? { ...m, categories: (m.categories ?? []).filter((c) => c.categoryId !== categoryId) }
-        : m
-    );
-    syncSelected(updated);
-    message.success(`"${getCatName(categoryId)}" removed`);
-    // TODO: call MenuService.removeCategory(selectedMenu.id, categoryId)
+    try {
+      await onRemoveCategory(selectedMenu.id, categoryId);
+      message.success(`"${getCatName(categoryId)}" removed`);
+    } catch {
+      // axios interceptor already shows a toast
+    }
   };
 
   // ── Render ────────────────────────────────────────────────────────────────────
@@ -178,9 +186,12 @@ const MenuManagementView: React.FC<MenuManagementViewProps> = ({
             <Text strong>Menus</Text>
             <Tag style={{ fontSize: 11, margin: 0 }}>{menus.length}</Tag>
           </Space>
-          <Button type="primary" size="small" icon={<PlusOutlined />} onClick={openCreate}>
-            New
-          </Button>
+          <Space size={4}>
+            <Button size="small" icon={<ReloadOutlined spin={isFetching} />} onClick={onRefresh} loading={isFetching} />
+            <Button type="primary" size="small" icon={<PlusOutlined />} onClick={openCreate}>
+              New
+            </Button>
+          </Space>
         </div>
 
         {/* List */}
@@ -402,6 +413,7 @@ const MenuManagementView: React.FC<MenuManagementViewProps> = ({
         title={editingMenu ? 'Edit Menu' : 'Create Menu'}
         open={formOpen}
         onOk={handleSaveMenu}
+        okButtonProps={{ loading: saving }}
         onCancel={() => setFormOpen(false)}
         width={460}
         destroyOnClose
