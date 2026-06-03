@@ -4,6 +4,7 @@ import { App as AntdApp, ConfigProvider, theme, Spin } from 'antd';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { setGlobalMessageApi } from './shared/services/api/globalMessage';
 import MasterLayout from './layouts/MasterLayout';
+import { CurrencyProvider } from './shared/context/CurrencyContext';
 
 // Services
 import { authService } from './features/auth/api/auth.service';
@@ -137,6 +138,7 @@ const App: React.FC = () => {
     <ConfigProvider theme={appTheme}>
       <AntdApp>
         <MessageInitializer />
+        <CurrencyProvider>
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={!currentUser ? <Login onLogin={handleLogin} /> : <Navigate to="/" replace />} />
@@ -164,6 +166,7 @@ const App: React.FC = () => {
             </Route>
           </Routes>
         </BrowserRouter>
+        </CurrencyProvider>
       </AntdApp>
     </ConfigProvider>
     </QueryClientProvider>

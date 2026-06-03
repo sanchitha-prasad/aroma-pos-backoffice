@@ -57,3 +57,28 @@
     border-color: #6132C0 !important;
     color: #6132C0 !important;
 }
+
+/* ── Full height tabs for screen-height pages ────────────────────────────── */
+.full-height-tabs {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+.full-height-tabs .ant-tabs-content-holder {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+.full-height-tabs .ant-tabs-content {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+.full-height-tabs .ant-tabs-tabpane:not(.ant-tabs-tabpane-hidden) {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Table, Button, Space, Popconfirm, List, theme, Tag, Tooltip, Input, Select } from 'antd';
 import { EditOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
 import { MenuItem, Category, ModifierGroup, Device } from '../../../shared/types';
+import { useCurrency } from '../../../shared/context/CurrencyContext';
 const { Option } = Select;
 
 interface MenuListProps {
@@ -26,6 +27,7 @@ const MenuList: React.FC<MenuListProps> = ({
   selectedId 
 }) => {
   const { token } = theme.useToken();
+  const { currencySymbol } = useCurrency();
   const [searchText, setSearchText] = useState('');
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
 
@@ -67,10 +69,10 @@ const MenuList: React.FC<MenuListProps> = ({
         const prices = item.variants.map(v => v.price);
         const min = Math.min(...prices);
         const max = Math.max(...prices);
-        if (min === max) return `$${min.toFixed(2)}`;
-        return `$${min.toFixed(2)} - $${max.toFixed(2)}`;
+        if (min === max) return `${currencySymbol} ${min.toFixed(2)}`;
+        return `${currencySymbol} ${min.toFixed(2)} - ${currencySymbol} ${max.toFixed(2)}`;
     }
-    return '$0.00';
+    return `${currencySymbol} 0.00`;
   };
 
   if (compact) {

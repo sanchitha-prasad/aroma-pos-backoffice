@@ -1,28 +1,63 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
-    Table, Button, Space, Input, Modal, Typography,
-    theme, Popconfirm, message, InputNumber, Form, Tabs, List, Select, Row, Col, Tag, Switch
+    Button, Space, Input, Modal, Typography, Card,
+    theme, Popconfirm, message, InputNumber, Form, Tabs, Select, Row, Col, Tag, Switch, Skeleton
 } from 'antd';
 import {
     PlusOutlined, EditOutlined, DeleteOutlined,
-    AppstoreOutlined, UnorderedListOutlined, MinusCircleOutlined
+    AppstoreOutlined, UnorderedListOutlined, MinusCircleOutlined, SearchOutlined
 } from '@ant-design/icons';
-import { Modifier, ModifierGroup, ModifierItem } from '../../../shared/types';
-import { ModifiersService } from '../api/modifiers.service';
-import Card from 'antd/es/card/Card';
-import { Option } from 'antd/es/mentions';
-import { ModifierGroupsService } from '../api/ModifierGroups.service';
+import type { ColumnsType } from 'antd/es/table';
+import { Modifier, ModifierGroup } from '../../../shared/types';
+import { RichTable } from '../../../shared/components/rich-table';
+import { useCurrency } from '../../../shared/context/CurrencyContext';
+import {
+    useCreateModifier,
+    useUpdateModifier,
+    useDeleteModifier
+} from '../hooks/useModifiers';
+import {
+    useCreateModifierGroup,
+    useUpdateModifierGroup,
+    useDeleteModifierGroup
+} from '../hooks/useModifierGroups';
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 
 interface ModifierManagementViewProps {
     allModifiers: Modifier[];
     allGroups: ModifierGroup[];
-    onModifierChange: () => void;
+    isLoadingModifiers?: boolean;
+    isLoadingGroups?: boolean;
+    onModifierChange?: () => void;
 }
 
-const ModifierManagementView: React.FC<ModifierManagementViewProps> = ({ allModifiers, allGroups, onModifierChange }) => {
+const MOD_SKELETON_DATA = Array.from({ length: 8 }, (_, i) => ({ id: `sk-mod-${i}` }) as unknown as Modifier);
+const MOD_SKELETON_COLUMNS: ColumnsType<Modifier> = [
+    { key: 'name', title: 'Name', width: 200, render: () => <Skeleton.Input active size="small" style={{ width: 120 }} /> },
+    { key: 'description', title: 'Description', width: 300, render: () => <Skeleton.Input active size="small" style={{ width: 220 }} /> },
+    { key: 'price', title: 'Price', width: 100, render: () => <Skeleton.Input active size="small" style={{ width: 60 }} /> },
+    { key: 'action', title: 'Action', width: 100, render: () => <Skeleton.Button active size="small" style={{ width: 56 }} /> },
+];
+
+const GROUP_SKELETON_DATA = Array.from({ length: 8 }, (_, i) => ({ id: `sk-grp-${i}` }) as unknown as ModifierGroup);
+const GROUP_SKELETON_COLUMNS: ColumnsType<ModifierGroup> = [
+    { key: 'name', title: 'Group Name', width: 200, render: () => <Skeleton.Input active size="small" style={{ width: 120 }} /> },
+    { key: 'description', title: 'Description', width: 250, render: () => <Skeleton.Input active size="small" style={{ width: 180 }} /> },
+    { key: 'constraints', title: 'Select Constraints', width: 180, render: () => <Skeleton.Input active size="small" style={{ width: 120 }} /> },
+    { key: 'items', title: 'Modifiers', width: 120, render: () => <Skeleton.Input active size="small" style={{ width: 80 }} /> },
+    { key: 'active', title: 'Status', width: 100, render: () => <Skeleton.Input active size="small" style={{ width: 60 }} /> },
+    { key: 'action', title: 'Action', width: 100, render: () => <Skeleton.Button active size="small" style={{ width: 56 }} /> },
+];
+
+const ModifierManagementView: React.FC<ModifierManagementViewProps> = ({
+    allModifiers,
+    allGroups,
+    isLoadingModifiers = false,
+    isLoadingGroups = false,
+}) => {
     const { token } = theme.useToken();
+    const { currencySymbol } = useCurrency();
     const [activeTab, setActiveTab] = useState('modifiers');
 
     const [isModModalOpen, setIsModModalOpen] = useState(false);
@@ -33,18 +68,80 @@ const ModifierManagementView: React.FC<ModifierManagementViewProps> = ({ allModi
     const [editingGroup, setEditingGroup] = useState<ModifierGroup | null>(null);
     const [groupForm] = Form.useForm();
 
+    // TanStack Query Mutations
+    const createMod = useCreateModifier();
+    const updateMod = useUpdateModifier();
+    const deleteMod = useDeleteModifier();
+
+    const createGroup = useCreateModifierGroup();
+    const updateGroup = useUpdateModifierGroup();
+    const deleteGroup = useDeleteModifierGroup();
+
+    // Modifiers Table States
+    const [modSearch, setModSearch] = useState('');
+    const [modPage, setModPage] = useState(1);
+    const [modPageSize, setModPageSize] = useState(8);
+
+    // Modifier Groups Table States
+    const [groupSearch, setGroupSearch] = useState('');
+    const [groupStatusFilter, setGroupStatusFilter] = useState('all');
+    const [groupPage, setGroupPage] = useState(1);
+    const [groupPageSize, setGroupPageSize] = useState(8);
+
+    // Modifiers Filtering & Pagination
+    const filteredModifiers = React.useMemo(() => {
+        return (allModifiers ?? []).filter(m => {
+            if (modSearch && !m.name.toLowerCase().includes(modSearch.toLowerCase()) && !(m.description || '').toLowerCase().includes(modSearch.toLowerCase())) {
+                return false;
+            }
+            return true;
+        });
+    }, [allModifiers, modSearch]);
+
+    const paginatedModifiers = React.useMemo(() => {
+        const start = (modPage - 1) * modPageSize;
+        return filteredModifiers.slice(start, start + modPageSize);
+    }, [filteredModifiers, modPage, modPageSize]);
+
+    // Modifier Groups Filtering & Pagination
+    const filteredGroups = React.useMemo(() => {
+        return (allGroups ?? []).filter(g => {
+            if (groupSearch && !g.name.toLowerCase().includes(groupSearch.toLowerCase()) && !(g.description || '').toLowerCase().includes(groupSearch.toLowerCase())) {
+                return false;
+            }
+            if (groupStatusFilter === 'active' && !g.isActive) return false;
+            if (groupStatusFilter === 'inactive' && g.isActive) return false;
+            return true;
+        });
+    }, [allGroups, groupSearch, groupStatusFilter]);
+
+    const paginatedGroups = React.useMemo(() => {
+        const start = (groupPage - 1) * groupPageSize;
+        return filteredGroups.slice(start, start + groupPageSize);
+    }, [filteredGroups, groupPage, groupPageSize]);
+
+    const groupQuickFilters = React.useMemo(() => {
+        const all = (allGroups ?? []).length;
+        const active = (allGroups ?? []).filter(g => g.isActive).length;
+        const inactive = all - active;
+        return [
+            { key: 'all', label: 'All', count: all },
+            { key: 'active', label: 'Active', count: active },
+            { key: 'inactive', label: 'Inactive', count: inactive },
+        ];
+    }, [allGroups]);
+
     const handleSaveModifier = async () => {
         try {
             const values = await (modForm as any).validateFields();
             if (editingModifier) {
-                await ModifiersService.updateModifier(editingModifier.id, values);
+                await updateMod.mutateAsync({ id: editingModifier.id, data: values });
                 message.success('Modifier updated');
             } else {
-                await ModifiersService.createModifier(values);
+                await createMod.mutateAsync(values);
                 message.success('Modifier created');
             }
             setIsModModalOpen(false);
-            onModifierChange();
         } catch (error) {
             message.error('Failed to save modifier');
         }
@@ -52,9 +149,8 @@ const ModifierManagementView: React.FC<ModifierManagementViewProps> = ({ allModi
 
     const handleDeleteModifier = async (id: string) => {
         try {
-            await ModifiersService.deleteModifier(id);
+            await deleteMod.mutateAsync(id);
             message.success('Modifier deleted');
-            onModifierChange();
         } catch (error) {
             message.error('Failed to delete modifier');
         }
@@ -77,14 +173,13 @@ const ModifierManagementView: React.FC<ModifierManagementViewProps> = ({ allModi
             };
 
             if (editingGroup) {
-                await ModifierGroupsService.updateModifierGroup(editingGroup.id, payload);
+                await updateGroup.mutateAsync({ id: editingGroup.id, data: payload });
                 message.success('Group updated');
             } else {
-                await ModifierGroupsService.createModifierGroup(payload);
+                await createGroup.mutateAsync(payload);
                 message.success('Group created');
             }
             setIsGroupModalOpen(false);
-            onModifierChange();
         } catch (error) {
             console.error(error);
             message.error('Failed to save group');
@@ -93,9 +188,8 @@ const ModifierManagementView: React.FC<ModifierManagementViewProps> = ({ allModi
 
     const handleDeleteGroup = async (id: string) => {
         try {
-            await ModifierGroupsService.deleteModifierGroup(id);
+            await deleteGroup.mutateAsync(id);
             message.success('Group deleted');
-            onModifierChange();
         } catch (error) {
             message.error('Failed to delete group');
         }
@@ -106,7 +200,7 @@ const ModifierManagementView: React.FC<ModifierManagementViewProps> = ({ allModi
         if (group) {
             (groupForm as any).setFieldsValue({
                 ...group,
-                modifierItems: group.modifierItems.map(item => ({
+                modifierItems: (group.modifierItems || []).map(item => ({
                     modifierId: item.modifierId || item.id,
                     minQuantity: item.minQuantity,
                     maxQuantity: item.maxQuantity,
@@ -123,14 +217,14 @@ const ModifierManagementView: React.FC<ModifierManagementViewProps> = ({ allModi
     const modColumns = [
         { title: 'Name', dataIndex: 'name', key: 'name', render: (t: string) => <b>{t}</b> },
         { title: 'Description', dataIndex: 'description', key: 'desc' },
-        { title: 'Price', dataIndex: 'price', key: 'price', render: (v: number) => `$${v.toFixed(2)}` },
+        { title: 'Price', dataIndex: 'price', key: 'price', render: (v: number) => `${currencySymbol} ${v.toFixed(2)}` },
         {
             title: 'Action', key: 'action', width: 100,
             render: (_: any, r: Modifier) => (
                 <Space>
                     <Button icon={<EditOutlined />} size="small" onClick={() => openModifierModal(r)} />
                     <Popconfirm title="Delete?" onConfirm={() => handleDeleteModifier(r.id)}>
-                        <Button icon={<DeleteOutlined />} size="small" danger />
+                        <Button icon={<DeleteOutlined />} size="small" danger loading={deleteMod.isPending} />
                     </Popconfirm>
                 </Space>
             )
@@ -162,16 +256,42 @@ const ModifierManagementView: React.FC<ModifierManagementViewProps> = ({ allModi
                 <Space>
                     <Button icon={<EditOutlined />} size="small" onClick={() => openGroupModal(r)} />
                     <Popconfirm title="Delete?" onConfirm={() => handleDeleteGroup(r.id)}>
-                        <Button icon={<DeleteOutlined />} size="small" danger />
+                        <Button icon={<DeleteOutlined />} size="small" danger loading={deleteGroup.isPending} />
                     </Popconfirm>
                 </Space>
             )
         }
     ];
 
+    const modFilterBar = (
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <Input
+                placeholder="Search modifiers…"
+                prefix={<SearchOutlined />}
+                value={modSearch}
+                onChange={e => { setModSearch(e.target.value); setModPage(1); }}
+                style={{ maxWidth: 260 }}
+                allowClear
+            />
+        </div>
+    );
+
+    const groupFilterBar = (
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <Input
+                placeholder="Search groups…"
+                prefix={<SearchOutlined />}
+                value={groupSearch}
+                onChange={e => { setGroupSearch(e.target.value); setGroupPage(1); }}
+                style={{ maxWidth: 260 }}
+                allowClear
+            />
+        </div>
+    );
+
     return (
-        <div style={{ padding: 24, height: '100%', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <div style={{ padding: 24, height: '100%', display: 'flex', flexDirection: 'column', gap: 16, overflow: 'hidden' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                 <Title level={2} style={{ margin: 0 }}>Modifier Management</Title>
                 <Button
                     type="primary"
@@ -182,22 +302,61 @@ const ModifierManagementView: React.FC<ModifierManagementViewProps> = ({ allModi
                 </Button>
             </div>
 
-            <Card styles={{ body: { padding: 0 } }} style={{ overflow: 'hidden', borderRadius: 8 }}>
+            <Card styles={{ body: { padding: 0, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' } }} style={{ flex: 1, overflow: 'hidden', borderRadius: 8, display: 'flex', flexDirection: 'column' }}>
                 <Tabs
                     activeKey={activeTab}
                     onChange={setActiveTab}
                     type="card"
-                    tabBarStyle={{ margin: 0, padding: '10px 10px 0', background: token.colorFillAlter }}
+                    tabBarStyle={{ margin: 0, padding: '10px 10px 0', background: token.colorFillAlter, flexShrink: 0 }}
+                    style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+                    className="full-height-tabs"
                     items={[
                         {
                             key: 'modifiers',
                             label: <span><UnorderedListOutlined /> All Modifiers</span>,
-                            children: <Table dataSource={allModifiers} columns={modColumns} rowKey="id" pagination={{ pageSize: 8 }} />
+                            children: (
+                                <div style={{ flex: 1, padding: 16, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
+                                    <RichTable<Modifier>
+                                        data={isLoadingModifiers ? MOD_SKELETON_DATA : paginatedModifiers}
+                                        columns={isLoadingModifiers ? MOD_SKELETON_COLUMNS : modColumns}
+                                        rowKey="id"
+                                        isLoading={false}
+                                        currentPage={modPage}
+                                        pageSize={modPageSize}
+                                        totalItems={filteredModifiers.length}
+                                        onPageChange={setModPage}
+                                        onPageSizeChange={s => { setModPageSize(s); setModPage(1); }}
+                                        filterBar={modFilterBar}
+                                        totalLabel="modifiers"
+                                        scrollY="calc(100vh - 380px)"
+                                    />
+                                </div>
+                            )
                         },
                         {
                             key: 'groups',
                             label: <span><AppstoreOutlined /> Modifier Groups</span>,
-                            children: <Table dataSource={allGroups} columns={groupColumns} rowKey="id" pagination={{ pageSize: 8 }} />
+                            children: (
+                                <div style={{ flex: 1, padding: 16, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
+                                    <RichTable<ModifierGroup>
+                                        data={isLoadingGroups ? GROUP_SKELETON_DATA : paginatedGroups}
+                                        columns={isLoadingGroups ? GROUP_SKELETON_COLUMNS : groupColumns}
+                                        rowKey="id"
+                                        isLoading={false}
+                                        currentPage={groupPage}
+                                        pageSize={groupPageSize}
+                                        totalItems={filteredGroups.length}
+                                        onPageChange={setGroupPage}
+                                        onPageSizeChange={s => { setGroupPageSize(s); setGroupPage(1); }}
+                                        filterBar={groupFilterBar}
+                                        quickFilters={isLoadingGroups ? undefined : groupQuickFilters}
+                                        activeFilterKey={groupStatusFilter}
+                                        onFilterChange={key => { setGroupStatusFilter(key); setGroupPage(1); }}
+                                        totalLabel="groups"
+                                        scrollY="calc(100vh - 380px)"
+                                    />
+                                </div>
+                            )
                         }
                     ]}
                 />
@@ -207,6 +366,7 @@ const ModifierManagementView: React.FC<ModifierManagementViewProps> = ({ allModi
                 title={editingModifier ? "Edit Modifier" : "Create Modifier"}
                 open={isModModalOpen}
                 onOk={handleSaveModifier}
+                confirmLoading={createMod.isPending || updateMod.isPending}
                 onCancel={() => setIsModModalOpen(false)}
             >
                 <Form form={modForm} layout="vertical">
@@ -226,6 +386,7 @@ const ModifierManagementView: React.FC<ModifierManagementViewProps> = ({ allModi
                 title={editingGroup ? "Edit Modifier Group" : "Create Modifier Group"}
                 open={isGroupModalOpen}
                 onOk={handleSaveGroup}
+                confirmLoading={createGroup.isPending || updateGroup.isPending}
                 onCancel={() => setIsGroupModalOpen(false)}
                 width={800}
                 mask={{ closable: false }}
@@ -270,23 +431,26 @@ const ModifierManagementView: React.FC<ModifierManagementViewProps> = ({ allModi
                                                 <span style={{ flex: 1, fontWeight: 'bold' }}>Qty</span>
                                                 <span style={{ flex: 1, fontWeight: 'bold' }}>Min Qty</span>
                                                 <span style={{ flex: 1, fontWeight: 'bold' }}>Max Qty</span>
-                                                {/* Spacer for the delete icon to keep alignment correct */}
                                                 <span style={{ width: 14 }}></span>
                                             </div>
                                         )}
                                         {fields.map(({ key, name, ...restField }) => (
-                                            <div key={key} style={{ display: 'flex', gap: 8, marginBottom: 8,marginTop:8, alignItems: 'center' }}>
+                                            <div key={key} style={{ display: 'flex', gap: 8, marginBottom: 8, marginTop: 8, alignItems: 'center' }}>
                                                 <Form.Item
                                                     {...restField}
                                                     name={[name, 'modifierId']}
                                                     rules={[{ required: true, message: 'Missing modifier' }]}
                                                     style={{ flex: 3, margin: 0 }}
                                                 >
-                                                    <Select placeholder="Select Modifier" showSearch optionFilterProp="children">
-                                                        {allModifiers.map(m => (
-                                                            <Option key={m.id} value={m.id}>{m.name} (${m.price})</Option>
-                                                        ))}
-                                                    </Select>
+                                                    <Select
+                                                        placeholder="Select Modifier"
+                                                        showSearch
+                                                        optionFilterProp="label"
+                                                        options={allModifiers.map(m => ({
+                                                            value: m.id,
+                                                            label: `${m.name} ($${m.price.toFixed(2)})`
+                                                        }))}
+                                                    />
                                                 </Form.Item>
                                                 <Form.Item
                                                     {...restField}
