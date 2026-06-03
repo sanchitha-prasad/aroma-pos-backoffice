@@ -1,12 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/src/shared/services/api/client';
-import type { Category, ModifierGroup, Device } from '@/src/shared/types';
+import type { Category, ModifierGroup } from '@/src/shared/types';
 
 export const CATEGORIES_KEY      = ['categories']       as const;
 export const MODIFIER_GROUPS_KEY = ['modifier-groups']  as const;
-export const DEVICES_KEY         = ['devices']          as const;
 
 export { useTaxes } from './useTaxes';
+export { useDevices } from '../../system/hooks/useDevices';
 
 export function useCategories() {
     return useQuery<Category[]>({
@@ -50,11 +50,4 @@ export function useModifierGroups() {
     });
 }
 
-export function useDevices() {
-    return useQuery<Device[]>({
-        queryKey: DEVICES_KEY,
-        queryFn: () => apiClient.get<Device[]>('/api/devices'),
-        staleTime: 5 * 60_000,
-    });
-}
 

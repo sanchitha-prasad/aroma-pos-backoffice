@@ -1,210 +1,262 @@
-import React, { useState, useEffect } from 'react';
-import { Table, Button, Space, Input, Modal, Typography, theme, Popconfirm, InputNumber, Form, Tabs, Tag, Select, Card } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, DesktopOutlined, FilterOutlined, CreditCardOutlined, WifiOutlined, DisconnectOutlined } from '@ant-design/icons';
-import { Device, DeviceType, DeviceProtocol, DeviceStatus } from '../../../shared/types';
-import { systemService } from '../api/system.service';
-import { DeviceStatusType,DeviceProtocolType,DeviceTypeEnum,CardProviderType } from '@/src/shared/enums';
+import React, { useState } from 'react';
+import {
+    Button, Space, Input, Modal, Typography, Popconfirm, message,
+    Tag, Form, Select, InputNumber, Skeleton,
+} from 'antd';
+import type { ColumnsType } from 'antd/es/table';
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
+import type { UseMutationResult } from '@tanstack/react-query';
+import { Device, DeviceType, DeviceProtocol } from '../../../shared/types';
+import { DeviceStatusType, DeviceTypeEnum, CardProviderType } from '@/src/shared/enums';
+import { RichTable } from '../../../shared/components/rich-table';
 
+const { Title } = Typography;
 const { Option } = Select;
-import { DeviceSevices } from '../api/device.service'; 
 const { useWatch } = Form;
 
 interface DeviceViewProps {
     devices: Device[];
-    onSave: (device: Device) => void;
-    onDelete: (id: string) => void;
+    deviceTypes: DeviceType[];
+    protocols: DeviceProtocol[];
+    isLoading?: boolean;
+    createDevice: UseMutationResult<any, any, any, any>;
+    updateDevice: UseMutationResult<any, any, any, any>;
+    deleteDevice: UseMutationResult<any, any, any, any>;
 }
 
-const DeviceView: React.FC<DeviceViewProps> = ({ devices, onSave, onDelete }) => {
-    const { token } = theme.useToken();
-    const [isModalVisible, setIsModalVisible] = useState(false);
-    const [editingDevice, setEditingDevice] = useState<Device | null>(null);
-    const [form] = Form.useForm();
-    const [searchText, setSearchText] = useState('');
-    const [activeTab, setActiveTab] = useState('general');
+const SKELETON_DATA = Array.from({ length: 8 }, (_, i) => ({ id: `sk-${i}` }) as unknown as Device);
+const SKELETON_COLUMNS: ColumnsType<Device> = [
+    { key: 'name',      title: 'Name',       width: 220, render: () => <Skeleton.Input active size="small" style={{ width: 140 }} /> },
+    { key: 'type',      title: 'Type',       width: 120, render: () => <Skeleton.Input active size="small" style={{ width: 80 }} /> },
+    { key: 'location',  title: 'Location',   width: 160, render: () => <Skeleton.Input active size="small" style={{ width: 100 }} /> },
+    { key: 'ip',        title: 'IP Address', width: 140, render: () => <Skeleton.Input active size="small" style={{ width: 100 }} /> },
+    { key: 'status',    title: 'Status',     width: 100, render: () => <Skeleton.Input active size="small" style={{ width: 60 }} /> },
+    { key: 'createdAt', title: 'Created At', width: 160, render: () => <Skeleton.Input active size="small" style={{ width: 100 }} /> },
+    { key: 'action',    title: 'Action',     width: 100, render: () => <Skeleton.Button active size="small" style={{ width: 56 }} /> },
+];
 
-    const [deviceTypes, setDeviceTypes] = useState<DeviceType[]>([]);
-    const [protocols, setProtocols] = useState<DeviceProtocol[]>([]);
+const DeviceView: React.FC<DeviceViewProps> = ({
+    devices,
+    deviceTypes,
+    protocols,
+    isLoading = false,
+    createDevice,
+    updateDevice,
+    deleteDevice,
+}) => {
+    const [form] = Form.useForm();
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingDevice, setEditingDevice] = useState<Device | null>(null);
+
+    const [search, setSearch] = useState('');
+    const [statusFilter, setStatusFilter] = useState('all');
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(8);
 
     const selectedTypeId = useWatch('deviceTypeId', form);
-
     const isPax = deviceTypes.find(t => t.id === selectedTypeId)?.name === DeviceTypeEnum[DeviceTypeEnum.PAX];
 
-    useEffect(() => {
-        if (!isPax) {
-            form.setFieldValue('provider', undefined);
-        }
-    }, [isPax, form]);
-
-    useEffect(() => {
-        Promise.all([DeviceSevices.getDeviceTypes(), DeviceSevices.getDeviceProtocols()])
-            .then(([typesRes, protos]) => {
-                setDeviceTypes(typesRes.data ?? []);
-                setProtocols(protos.data ?? []);
-            })
-            .catch(err => console.error("Failed to load device meta", err));
-    }, []);
-
-    const showModal = (device?: Device) => {
+    const openModal = (device?: Device) => {
+        setEditingDevice(device || null);
         if (device) {
-            setEditingDevice(device);
-            (form as any).setFieldsValue({
+            form.setFieldsValue({
                 ...device,
                 deviceTypeId: device.type?.id,
-                deviceProtocolId: device.protocol?.id
+                deviceProtocolId: device.protocol?.id,
             });
         } else {
-            setEditingDevice(null);
-            (form as any).resetFields();
-            (form as any).setFieldsValue({ status: 'Active' });
+            form.resetFields();
+            form.setFieldsValue({ status: DeviceStatusType.Active });
         }
-        setIsModalVisible(true);
+        setIsModalOpen(true);
     };
 
-    const handleOk = () => {
-        (form as any).validateFields().then((values: any) => {
-            const newDevice: Device = {
-                id: editingDevice ? editingDevice.id : '',
-                ...values
-            };
-            onSave(newDevice);
-            setIsModalVisible(false);
-        });
-    };
-
-    const filteredDevices = devices.filter(d => 
-        d.name.toLowerCase().includes(searchText.toLowerCase()) || 
-        d.location?.toLowerCase().includes(searchText.toLowerCase())
-    );
-
-    const columns = [
-        { 
-            title: 'Name', 
-            dataIndex: 'name', 
-            key: 'name',
-            render: (text: string, record: Device) => (
-                // <Space>
-                //     <DesktopOutlined style={{ color: token.colorPrimary }} />
-                //     <span style={{ fontWeight: 500 }}>{text}</span>
-                //     {record.serialNumber && <span style={{ fontSize: 11, color: '#999' }}>({record.serialNumber})</span>}
-                // </Space>
-            <div>
-                <div style={{ fontWeight: 500 }}>
-                    <DesktopOutlined style={{ marginRight: 8, color: token.colorPrimary }} />
-                    {text}
-                </div>
-                    {record.serialNumber && (
-                        <div style={{ fontSize: 11, color: '#999', marginLeft: 22 }}>
-                            {record.serialNumber}
-                        </div>
-                    )}
-             </div>
-            )
-        },
-        { 
-            title: 'Type', 
-            dataIndex: ['type', 'name'], 
-            key: 'type',
-            render: (text: string) => <Tag color="blue">{text || 'N/A'}</Tag>
-        },
-        { 
-            title: 'Location', 
-            dataIndex: 'location', 
-            key: 'location' 
-        },
-        { 
-            title: 'IP Address', 
-            dataIndex: 'ipAddress', 
-            key: 'ip',
-            render: (text: string) => <span style={{ fontFamily: 'monospace' }}>{text || '--'}</span>
-        },
-        { 
-            title: 'Status', 
-            dataIndex: 'status', 
-            key: 'status',
-            render: (status: DeviceStatus) => {
-                const isOnline = status === 'Online' || status === 'Active';
-                return <Tag color={isOnline ? 'green' : 'red'}>{status}</Tag>;
+    const handleSave = async () => {
+        try {
+            const values = await form.validateFields();
+            if (!isPax) values.provider = undefined;
+            if (editingDevice) {
+                await updateDevice.mutateAsync({ id: editingDevice.id, data: values });
+                message.success('Device updated');
+            } else {
+                await createDevice.mutateAsync(values);
+                message.success('Device created');
             }
-        },
-        { 
-            title: 'Provider', 
-            dataIndex: 'provider', 
-            key: 'provider'
+            setIsModalOpen(false);
+        } catch {
+            message.error('Failed to save device');
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        try {
+            await deleteDevice.mutateAsync(id);
+            message.success('Device deleted');
+        } catch {
+            message.error('Failed to delete device');
+        }
+    };
+
+    const filtered = React.useMemo(() => {
+        return devices.filter(d => {
+            if (search && !d.name.toLowerCase().includes(search.toLowerCase()) &&
+                !(d.location || '').toLowerCase().includes(search.toLowerCase())) return false;
+            if (statusFilter === 'active' && d.status !== DeviceStatusType.Active) return false;
+            if (statusFilter === 'inactive' && d.status !== DeviceStatusType.InActive) return false;
+            return true;
+        });
+    }, [devices, search, statusFilter]);
+
+    const paginated = React.useMemo(() => {
+        const start = (page - 1) * pageSize;
+        return filtered.slice(start, start + pageSize);
+    }, [filtered, page, pageSize]);
+
+    const quickFilters = React.useMemo(() => {
+        const all = devices.length;
+        const active = devices.filter(d => d.status === DeviceStatusType.Active).length;
+        return [
+            { key: 'all',      label: 'All',      count: all },
+            { key: 'active',   label: 'Active',   count: active },
+            { key: 'inactive', label: 'Inactive', count: all - active },
+        ];
+    }, [devices]);
+
+    const columns: ColumnsType<Device> = [
+        {
+            title: 'Name', dataIndex: 'name', key: 'name', width: 220,
+            render: (text: string, record: Device) => (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <span style={{ fontWeight: 600, fontSize: 14 }}>{text}</span>
+                    {record.serialNumber && (
+                        <span style={{
+                            fontSize: 11,
+                            fontFamily: 'monospace',
+                            color: '#8c8c8c',
+                            background: '#f5f5f5',
+                            borderRadius: 4,
+                            padding: '1px 6px',
+                            display: 'inline-block',
+                            width: 'fit-content',
+                            letterSpacing: '0.04em',
+                        }}>
+                            {record.serialNumber}
+                        </span>
+                    )}
+                </div>
+            ),
         },
         {
-            title: 'Actions',
-            key: 'actions',
-            width: '120px',
-            render: (_: any, record: Device) => (
+            title: 'Type', dataIndex: ['type', 'name'], key: 'type', width: 120,
+            render: (text: string) => <Tag color="blue">{text || 'N/A'}</Tag>,
+        },
+        { title: 'Location', dataIndex: 'location', key: 'location', width: 160 },
+        {
+            title: 'IP Address', dataIndex: 'ipAddress', key: 'ip', width: 140,
+            render: (text: string) => <span style={{ fontFamily: 'monospace' }}>{text || '—'}</span>,
+        },
+        {
+            title: 'Status', dataIndex: 'status', key: 'status', width: 100,
+            render: (v: DeviceStatusType) =>
+                v === DeviceStatusType.Active
+                    ? <Tag color="green">Active</Tag>
+                    : <Tag color="red">Inactive</Tag>,
+        },
+        {
+            title: 'Created At', dataIndex: 'createdOnUtc', key: 'createdAt', width: 160,
+            render: (v: string) => v
+                ? new Date(v).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+                : '—',
+        },
+        {
+            title: 'Action', key: 'action', width: 100,
+            render: (_: any, r: Device) => (
                 <Space>
-                    <Button type="text" icon={<EditOutlined style={{ color: token.colorPrimary }} />} onClick={() => showModal(record)} />
-                    <Popconfirm title="Delete device?" onConfirm={() => onDelete(record.id)} okButtonProps={{ danger: true }}>
-                        <Button type="text" icon={<DeleteOutlined style={{ color: 'red' }} />} />
+                    <Button icon={<EditOutlined />} size="small" onClick={() => openModal(r)} />
+                    <Popconfirm title="Delete this device?" onConfirm={() => handleDelete(r.id)}>
+                        <Button icon={<DeleteOutlined />} size="small" danger loading={deleteDevice.isPending} />
                     </Popconfirm>
                 </Space>
-            )
-        }
+            ),
+        },
     ];
 
+    const filterBar = (
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <Input
+                placeholder="Search devices…"
+                prefix={<SearchOutlined />}
+                value={search}
+                onChange={e => { setSearch(e.target.value); setPage(1); }}
+                style={{ maxWidth: 260 }}
+                allowClear
+            />
+        </div>
+    );
+
     return (
-        <div style={{ padding: 24, height: '100%', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>
-                <Typography.Title level={2} style={{ margin: 0 }}>Device Management</Typography.Title>
-                <Button type="primary" icon={<PlusOutlined />} onClick={() => showModal()}>
-                    Add Device
+        <div style={{ padding: 24, height: '100%', display: 'flex', flexDirection: 'column', gap: 16, overflow: 'hidden' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+                <Title level={2} style={{ margin: 0 }}>Device Management</Title>
+                <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal()}>
+                    New Device
                 </Button>
             </div>
-            
-            <div style={{ background: token.colorBgContainer, borderRadius: 12, border: `1px solid ${token.colorBorderSecondary}`, overflow: 'hidden' }}>
-                 <div style={{ padding: 16, borderBottom: `1px solid ${token.colorBorderSecondary}` }}>
-                    <Input placeholder="Search devices..." onChange={e => setSearchText(e.target.value)} style={{ maxWidth: 300 }} />
-                 </div>
-                 <Table className="custom-table" dataSource={filteredDevices} columns={columns} rowKey="id" pagination={{ pageSize: 8 }} />
+
+            <div style={{ flex: 1, overflow: 'hidden', minHeight: 0 }}>
+                <RichTable<Device>
+                    data={isLoading ? SKELETON_DATA : paginated}
+                    columns={isLoading ? SKELETON_COLUMNS : columns}
+                    rowKey="id"
+                    isLoading={false}
+                    currentPage={page}
+                    pageSize={pageSize}
+                    totalItems={filtered.length}
+                    onPageChange={setPage}
+                    onPageSizeChange={s => { setPageSize(s); setPage(1); }}
+                    filterBar={filterBar}
+                    quickFilters={isLoading ? undefined : quickFilters}
+                    activeFilterKey={statusFilter}
+                    onFilterChange={key => { setStatusFilter(key); setPage(1); }}
+                    totalLabel="devices"
+                    scrollY="calc(100vh - 320px)"
+                />
             </div>
 
-            <Modal 
-                title={editingDevice ? "Edit Device" : "Add Device"} 
-                open={isModalVisible} 
-                onOk={handleOk} 
-                onCancel={() => setIsModalVisible(false)}
+            <Modal
+                title={editingDevice ? 'Edit Device' : 'Add Device'}
+                open={isModalOpen}
+                onOk={handleSave}
+                confirmLoading={createDevice.isPending || updateDevice.isPending}
+                onCancel={() => setIsModalOpen(false)}
                 width={600}
             >
-                <Form form={form} layout="vertical">
+                <Form form={form} layout="vertical" style={{ marginTop: 8 }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
                         <Form.Item name="name" label="Device Name" rules={[{ required: true }]}>
                             <Input placeholder="e.g. POS 1" />
                         </Form.Item>
                         <Form.Item name="deviceTypeId" label="Device Type" rules={[{ required: true }]}>
-                        <Select placeholder="Select a device type">
-                            {deviceTypes.map((type) => (
-                                <Option key={type.id} value={type.id}>{type.name}</Option>
-                            ))}
-                        </Select>
+                            <Select placeholder="Select type">
+                                {deviceTypes.map(t => <Option key={t.id} value={t.id}>{t.name}</Option>)}
+                            </Select>
                         </Form.Item>
                         <Form.Item name="status" label="Status" rules={[{ required: true }]}>
                             <Select>
-                                <Option value={DeviceStatusType.Active}>{DeviceStatusType[DeviceStatusType.Active]}</Option>
-                                <Option value={DeviceStatusType.InActive}>{DeviceStatusType[DeviceStatusType.InActive]}</Option>
+                                <Option value={DeviceStatusType.Active}>Active</Option>
+                                <Option value={DeviceStatusType.InActive}>Inactive</Option>
                             </Select>
                         </Form.Item>
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-
                         <Form.Item name="deviceProtocolId" label="Protocol">
-
-                            <Select placeholder="Select a protocol">
-                                 {protocols.map((proto:DeviceProtocol) => (
-                                    <Option key={proto.id} value={proto.id}>{proto.name}</Option>
-                                ))} 
-    
+                            <Select placeholder="Select protocol" allowClear>
+                                {protocols.map(p => <Option key={p.id} value={p.id}>{p.name}</Option>)}
                             </Select>
-                                
                         </Form.Item>
-
-                         <Form.Item name="location" label="Location">
-                            <Input placeholder="e.g. Building A" />
+                        <Form.Item name="location" label="Location">
+                            <Input placeholder="e.g. Counter A" />
                         </Form.Item>
                     </div>
 
@@ -219,18 +271,16 @@ const DeviceView: React.FC<DeviceViewProps> = ({ devices, onSave, onDelete }) =>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                         <Form.Item name="serialNumber" label="Serial Number" rules={[{ required: true }]}>
-                            <Input placeholder="e.g. SN-2025-AX94-4495"/>
+                            <Input placeholder="e.g. SN-2025-AX94" />
                         </Form.Item>
-                         <Form.Item name="provider" label={<span style={{ color: isPax ? 'inherit' : token.colorTextDisabled }}>Provider</span>} >
-                            <Select
-                                placeholder="Select a provider"
-                                disabled={!isPax}
-                                allowClear
-                            >
-                                <Option value={CardProviderType.HNB}> {CardProviderType[CardProviderType.HNB]}</Option>
+                        <Form.Item
+                            name="provider"
+                            label={<span style={{ opacity: isPax ? 1 : 0.4 }}>Provider</span>}
+                        >
+                            <Select placeholder="Select provider" disabled={!isPax} allowClear>
+                                <Option value={CardProviderType.HNB}>HNB</Option>
                             </Select>
                         </Form.Item>
-
                     </div>
                 </Form>
             </Modal>
