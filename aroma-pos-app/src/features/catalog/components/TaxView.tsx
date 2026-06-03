@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Table, Button, Space, Input, Modal, Typography, theme, Popconfirm, message, Select, InputNumber, Form, Tag } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, PercentageOutlined, DollarOutlined } from '@ant-design/icons';
 import { Tax } from '../../../shared/types';
+import { useCurrency } from '../../../shared/context/CurrencyContext';
 
 interface TaxViewProps {
     taxes: Tax[];
@@ -16,6 +17,7 @@ const TaxView: React.FC<TaxViewProps> = ({ taxes, onSave, onDelete }) => {
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [editingTax, setEditingTax] = useState<Tax | null>(null);
     const [form] = Form.useForm();
+    const { currencySymbol } = useCurrency();
 
     const showModal = (tax?: Tax) => {
         if (tax) {
@@ -116,7 +118,7 @@ const TaxView: React.FC<TaxViewProps> = ({ taxes, onSave, onDelete }) => {
                                 return (
                                     <Form.Item 
                                         name="percentage" 
-                                        label={type === 'Percentage' ? "Rate (%)" : "Amount ($)"}
+                                        label={type === 'Percentage' ? "Rate (%)" : `Amount (${currencySymbol})`}
                                         rules={[{ required: true }]}
                                     >
                                         <InputNumber 

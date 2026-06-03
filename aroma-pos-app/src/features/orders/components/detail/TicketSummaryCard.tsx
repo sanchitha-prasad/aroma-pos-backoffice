@@ -1,5 +1,6 @@
 import React from 'react';
 import { Card, Divider, Tag, Typography, theme } from 'antd';
+import { useCurrency } from '@/src/shared/context/CurrencyContext';
 import type { TicketItemDetailResponse, TicketPaymentDetailResponse } from '../../types/order-detail.types';
 
 const { Text } = Typography;
@@ -30,6 +31,7 @@ const TicketSummaryCard: React.FC<TicketSummaryCardProps> = ({
     items, payments, discount, isDiscountPercentage, serviceChargePercentage, paymentStatus,
 }) => {
     const { token } = theme.useToken();
+    const { currencySymbol } = useCurrency();
 
     const safeItems    = items    ?? [];
     const safePayments = payments ?? [];
@@ -60,29 +62,29 @@ const TicketSummaryCard: React.FC<TicketSummaryCardProps> = ({
 
     return (
         <Card size="small" style={{ background: token.colorFillAlter, marginTop: 8 }}>
-            <Row label="Subtotal" value={`$${subtotal.toFixed(2)}`} />
+            <Row label="Subtotal" value={`${currencySymbol} ${subtotal.toFixed(2)}`} />
             {discountAmount > 0 && (
                 <Row
                     label={isDiscountPercentage ? `Discount (${discount}%)` : 'Discount'}
-                    value={<Text type="danger">-${discountAmount.toFixed(2)}</Text>}
+                    value={<Text type="danger">-{currencySymbol} {discountAmount.toFixed(2)}</Text>}
                 />
             )}
-            {taxAmount > 0 && <Row label="Tax" value={`$${taxAmount.toFixed(2)}`} />}
+            {taxAmount > 0 && <Row label="Tax" value={`${currencySymbol} ${taxAmount.toFixed(2)}`} />}
             {serviceCharge > 0 && (
-                <Row label={`Service Charge (${serviceChargePercentage}%)`} value={`$${serviceCharge.toFixed(2)}`} />
+                <Row label={`Service Charge (${serviceChargePercentage}%)`} value={`${currencySymbol} ${serviceCharge.toFixed(2)}`} />
             )}
             <Divider style={{ margin: '8px 0' }} />
-            <Row label="Total" value={`$${total.toFixed(2)}`} strong />
+            <Row label="Total" value={`${currencySymbol} ${total.toFixed(2)}`} strong />
             <Divider style={{ margin: '8px 0' }} />
             <Row
                 label="Paid"
-                value={<Text type="success">${totalPaid.toFixed(2)}</Text>}
+                value={<Text type="success">{currencySymbol} {totalPaid.toFixed(2)}</Text>}
             />
             <Row
                 label={balance > 0 ? 'Balance Due' : 'Change'}
                 value={
                     <Text style={{ color: balance > 0 ? token.colorError : token.colorSuccess }}>
-                        ${Math.abs(balance).toFixed(2)}
+                        {currencySymbol} {Math.abs(balance).toFixed(2)}
                     </Text>
                 }
                 strong

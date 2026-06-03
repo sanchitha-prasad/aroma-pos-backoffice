@@ -7,6 +7,7 @@ import {
     RiseOutlined,
 } from '@ant-design/icons';
 import { Activity } from '../../../shared/types';
+import { useCurrency } from '../../../shared/context/CurrencyContext';
 import Card from 'antd/es/card/Card';
 
 const { Text } = Typography;
@@ -84,6 +85,7 @@ interface DashboardViewProps {
 
 const DashboardView: React.FC<DashboardViewProps> = ({ isDarkMode, activities }) => {
   const { token } = theme.useToken();
+  const { currencySymbol } = useCurrency();
 
   const getRelativeTime = (date: Date) => {
       const now = new Date();
@@ -102,7 +104,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ isDarkMode, activities })
             <Col xs={24} sm={12} lg={6}>
                 <StatCard
                     title="Total Revenue"
-                    value="$45,231"
+                    value={`${currencySymbol} 45,231`}
                     icon={<DollarOutlined />}
                     color="#10b981"
                     bg="#dcfce7"

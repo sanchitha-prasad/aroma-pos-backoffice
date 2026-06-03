@@ -5,6 +5,7 @@ import type { ColumnsType } from 'antd/es/table';
 import { RichTable } from '@/src/shared/components/rich-table';
 import { buildMenuColumns } from './columns';
 import type { MenuItem, Category, ModifierGroup, Device } from '@/src/shared/types';
+import { useCurrency } from '@/src/shared/context/CurrencyContext';
 
 const { Option } = Select;
 
@@ -43,6 +44,7 @@ const MenuTable: React.FC<MenuTableProps> = ({
     items, categories, modifierGroups, devices,
     isLoading, onEdit, onDelete, toolbarRight,
 }) => {
+    const { currencySymbol } = useCurrency();
     const [search, setSearch]       = useState('');
     const [catFilter, setCatFilter] = useState<string | null>(null);
     const [statusFilter, setStatusFilter] = useState('all');
@@ -50,8 +52,8 @@ const MenuTable: React.FC<MenuTableProps> = ({
     const [pageSize, setPageSize]         = useState(10);
 
     const columns = useMemo(
-        () => buildMenuColumns({ categories, modifierGroups, devices, onEdit, onDelete }),
-        [categories, modifierGroups, devices, onEdit, onDelete],
+        () => buildMenuColumns({ categories, modifierGroups, devices, onEdit, onDelete, currencySymbol }),
+        [categories, modifierGroups, devices, onEdit, onDelete, currencySymbol],
     );
 
     const filtered = useMemo(() => {

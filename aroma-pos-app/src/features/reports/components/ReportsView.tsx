@@ -33,6 +33,7 @@ import { authStore } from '../../../shared/services/auth/authStore';
 import RichTable from '../../../shared/components/rich-table/RichTable';
 import { EmployeesService } from '../../system/api/employees.service';
 import { Employee } from '../../../shared/types';
+import { useCurrency } from '../../../shared/context/CurrencyContext';
 
 const { Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -48,6 +49,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
     const { token } = theme.useToken();
     const [mainCategory, setMainCategory] = useState('sales');
     const [subReport, setSubReport] = useState('summary');
+    const { currencySymbol } = useCurrency();
     const [dates, setDates] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null]>([
         dayjs().startOf('day'),
         dayjs().endOf('day')
@@ -177,11 +179,11 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
                 columns = [
                     { title: 'Date Range', dataIndex: 'date', key: 'date' },
                     { title: 'Orders', dataIndex: 'orders', key: 'orders' },
-                    { title: 'Gross Sales', dataIndex: 'grossSales', key: 'grossSales', render: (val: number) => `$${val?.toFixed(2) || '0.00'}` },
-                    { title: 'Discounts', dataIndex: 'discounts', key: 'discounts', render: (val: number) => `-$${val?.toFixed(2) || '0.00'}` },
-                    { title: 'Net Sales', dataIndex: 'netSales', key: 'netSales', render: (val: number) => `$${val?.toFixed(2) || '0.00'}` },
-                    { title: 'Tax', dataIndex: 'tax', key: 'tax', render: (val: number) => `$${val?.toFixed(2) || '0.00'}` },
-                    { title: 'Total Paid', dataIndex: 'total', key: 'total', render: (val: number) => `$${val?.toFixed(2) || '0.00'}` },
+                    { title: 'Gross Sales', dataIndex: 'grossSales', key: 'grossSales', render: (val: number) => `${currencySymbol}${val?.toFixed(2) || '0.00'}` },
+                    { title: 'Discounts', dataIndex: 'discounts', key: 'discounts', render: (val: number) => `-${currencySymbol}${val?.toFixed(2) || '0.00'}` },
+                    { title: 'Net Sales', dataIndex: 'netSales', key: 'netSales', render: (val: number) => `${currencySymbol}${val?.toFixed(2) || '0.00'}` },
+                    { title: 'Tax', dataIndex: 'tax', key: 'tax', render: (val: number) => `${currencySymbol}${val?.toFixed(2) || '0.00'}` },
+                    { title: 'Total Paid', dataIndex: 'total', key: 'total', render: (val: number) => `${currencySymbol}${val?.toFixed(2) || '0.00'}` },
                 ];
                 break;
             case 'hourly':
@@ -190,7 +192,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
                 columns = [
                     { title: 'Hour', dataIndex: 'hour', key: 'hour' },
                     { title: 'Orders', dataIndex: 'orders', key: 'orders' },
-                    { title: 'Total Sales', dataIndex: 'sales', key: 'sales', render: (val: string) => `$${val}` },
+                    { title: 'Total Sales', dataIndex: 'sales', key: 'sales', render: (val: string) => `${currencySymbol}${val}` },
                     { title: 'Labor %', dataIndex: 'labor', key: 'labor' },
                 ];
                 break;
@@ -201,7 +203,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
                     { title: 'Item Name', dataIndex: 'item', key: 'item' },
                     { title: 'Category', dataIndex: 'category', key: 'category' },
                     { title: 'Qty Sold', dataIndex: 'qty', key: 'qty' },
-                    { title: 'Amount', dataIndex: 'amount', key: 'amount', render: (val: string) => `$${val}` },
+                    { title: 'Amount', dataIndex: 'amount', key: 'amount', render: (val: string) => `${currencySymbol}${val}` },
                 ];
                 break;
             case 'category':
@@ -210,7 +212,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
                 columns = [
                     { title: 'Category', dataIndex: 'category', key: 'category' },
                     { title: 'Qty Sold', dataIndex: 'qty', key: 'qty' },
-                    { title: 'Amount', dataIndex: 'amount', key: 'amount', render: (val: string) => `$${val}` },
+                    { title: 'Amount', dataIndex: 'amount', key: 'amount', render: (val: string) => `${currencySymbol}${val}` },
                 ];
                 break;
             case 'tips':
@@ -218,9 +220,9 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
                 data = [];
                 columns = [
                     { title: 'Employee', dataIndex: 'employee', key: 'employee' },
-                    { title: 'Cash Tips', dataIndex: 'cashTips', key: 'cashTips', render: (v: number) => `$${v.toFixed(2)}` },
-                    { title: 'Credit Tips', dataIndex: 'creditTips', key: 'creditTips', render: (v: number) => `$${v.toFixed(2)}` },
-                    { title: 'Total', dataIndex: 'total', key: 'total', render: (v: number) => `$${v.toFixed(2)}` },
+                    { title: 'Cash Tips', dataIndex: 'cashTips', key: 'cashTips', render: (v: number) => `${currencySymbol}${v.toFixed(2)}` },
+                    { title: 'Credit Tips', dataIndex: 'creditTips', key: 'creditTips', render: (v: number) => `${currencySymbol}${v.toFixed(2)}` },
+                    { title: 'Total', dataIndex: 'total', key: 'total', render: (v: number) => `${currencySymbol}${v.toFixed(2)}` },
                 ];
                 break;
             case 'shift':
@@ -229,7 +231,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
                 columns = [
                     { title: 'Shift', dataIndex: 'shift', key: 'shift' },
                     { title: 'Orders', dataIndex: 'orders', key: 'orders' },
-                    { title: 'Total Sales', dataIndex: 'sales', key: 'sales', render: (v: number) => `$${v.toFixed(2)}` },
+                    { title: 'Total Sales', dataIndex: 'sales', key: 'sales', render: (v: number) => `${currencySymbol}${v.toFixed(2)}` },
                 ];
                 break;
             case 'orders':
@@ -240,7 +242,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
                     { title: 'Time', dataIndex: 'time', key: 'time' },
                     { title: 'Type', dataIndex: 'type', key: 'type', render: (t: string) => <Tag>{t}</Tag> },
                     { title: 'Items', dataIndex: 'items', key: 'items' },
-                    { title: 'Total', dataIndex: 'total', key: 'total', render: (v: string) => `$${v}` },
+                    { title: 'Total', dataIndex: 'total', key: 'total', render: (v: string) => `${currencySymbol}${v}` },
                     { title: 'Status', dataIndex: 'status', key: 'status', render: (s: string) => <Tag color="green">{s}</Tag> },
                 ];
                 break;
@@ -260,7 +262,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
                                         title={<span style={{ color: 'rgba(255,255,255,0.85)', fontSize: '13px', fontWeight: 500 }}>Gross Sales</span>}
                                         value={summary.grossSales}
                                         precision={2}
-                                        prefix={<span style={{ color: 'white' }}>$</span>}
+                                        prefix={<span style={{ color: 'white' }}>{currencySymbol}</span>}
                                         valueStyle={{ color: 'white', fontSize: '24px', fontWeight: 'bold' }}
                                     />
                                 </Card>
@@ -271,7 +273,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
                                         title={<span style={{ color: 'rgba(255,255,255,0.85)', fontSize: '13px', fontWeight: 500 }}>Net Sales</span>}
                                         value={summary.netSales}
                                         precision={2}
-                                        prefix={<span style={{ color: 'white' }}>$</span>}
+                                        prefix={<span style={{ color: 'white' }}>{currencySymbol}</span>}
                                         valueStyle={{ color: 'white', fontSize: '24px', fontWeight: 'bold' }}
                                     />
                                 </Card>
@@ -282,7 +284,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
                                         title={<span style={{ color: 'rgba(255,255,255,0.85)', fontSize: '13px', fontWeight: 500 }}>Total Discount</span>}
                                         value={summary.totalDiscount}
                                         precision={2}
-                                        prefix={<span style={{ color: 'white' }}>-$</span>}
+                                        prefix={<span style={{ color: 'white' }}>-{currencySymbol}</span>}
                                         valueStyle={{ color: 'white', fontSize: '24px', fontWeight: 'bold' }}
                                     />
                                 </Card>
@@ -354,11 +356,11 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
                     render: (text: string) => <strong>{text}</strong>
                 },
                 { title: 'Orders', dataIndex: 'orders', key: 'orders' },
-                { title: 'Gross Sales', dataIndex: 'grossSales', key: 'grossSales', render: (val: number) => `$${val?.toFixed(2) || '0.00'}` },
-                { title: 'Discounts', dataIndex: 'discounts', key: 'discounts', render: (val: number) => `-$${val?.toFixed(2) || '0.00'}` },
-                { title: 'Net Sales', dataIndex: 'netSales', key: 'netSales', render: (val: number) => `$${val?.toFixed(2) || '0.00'}` },
-                { title: 'Service Charge', dataIndex: 'serviceCharge', key: 'serviceCharge', render: (val: number) => `$${val?.toFixed(2) || '0.00'}` },
-                { title: 'Total Paid', dataIndex: 'totalPaid', key: 'totalPaid', render: (val: number) => `$${val?.toFixed(2) || '0.00'}` },
+                { title: 'Gross Sales', dataIndex: 'grossSales', key: 'grossSales', render: (val: number) => `${currencySymbol}${val?.toFixed(2) || '0.00'}` },
+                { title: 'Discounts', dataIndex: 'discounts', key: 'discounts', render: (val: number) => `-${currencySymbol}${val?.toFixed(2) || '0.00'}` },
+                { title: 'Net Sales', dataIndex: 'netSales', key: 'netSales', render: (val: number) => `${currencySymbol}${val?.toFixed(2) || '0.00'}` },
+                { title: 'Service Charge', dataIndex: 'serviceCharge', key: 'serviceCharge', render: (val: number) => `${currencySymbol}${val?.toFixed(2) || '0.00'}` },
+                { title: 'Total Paid', dataIndex: 'totalPaid', key: 'totalPaid', render: (val: number) => `${currencySymbol}${val?.toFixed(2) || '0.00'}` },
             ];
 
             reportConfig = { data, columns, title };
@@ -386,8 +388,8 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
                 { title: 'Clock In', dataIndex: 'clockIn', key: 'clockIn' },
                 { title: 'Clock Out', dataIndex: 'clockOut', key: 'clockOut' },
                 { title: 'Hours', dataIndex: 'hours', key: 'hours' },
-                { title: 'Total Sales', dataIndex: 'sales', key: 'sales', render: (val: number) => `$${val.toFixed(2)}` },
-                { title: 'Tips', dataIndex: 'tips', key: 'tips', render: (val: number) => `$${val.toFixed(2)}` },
+                { title: 'Total Sales', dataIndex: 'sales', key: 'sales', render: (val: number) => `${currencySymbol}${val.toFixed(2)}` },
+                { title: 'Tips', dataIndex: 'tips', key: 'tips', render: (val: number) => `${currencySymbol}${val.toFixed(2)}` },
             ];
             reportConfig = { data, columns, title: 'Employee Report' };
             content = <Table dataSource={data} columns={columns} pagination={false} size="middle" />;
@@ -407,7 +409,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
         const columns = [
             { title: 'Method', dataIndex: 'method', key: 'method', render: (t: string) => <strong>{t}</strong> },
             { title: 'Count', dataIndex: 'count', key: 'count' },
-            { title: 'Total Amount', dataIndex: 'amount', key: 'amount', render: (val: number) => `$${val.toFixed(2)}` },
+            { title: 'Total Amount', dataIndex: 'amount', key: 'amount', render: (val: number) => `${currencySymbol}${val.toFixed(2)}` },
             { title: '% of Sales', key: 'pct', render: (_: any, r: any) => `${(Math.random() * 30 + 5).toFixed(1)}%` },
         ];
 
@@ -434,12 +436,12 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
             columns = [
                 { title: 'Drawer ID', dataIndex: 'drawerId', key: 'drawerId' },
                 { title: 'User', dataIndex: 'user', key: 'user' },
-                { title: 'Start', dataIndex: 'startAmount', key: 'start', render: (v: number) => `$${v.toFixed(2)}` },
-                { title: 'Cash Sales', dataIndex: 'cashSales', key: 'sales', render: (v: number) => `$${v.toFixed(2)}` },
-                { title: 'Drops', dataIndex: 'drops', key: 'drops', render: (v: number) => `$${v.toFixed(2)}` },
-                { title: 'Expected', dataIndex: 'expected', key: 'exp', render: (v: number) => `$${v.toFixed(2)}` },
-                { title: 'Actual', dataIndex: 'actual', key: 'act', render: (v: number) => `$${v.toFixed(2)}` },
-                { title: 'Variance', dataIndex: 'variance', key: 'var', render: (v: number) => <span style={{ color: v < 0 ? 'red' : 'green', fontWeight: 'bold' }}>{v.toFixed(2)}</span> },
+                { title: 'Start', dataIndex: 'startAmount', key: 'start', render: (v: number) => `${currencySymbol}${v.toFixed(2)}` },
+                { title: 'Cash Sales', dataIndex: 'cashSales', key: 'sales', render: (v: number) => `${currencySymbol}${v.toFixed(2)}` },
+                { title: 'Drops', dataIndex: 'drops', key: 'drops', render: (v: number) => `${currencySymbol}${v.toFixed(2)}` },
+                { title: 'Expected', dataIndex: 'expected', key: 'exp', render: (v: number) => `${currencySymbol}${v.toFixed(2)}` },
+                { title: 'Actual', dataIndex: 'actual', key: 'act', render: (v: number) => `${currencySymbol}${v.toFixed(2)}` },
+                { title: 'Variance', dataIndex: 'variance', key: 'var', render: (v: number) => <span style={{ color: v < 0 ? 'red' : 'green', fontWeight: 'bold' }}>{v < 0 ? '-' : ''}{currencySymbol}{Math.abs(v).toFixed(2)}</span> },
             ];
         } else if (subReport === 'shift_summary') {
             title = 'Shift Summary Audit';
@@ -447,9 +449,9 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
             columns = [
                 { title: 'Shift', dataIndex: 'shift', key: 'shift' },
                 { title: 'Manager', dataIndex: 'manager', key: 'manager' },
-                { title: 'Start Cash', dataIndex: 'startCash', key: 'startCash', render: (v: number) => `$${v.toFixed(2)}` },
-                { title: 'End Cash', dataIndex: 'endCash', key: 'endCash', render: (v: number) => `$${v.toFixed(2)}` },
-                { title: 'Over/Short', dataIndex: 'overShort', key: 'overShort', render: (v: number) => <span style={{ color: v !== 0 ? 'red' : 'green' }}>{v.toFixed(2)}</span> },
+                { title: 'Start Cash', dataIndex: 'startCash', key: 'startCash', render: (v: number) => `${currencySymbol}${v.toFixed(2)}` },
+                { title: 'End Cash', dataIndex: 'endCash', key: 'endCash', render: (v: number) => `${currencySymbol}${v.toFixed(2)}` },
+                { title: 'Over/Short', dataIndex: 'overShort', key: 'overShort', render: (v: number) => <span style={{ color: v !== 0 ? 'red' : 'green' }}>{v < 0 ? '-' : ''}{currencySymbol}{Math.abs(v).toFixed(2)}</span> },
             ];
         } else {
             title = 'Sensitive Action Logs';
@@ -459,7 +461,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
                 { title: 'User', dataIndex: 'user', key: 'user' },
                 { title: 'Action', dataIndex: 'action', key: 'action', render: (t: string) => <Tag color="orange">{t}</Tag> },
                 { title: 'Details', dataIndex: 'details', key: 'details' },
-                { title: 'Amount', dataIndex: 'amount', key: 'amount', render: (v: string) => `$${v}` },
+                { title: 'Amount', dataIndex: 'amount', key: 'amount', render: (v: string) => `${currencySymbol}${v}` },
             ];
         }
 
@@ -527,8 +529,8 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
             return `<tr>${reportConfig.columns.map(c => {
                 let val = row[c.dataIndex];
                 if (c.title.includes('Sales') || c.title.includes('Amount') || c.title.includes('Total') || c.title.includes('Price')) {
-                    if (typeof val === 'number') val = `$${val.toFixed(2)}`;
-                    else if (typeof val === 'string' && !val.includes('$') && !isNaN(parseFloat(val))) val = `$${val}`;
+                    if (typeof val === 'number') val = `${currencySymbol}${val.toFixed(2)}`;
+                    else if (typeof val === 'string' && !val.includes(currencySymbol) && !isNaN(parseFloat(val))) val = `${currencySymbol}${val}`;
                 }
                 return `<td>${val}</td>`;
             }).join('')}</tr>`;

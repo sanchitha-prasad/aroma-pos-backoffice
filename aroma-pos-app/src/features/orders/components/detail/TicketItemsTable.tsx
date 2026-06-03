@@ -1,5 +1,6 @@
 import React from 'react';
 import { Table, Tag, Typography, theme } from 'antd';
+import { useCurrency } from '@/src/shared/context/CurrencyContext';
 import type { ColumnsType } from 'antd/es/table';
 import type { TicketItemDetailResponse } from '../../types/order-detail.types';
 
@@ -12,6 +13,7 @@ interface TicketItemsTableProps {
 const TicketItemsTable: React.FC<TicketItemsTableProps> = ({ items: rawItems }) => {
     const items = rawItems ?? [];
     const { token } = theme.useToken();
+    const { currencySymbol } = useCurrency();
 
     const columns: ColumnsType<TicketItemDetailResponse> = [
         {
@@ -59,7 +61,7 @@ const TicketItemsTable: React.FC<TicketItemsTableProps> = ({ items: rawItems }) 
             key: 'unitPrice',
             width: 90,
             align: 'right',
-            render: (val: number) => `$${val.toFixed(2)}`,
+            render: (val: number) => `${currencySymbol} ${val.toFixed(2)}`,
         },
         {
             title: 'Total',
@@ -69,7 +71,7 @@ const TicketItemsTable: React.FC<TicketItemsTableProps> = ({ items: rawItems }) 
             render: (_: unknown, item: TicketItemDetailResponse) => {
                 const modTotal = (item.modifiers ?? []).reduce((acc, m) => acc + (m.price ?? 0) * (m.quantity ?? 1), 0);
                 const total = (item.price + modTotal) * item.quantity * (item.portion || 1);
-                return <Text strong>${total.toFixed(2)}</Text>;
+                return <Text strong>{currencySymbol} {total.toFixed(2)}</Text>;
             },
         },
     ];

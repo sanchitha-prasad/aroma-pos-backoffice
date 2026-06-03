@@ -1,5 +1,6 @@
 import React from 'react';
 import { List, Tag, Typography, Empty, theme, Space } from 'antd';
+import { useCurrency } from '@/src/shared/context/CurrencyContext';
 import { CreditCardOutlined, DollarOutlined, GiftOutlined } from '@ant-design/icons';
 import type { TicketPaymentDetailResponse } from '../../types/order-detail.types';
 
@@ -25,6 +26,7 @@ interface PaymentsListProps {
 
 const PaymentsList: React.FC<PaymentsListProps> = ({ payments }) => {
     const { token } = theme.useToken();
+    const { currencySymbol } = useCurrency();
     const activePayments = (payments ?? []).filter(p => !p.isVoided);
 
     if (activePayments.length === 0) {
@@ -73,16 +75,16 @@ const PaymentsList: React.FC<PaymentsListProps> = ({ payments }) => {
                                     {p.referenceNumber && <span>Ref: {p.referenceNumber}{p.invoiceNumber ? ' · ' : ''}</span>}
                                     {p.invoiceNumber   && <span>Invoice: {p.invoiceNumber}</span>}
                                     {p.tipAmount > 0 && (
-                                        <div>Tip: <Text type="success">${p.tipAmount.toFixed(2)}</Text></div>
+                                        <div>Tip: <Text type="success">{currencySymbol} {p.tipAmount.toFixed(2)}</Text></div>
                                     )}
                                 </div>
                             }
                         />
                         <div style={{ textAlign: 'right' }}>
-                            <Text strong style={{ fontSize: 15 }}>${(p.totalAmount ?? 0).toFixed(2)}</Text>
+                            <Text strong style={{ fontSize: 15 }}>{currencySymbol} {(p.totalAmount ?? 0).toFixed(2)}</Text>
                             {p.transactionFee > 0 && (
                                 <div style={{ fontSize: 11 }}>
-                                    <Text type="secondary">Fee: ${p.transactionFee.toFixed(2)}</Text>
+                                    <Text type="secondary">Fee: {currencySymbol} {p.transactionFee.toFixed(2)}</Text>
                                 </div>
                             )}
                         </div>

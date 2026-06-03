@@ -138,7 +138,7 @@ const App: React.FC = () => {
     <ConfigProvider theme={appTheme}>
       <AntdApp>
         <MessageInitializer />
-        <CurrencyProvider>
+        <CurrencyProvider key={currentUser?.id ?? 'guest'}>
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={!currentUser ? <Login onLogin={handleLogin} /> : <Navigate to="/" replace />} />

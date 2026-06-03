@@ -6,7 +6,7 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
     USD: '$',
     EUR: '€',
     GBP: '£',
-    LKR: 'Rs',
+    LKR: 'LKR',
     INR: '₹',
     AUD: 'A$',
     CAD: 'C$',
@@ -23,8 +23,8 @@ interface CurrencyContextValue {
 
 const CurrencyContext = createContext<CurrencyContextValue>({
     currencyCode: 'LKR',
-    currencySymbol: 'Rs',
-    formatCurrency: (amount) => `Rs ${amount.toFixed(2)}`,
+    currencySymbol: 'LKR',
+    formatCurrency: (amount) => `LKR ${amount.toFixed(2)}`,
 });
 
 export const CurrencyProvider: React.FC<{ children: ReactNode }> = ({ children }) => {

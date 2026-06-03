@@ -7,6 +7,7 @@ import { VariantService } from '../api/variants.service';
 const { Option } = Select;
 import { showErrorMessage } from '@/src/shared/types/ui/ErrorMessageModel';
 import { ItemVarientStatusType } from '@/src/shared/enums';
+import { useCurrency } from '../../../shared/context/CurrencyContext';
 
 interface MenuFormProps {
     initialData?: MenuItem | null;
@@ -27,6 +28,7 @@ const MenuForm: React.FC<MenuFormProps> = ({ initialData, categories, modifierGr
     const [variants, setVariants] = useState<ItemVariant[]>([]);
     const [availableVariants, setAvailableVariants] = useState<Variant[]>([]);
     const [activeTab, setActiveTab] = useState('1');
+    const { currencySymbol } = useCurrency();
 
     const [popup, contextHolder] = Modal.useModal();
 
@@ -134,7 +136,7 @@ const MenuForm: React.FC<MenuFormProps> = ({ initialData, categories, modifierGr
         render: (val: number, record: ItemVariant, index: number) => (
             <InputNumber
                 min={0}
-                prefix="$"
+                prefix={currencySymbol}
                 value={val}
                 // Ensure this triggers the state update correctly
                 onChange={val => handleVariantChange(index, 'price', val)}

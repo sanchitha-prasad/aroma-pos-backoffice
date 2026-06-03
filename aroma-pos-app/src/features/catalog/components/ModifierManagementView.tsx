@@ -37,6 +37,7 @@ const MOD_SKELETON_COLUMNS: ColumnsType<Modifier> = [
     { key: 'name', title: 'Name', width: 200, render: () => <Skeleton.Input active size="small" style={{ width: 120 }} /> },
     { key: 'description', title: 'Description', width: 300, render: () => <Skeleton.Input active size="small" style={{ width: 220 }} /> },
     { key: 'price', title: 'Price', width: 100, render: () => <Skeleton.Input active size="small" style={{ width: 60 }} /> },
+    { key: 'createdAt', title: 'Created At', width: 160, render: () => <Skeleton.Input active size="small" style={{ width: 100 }} /> },
     { key: 'action', title: 'Action', width: 100, render: () => <Skeleton.Button active size="small" style={{ width: 56 }} /> },
 ];
 
@@ -47,6 +48,7 @@ const GROUP_SKELETON_COLUMNS: ColumnsType<ModifierGroup> = [
     { key: 'constraints', title: 'Select Constraints', width: 180, render: () => <Skeleton.Input active size="small" style={{ width: 120 }} /> },
     { key: 'items', title: 'Modifiers', width: 120, render: () => <Skeleton.Input active size="small" style={{ width: 80 }} /> },
     { key: 'active', title: 'Status', width: 100, render: () => <Skeleton.Input active size="small" style={{ width: 60 }} /> },
+    { key: 'createdAt', title: 'Created At', width: 160, render: () => <Skeleton.Input active size="small" style={{ width: 100 }} /> },
     { key: 'action', title: 'Action', width: 100, render: () => <Skeleton.Button active size="small" style={{ width: 56 }} /> },
 ];
 
@@ -219,6 +221,10 @@ const ModifierManagementView: React.FC<ModifierManagementViewProps> = ({
         { title: 'Description', dataIndex: 'description', key: 'desc' },
         { title: 'Price', dataIndex: 'price', key: 'price', render: (v: number) => `${currencySymbol} ${v.toFixed(2)}` },
         {
+            title: 'Created At', dataIndex: 'createdOnUtc', key: 'createdAt', width: 160,
+            render: (v: string) => v ? new Date(v).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '—'
+        },
+        {
             title: 'Action', key: 'action', width: 100,
             render: (_: any, r: Modifier) => (
                 <Space>
@@ -249,6 +255,10 @@ const ModifierManagementView: React.FC<ModifierManagementViewProps> = ({
         {
             title: 'Status', dataIndex: 'isActive', key: 'active',
             render: (act: boolean) => act ? <Tag color="green">Active</Tag> : <Tag>Inactive</Tag>
+        },
+        {
+            title: 'Created At', dataIndex: 'createdOnUtc', key: 'createdAt', width: 160,
+            render: (v: string) => v ? new Date(v).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '—'
         },
         {
             title: 'Action', key: 'action', width: 100,
@@ -448,7 +458,7 @@ const ModifierManagementView: React.FC<ModifierManagementViewProps> = ({
                                                         optionFilterProp="label"
                                                         options={allModifiers.map(m => ({
                                                             value: m.id,
-                                                            label: `${m.name} ($${m.price.toFixed(2)})`
+                                                            label: `${m.name} (${currencySymbol} ${m.price.toFixed(2)})`
                                                         }))}
                                                     />
                                                 </Form.Item>

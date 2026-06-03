@@ -20,6 +20,7 @@ import {
 } from '../../../shared/types';
 import { apiClient } from '@/src/shared/services/api/client';
 import { BranchCatalogService, BulkSavePayload, parseAvailabilities } from '../api/branch-catalog.service';
+import { useCurrency } from '../../../shared/context/CurrencyContext';
 
 const { Text, Title } = Typography;
 
@@ -289,6 +290,7 @@ const DetailPanelContent: React.FC<{
   const [form] = Form.useForm();
   const [avail, setAvail] = useState<ServiceAvailability[]>([]);
   const [search, setSearch] = useState('');
+  const { currencySymbol } = useCurrency();
 
   useEffect(() => {
     form.resetFields();
@@ -397,14 +399,14 @@ const DetailPanelContent: React.FC<{
                 <div style={{ textAlign: 'center' }}>
                   <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>Global base price</Text>
                   <div style={{ padding: '6px 16px', borderRadius: 8, background: token.colorBgContainer, border: `1px solid ${token.colorBorderSecondary}` }}>
-                    <Text strong style={{ fontSize: 16, fontFamily: 'monospace' }}>${node.basePrice?.toFixed(2)}</Text>
+                    <Text strong style={{ fontSize: 16, fontFamily: 'monospace' }}>{currencySymbol}{node.basePrice?.toFixed(2)}</Text>
                   </div>
                 </div>
                 <Text type="secondary" style={{ fontSize: 20 }}>→</Text>
                 <div style={{ flex: 1 }}>
                   <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>Branch override price</Text>
                   <Form.Item name="branchPrice" style={{ margin: 0 }}>
-                    <InputNumber prefix="$" precision={2} min={0} placeholder="Enter branch price…" size="large" style={{ width: '100%' }} />
+                    <InputNumber prefix={currencySymbol} precision={2} min={0} placeholder="Enter branch price…" size="large" style={{ width: '100%' }} />
                   </Form.Item>
                 </div>
               </div>
@@ -419,10 +421,10 @@ const DetailPanelContent: React.FC<{
               <Table size="middle" dataSource={node.variants} rowKey="itemVariantId" pagination={false}
                 columns={[
                   { title: 'Variant', dataIndex: 'variantName', render: (t: string) => <Text style={{ fontSize: 14 }}>{t}</Text> },
-                  { title: 'Base $', dataIndex: 'basePrice', width: 100, render: (p: number) => <Text style={{ fontSize: 14, fontFamily: 'monospace' }}>${p?.toFixed(2)}</Text> },
-                  { title: 'Branch $', width: 160, render: (_: any, r: any) => (
+                  { title: `Base (${currencySymbol})`, dataIndex: 'basePrice', width: 100, render: (p: number) => <Text style={{ fontSize: 14, fontFamily: 'monospace' }}>{currencySymbol}{p?.toFixed(2)}</Text> },
+                  { title: `Branch (${currencySymbol})`, width: 160, render: (_: any, r: any) => (
                     <Form.Item name={`vp_${r.itemVariantId}`} style={{ margin: 0 }} initialValue={r.branchPrice ?? null}>
-                      <InputNumber prefix="$" precision={2} min={0} placeholder="Override" style={{ width: '100%' }} />
+                      <InputNumber prefix={currencySymbol} precision={2} min={0} placeholder="Override" style={{ width: '100%' }} />
                     </Form.Item>
                   )},
                   { title: 'Enabled', width: 80, render: (_: any, r: any) => (

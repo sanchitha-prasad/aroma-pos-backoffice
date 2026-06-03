@@ -36,6 +36,7 @@ import {
 import { apiClient } from '../../../shared/services/api/client';
 import { authStore } from '../../../shared/services/auth/authStore';
 import ImgCrop from 'antd-img-crop';
+import { useCurrency } from '../../../shared/context/CurrencyContext';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -57,6 +58,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
     const [form] = Form.useForm();
     const [tenantSettings, setTenantSettings] = useState<Record<string, string>>({});
     const [logoUrl, setLogoUrl] = useState<string>('');
+    const { currencySymbol } = useCurrency();
 
     const fetchSettings = async () => {
         try {
@@ -509,7 +511,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                                 <Space.Compact style={{ width: "100%" }}>
                                 <Input value="Earn 1 point per" disabled style={{ width: "60%" }} />
                                 <Input defaultValue="1" style={{ width: "20%" }} />
-                                <Input value="$ spent" disabled style={{ width: "20%" }} />
+                                <Input value={`${currencySymbol} spent`} disabled style={{ width: "20%" }} />
                                 </Space.Compact>
                             </Form.Item>
                             </Col>
@@ -519,7 +521,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                                 <Space.Compact style={{ width: "100%" }}>
                                 <Input value="Redeem 100 points for" disabled style={{ width: "70%" }} />
                                 <Input defaultValue="5" style={{ width: "15%" }} />
-                                <Input value="$ credit" disabled style={{ width: "15%" }} />
+                                <Input value={`${currencySymbol} credit`} disabled style={{ width: "15%" }} />
                                 </Space.Compact>
                             </Form.Item>
                             </Col>
@@ -555,10 +557,10 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                             <Form.Item label="Allow Partial Redemption" valuePropName="checked">
                                 <Switch defaultChecked />
                             </Form.Item>
-                            <Form.Item label="Reload Rules">
+                             <Form.Item label="Reload Rules">
                                 <Select defaultValue="Any Amount">
                                     <Option value="Any Amount">Any Amount</Option>
-                                    <Option value="Fixed Denominations">Fixed Denominations ($10, $20, $50)</Option>
+                                    <Option value="Fixed Denominations">Fixed Denominations ({currencySymbol}10, {currencySymbol}20, {currencySymbol}50)</Option>
                                 </Select>
                             </Form.Item>
                         </Form>

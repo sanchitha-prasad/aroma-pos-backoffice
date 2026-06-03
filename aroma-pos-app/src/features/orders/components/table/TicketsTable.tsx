@@ -4,6 +4,7 @@ import { Skeleton } from 'antd';
 import { RichTable } from '@/src/shared/components/rich-table';
 import { buildOrderColumns } from './columns';
 import type { OrderDetailResponse } from '../../types/order-detail.types';
+import { useCurrency } from '@/src/shared/context/CurrencyContext';
 
 const SKELETON_DATA = Array.from({ length: 10 }, (_, i) => ({ id: `sk-${i}` }) as unknown as OrderDetailResponse);
 
@@ -39,7 +40,8 @@ const OrdersTable: React.FC<OrdersTableProps> = ({
     quickFilters, activeFilterKey, onFilterChange,
     filterBar, toolbarRight,
 }) => {
-    const columns = useMemo(() => buildOrderColumns(onViewDetail), [onViewDetail]);
+    const { currencySymbol } = useCurrency();
+    const columns = useMemo(() => buildOrderColumns(onViewDetail, currencySymbol), [onViewDetail, currencySymbol]);
 
     const paginatedData = useMemo(() => {
         const start = (currentPage - 1) * pageSize;

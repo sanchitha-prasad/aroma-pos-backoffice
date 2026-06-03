@@ -13,18 +13,19 @@ interface ColumnDeps {
     devices: Device[];
     onEdit: (item: MenuItem) => void;
     onDelete: (id: string) => void;
+    currencySymbol?: string;
 }
 
 function getCatName(categories: Category[], id: string) {
     return categories.find(c => c.id === id)?.name ?? 'Uncategorised';
 }
 
-function getPriceRange(item: MenuItem): string {
+function getPriceRange(item: MenuItem, sym: string): string {
     if (item.variants && item.variants.length > 0) {
         const prices = item.variants.map(v => v.price);
         const min = Math.min(...prices);
         const max = Math.max(...prices);
-        return min === max ? `$${min.toFixed(2)}` : `$${min.toFixed(2)} – $${max.toFixed(2)}`;
+        return min === max ? `${sym} ${min.toFixed(2)}` : `${sym} ${min.toFixed(2)} – ${sym} ${max.toFixed(2)}`;
     }
     return '—';
 }
@@ -48,6 +49,7 @@ export function buildMenuColumns({
     devices,
     onEdit,
     onDelete,
+    currencySymbol = 'LKR',
 }: ColumnDeps): ColumnsType<MenuItem> {
     return [
         {
@@ -82,7 +84,7 @@ export function buildMenuColumns({
             align: 'right' as const,
             render: (_: unknown, item: MenuItem) => (
                 <Text strong style={{ fontFamily: 'monospace', fontSize: 13 }}>
-                    {getPriceRange(item)}
+                    {getPriceRange(item, currencySymbol)}
                 </Text>
             ),
         },
