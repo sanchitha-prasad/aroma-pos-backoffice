@@ -15,7 +15,8 @@ import {
     Row, 
     Col,
     message,
-    Empty
+    Empty,
+    Radio
 } from 'antd';
 import { 
     BarChartOutlined, 
@@ -26,6 +27,12 @@ import {
     PrinterOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+
+import { apiClient } from '../../../shared/services/api/client';
+import { authStore } from '../../../shared/services/auth/authStore';
+import RichTable from '../../../shared/components/rich-table/RichTable';
+import { EmployeesService } from '../../system/api/employees.service';
+import { Employee } from '../../../shared/types';
 
 const { Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -41,6 +48,72 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
     const { token } = theme.useToken();
     const [mainCategory, setMainCategory] = useState('sales');
     const [subReport, setSubReport] = useState('summary');
+    const [dates, setDates] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null]>([
+        dayjs().startOf('day'),
+        dayjs().endOf('day')
+    ]);
+    const [selectedFilter, setSelectedFilter] = useState<string>('today');
+    const [loading, setLoading] = useState(false);
+    const [reportData, setReportData] = useState<any>(null);
+
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
+
+    const fetchReportData = React.useCallback(async () => {
+        if (!dates[0] || !dates[1]) return;
+        setLoading(true);
+        try {
+            const branchId = authStore.branchId || '00000000-0000-0000-0000-000000000004';
+            const fromUtc = dates[0].startOf('day').toISOString();
+            const toUtc = dates[1].endOf('day').toISOString();
+
+            const res = await apiClient.get<any>(`/api/reports/sales-summary`, {
+                params: {
+                    branchId,
+                    FromUtc: fromUtc,
+                    ToUtc: toUtc
+                }
+            });
+            setReportData(res);
+        } catch (error) {
+            console.error('Error fetching report:', error);
+            message.error('Failed to fetch report data');
+        } finally {
+            setLoading(false);
+        }
+    }, [dates]);
+
+    React.useEffect(() => {
+        if (mainCategory === 'sales' || mainCategory === 'employee') {
+            fetchReportData();
+        }
+    }, [fetchReportData, mainCategory]);
+
+    const handleQuickFilter = (key: string) => {
+        setSelectedFilter(key);
+        setCurrentPage(1);
+        let newDates: [dayjs.Dayjs, dayjs.Dayjs] = [dayjs().startOf('day'), dayjs().endOf('day')];
+        switch (key) {
+            case 'today':
+                newDates = [dayjs().startOf('day'), dayjs().endOf('day')];
+                break;
+            case 'thisWeek':
+                newDates = [dayjs().startOf('week'), dayjs().endOf('week')];
+                break;
+            case 'lastWeek':
+                newDates = [dayjs().subtract(1, 'week').startOf('week'), dayjs().subtract(1, 'week').endOf('week')];
+                break;
+            case 'thisMonth':
+                newDates = [dayjs().startOf('month'), dayjs().endOf('month')];
+                break;
+            case 'lastMonth':
+                newDates = [dayjs().subtract(1, 'month').startOf('month'), dayjs().subtract(1, 'month').endOf('month')];
+                break;
+            default:
+                break;
+        }
+        setDates(newDates);
+    };
 
     let reportConfig = { data: [] as any[], columns: [] as any[], title: '' };
 
@@ -53,11 +126,21 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
 
     const handleMenuClick = (e: { key: string }) => {
         setMainCategory(e.key);
+        setCurrentPage(1);
         if (e.key === 'sales') setSubReport('summary');
         if (e.key === 'employee') setSubReport('attendance');
         if (e.key === 'payment') setSubReport('payment_methods');
         if (e.key === 'audit') setSubReport('shift_summary');
     };
+
+    const cardStyle = (color1: string, color2: string) => ({
+        background: `linear-gradient(135deg, ${color1} 0%, ${color2} 100%)`,
+        borderRadius: '12px',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
+        border: 'none',
+        transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+        cursor: 'pointer',
+    });
 
     const renderSalesReports = () => {
         const availableTabs = [
@@ -78,15 +161,27 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
         switch (subReport) {
             case 'summary':
                 title = 'Sales Summary';
-                data = [];
+                const summary = reportData?.salesSummary;
+                data = summary ? [{
+                    id: 'sales-summary-row',
+                    date: dates[0] && dates[1] 
+                        ? `${dates[0].format('MMM D, YYYY')} - ${dates[1].format('MMM D, YYYY')}`
+                        : 'Selected Period',
+                    orders: summary.ticketCount,
+                    grossSales: summary.grossSales,
+                    discounts: summary.totalDiscount,
+                    netSales: summary.netSales,
+                    tax: summary.totalTax,
+                    total: summary.totalPaid
+                }] : [];
                 columns = [
-                    { title: 'Date', dataIndex: 'date', key: 'date' },
+                    { title: 'Date Range', dataIndex: 'date', key: 'date' },
                     { title: 'Orders', dataIndex: 'orders', key: 'orders' },
-                    { title: 'Gross Sales', dataIndex: 'grossSales', key: 'grossSales', render: (val: string) => `$${val}` },
-                    { title: 'Discounts', dataIndex: 'discounts', key: 'discounts', render: (val: string) => `-${val}` },
-                    { title: 'Net Sales', dataIndex: 'netSales', key: 'netSales', render: (val: string) => `$${val}` },
-                    { title: 'Tax', dataIndex: 'tax', key: 'tax', render: (val: string) => `$${val}` },
-                    { title: 'Total', dataIndex: 'total', key: 'total', render: (val: string) => `$${val}` },
+                    { title: 'Gross Sales', dataIndex: 'grossSales', key: 'grossSales', render: (val: number) => `$${val?.toFixed(2) || '0.00'}` },
+                    { title: 'Discounts', dataIndex: 'discounts', key: 'discounts', render: (val: number) => `-$${val?.toFixed(2) || '0.00'}` },
+                    { title: 'Net Sales', dataIndex: 'netSales', key: 'netSales', render: (val: number) => `$${val?.toFixed(2) || '0.00'}` },
+                    { title: 'Tax', dataIndex: 'tax', key: 'tax', render: (val: number) => `$${val?.toFixed(2) || '0.00'}` },
+                    { title: 'Total Paid', dataIndex: 'total', key: 'total', render: (val: number) => `$${val?.toFixed(2) || '0.00'}` },
                 ];
                 break;
             case 'hourly':
@@ -153,7 +248,71 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
 
         reportConfig = { data, columns, title };
         
-        if (data.length > 0) {
+        if (subReport === 'summary') {
+            const summary = reportData?.salesSummary;
+            content = (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                    {summary && (
+                        <Row gutter={[16, 16]}>
+                            <Col xs={24} sm={12} md={6}>
+                                <Card style={cardStyle('#3b82f6', '#1d4ed8')} styles={{ body: { padding: '20px' } }}>
+                                    <Statistic
+                                        title={<span style={{ color: 'rgba(255,255,255,0.85)', fontSize: '13px', fontWeight: 500 }}>Gross Sales</span>}
+                                        value={summary.grossSales}
+                                        precision={2}
+                                        prefix={<span style={{ color: 'white' }}>$</span>}
+                                        valueStyle={{ color: 'white', fontSize: '24px', fontWeight: 'bold' }}
+                                    />
+                                </Card>
+                            </Col>
+                            <Col xs={24} sm={12} md={6}>
+                                <Card style={cardStyle('#10b981', '#047857')} styles={{ body: { padding: '20px' } }}>
+                                    <Statistic
+                                        title={<span style={{ color: 'rgba(255,255,255,0.85)', fontSize: '13px', fontWeight: 500 }}>Net Sales</span>}
+                                        value={summary.netSales}
+                                        precision={2}
+                                        prefix={<span style={{ color: 'white' }}>$</span>}
+                                        valueStyle={{ color: 'white', fontSize: '24px', fontWeight: 'bold' }}
+                                    />
+                                </Card>
+                            </Col>
+                            <Col xs={24} sm={12} md={6}>
+                                <Card style={cardStyle('#f59e0b', '#b45309')} styles={{ body: { padding: '20px' } }}>
+                                    <Statistic
+                                        title={<span style={{ color: 'rgba(255,255,255,0.85)', fontSize: '13px', fontWeight: 500 }}>Total Discount</span>}
+                                        value={summary.totalDiscount}
+                                        precision={2}
+                                        prefix={<span style={{ color: 'white' }}>-$</span>}
+                                        valueStyle={{ color: 'white', fontSize: '24px', fontWeight: 'bold' }}
+                                    />
+                                </Card>
+                            </Col>
+                            <Col xs={24} sm={12} md={6}>
+                                <Card style={cardStyle('#ec4899', '#be185d')} styles={{ body: { padding: '20px' } }}>
+                                    <Statistic
+                                        title={<span style={{ color: 'rgba(255,255,255,0.85)', fontSize: '13px', fontWeight: 500 }}>Ticket Count</span>}
+                                        value={summary.ticketCount}
+                                        valueStyle={{ color: 'white', fontSize: '24px', fontWeight: 'bold' }}
+                                    />
+                                </Card>
+                            </Col>
+                        </Row>
+                    )}
+                    <RichTable
+                        data={data}
+                        columns={columns}
+                        rowKey="id"
+                        isLoading={loading}
+                        currentPage={currentPage}
+                        pageSize={pageSize}
+                        totalItems={data.length}
+                        onPageChange={setCurrentPage}
+                        onPageSizeChange={setPageSize}
+                        totalLabel="sales summaries"
+                    />
+                </div>
+            );
+        } else if (data.length > 0) {
             content = <Table dataSource={data} columns={columns} pagination={false} size="middle" />;
         } else {
              content = <Empty description="Select a report from the tabs" />;
@@ -169,20 +328,72 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
             { key: 'performance', label: 'Sales by Employee',  perm: 'BackOffice:report_employee:performance' },
         ].filter(t => permissions.includes(t.perm));
 
-        const data: any[] = [];
-        const columns = [
-            { title: 'Employee', dataIndex: 'name', key: 'name' },
-            { title: 'Role', dataIndex: 'role', key: 'role', render: (r: string) => <Tag color="blue">{r}</Tag> },
-            { title: 'Clock In', dataIndex: 'clockIn', key: 'clockIn' },
-            { title: 'Clock Out', dataIndex: 'clockOut', key: 'clockOut' },
-            { title: 'Hours', dataIndex: 'hours', key: 'hours' },
-            { title: 'Total Sales', dataIndex: 'sales', key: 'sales', render: (val: number) => `$${val.toFixed(2)}` },
-            { title: 'Tips', dataIndex: 'tips', key: 'tips', render: (val: number) => `$${val.toFixed(2)}` },
-        ];
-        
-        reportConfig = { data, columns, title: 'Employee Report' };
-        
-        return { tabs: availableTabs, content: <Table dataSource={data} columns={columns} pagination={false} size="middle" /> };
+        let content;
+        let data: any[] = [];
+        let columns: any[] = [];
+        let title = '';
+
+        if (subReport === 'performance') {
+            title = 'Sales by Employee';
+            data = reportData?.salesByStaff?.map((staff: any) => ({
+                key: staff.staffId,
+                name: staff.staffName === "00000000-0000-0000-0000-000000000000" ? "System / Unknown" : staff.staffName,
+                orders: staff.salesSummary?.ticketCount || 0,
+                grossSales: staff.salesSummary?.grossSales || 0,
+                discounts: staff.salesSummary?.totalDiscount || 0,
+                netSales: staff.salesSummary?.netSales || 0,
+                serviceCharge: staff.salesSummary?.totalServiceCharge || 0,
+                totalPaid: staff.salesSummary?.totalPaid || 0,
+            })) || [];
+
+            columns = [
+                { 
+                    title: 'Employee Name', 
+                    dataIndex: 'name', 
+                    key: 'name',
+                    render: (text: string) => <strong>{text}</strong>
+                },
+                { title: 'Orders', dataIndex: 'orders', key: 'orders' },
+                { title: 'Gross Sales', dataIndex: 'grossSales', key: 'grossSales', render: (val: number) => `$${val?.toFixed(2) || '0.00'}` },
+                { title: 'Discounts', dataIndex: 'discounts', key: 'discounts', render: (val: number) => `-$${val?.toFixed(2) || '0.00'}` },
+                { title: 'Net Sales', dataIndex: 'netSales', key: 'netSales', render: (val: number) => `$${val?.toFixed(2) || '0.00'}` },
+                { title: 'Service Charge', dataIndex: 'serviceCharge', key: 'serviceCharge', render: (val: number) => `$${val?.toFixed(2) || '0.00'}` },
+                { title: 'Total Paid', dataIndex: 'totalPaid', key: 'totalPaid', render: (val: number) => `$${val?.toFixed(2) || '0.00'}` },
+            ];
+
+            reportConfig = { data, columns, title };
+
+            const paginatedEmpData = data.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+            content = (
+                <RichTable
+                    data={paginatedEmpData}
+                    columns={columns}
+                    rowKey="key"
+                    isLoading={loading}
+                    currentPage={currentPage}
+                    pageSize={pageSize}
+                    totalItems={data.length}
+                    onPageChange={setCurrentPage}
+                    onPageSizeChange={setPageSize}
+                    totalLabel="employees"
+                />
+            );
+        } else {
+            columns = [
+                { title: 'Employee', dataIndex: 'name', key: 'name' },
+                { title: 'Role', dataIndex: 'role', key: 'role', render: (r: string) => <Tag color="blue">{r}</Tag> },
+                { title: 'Clock In', dataIndex: 'clockIn', key: 'clockIn' },
+                { title: 'Clock Out', dataIndex: 'clockOut', key: 'clockOut' },
+                { title: 'Hours', dataIndex: 'hours', key: 'hours' },
+                { title: 'Total Sales', dataIndex: 'sales', key: 'sales', render: (val: number) => `$${val.toFixed(2)}` },
+                { title: 'Tips', dataIndex: 'tips', key: 'tips', render: (val: number) => `$${val.toFixed(2)}` },
+            ];
+            reportConfig = { data, columns, title: 'Employee Report' };
+            content = <Table dataSource={data} columns={columns} pagination={false} size="middle" />;
+        }
+
+        return { tabs: availableTabs, content };
     };
 
     const renderPaymentReports = () => {
@@ -403,7 +614,25 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
                             <Text type="secondary">View and export detailed analytics</Text>
                         </Space>
                         <Space>
-                            <RangePicker />
+                            <Radio.Group 
+                                value={selectedFilter} 
+                                onChange={(e) => handleQuickFilter(e.target.value)}
+                                optionType="button"
+                                buttonStyle="solid"
+                            >
+                                <Radio.Button value="today">Today</Radio.Button>
+                                <Radio.Button value="thisWeek">This Week</Radio.Button>
+                                <Radio.Button value="lastWeek">Last Week</Radio.Button>
+                                <Radio.Button value="thisMonth">This Month</Radio.Button>
+                                <Radio.Button value="lastMonth">Last Month</Radio.Button>
+                            </Radio.Group>
+                            <RangePicker 
+                                value={dates} 
+                                onChange={(val) => {
+                                    setDates(val || [null, null]);
+                                    setSelectedFilter('custom');
+                                }}
+                            />
                             <Button icon={<PrinterOutlined />} onClick={handlePrint}>Print</Button>
                             <Button type="primary" icon={<DownloadOutlined />} onClick={handleExportCSV}>Export CSV</Button>
                         </Space>
