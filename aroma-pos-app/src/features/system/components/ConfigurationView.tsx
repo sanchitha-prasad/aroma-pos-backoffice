@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
     Tabs, 
     Form, 
@@ -30,11 +30,23 @@ import {
     CalendarOutlined, 
     QrcodeOutlined, 
     BranchesOutlined, 
-    ClockCircleOutlined 
+    ClockCircleOutlined,
+    PlusOutlined 
 } from '@ant-design/icons';
+import { apiClient } from '../../../shared/services/api/client';
+import { authStore } from '../../../shared/services/auth/authStore';
+import ImgCrop from 'antd-img-crop';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
+
+const getBase64 = (file: any): Promise<string> =>
+    new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = (error) => reject(error);
+    });
 
 interface ConfigurationViewProps {
     permissions: string[];
@@ -43,9 +55,118 @@ interface ConfigurationViewProps {
 const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) => {
     const { token } = theme.useToken();
     const [form] = Form.useForm();
+    const [tenantSettings, setTenantSettings] = useState<Record<string, string>>({});
+    const [logoUrl, setLogoUrl] = useState<string>('');
+
+    const fetchSettings = async () => {
+        try {
+            const tenantId = authStore.tenantId;
+            let ownerName = '';
+            let ownerEmail = '';
+            let ownerPhone = '';
+
+            if (tenantId) {
+                try {
+                    // Get tenant details
+                    const tenant = await apiClient.get<any>(`/api/tenants/${tenantId}`);
+                    const emailToFind = tenant?.ownerEmail || tenant?.OwnerEmail || tenant?.email || tenant?.Email;
+
+                    // Get users list
+                    const users = await apiClient.get<any[]>(`/api/tenants/${tenantId}/users`);
+                    const owner = users?.find((u: any) => u.email === emailToFind);
+
+                    if (owner) {
+                        ownerName = owner.name;
+                        ownerEmail = owner.email;
+                        ownerPhone = owner.phoneNumber || owner.phone || owner.loginNumber || '';
+                    } else if (emailToFind) {
+                        ownerEmail = emailToFind;
+                    }
+                } catch (err) {
+                    console.error("Failed to fetch tenant/owner details", err);
+                }
+            }
+
+            const data = await apiClient.get<any[]>('/api/tenant-settings');
+            const settings: Record<string, string> = {};
+            (data || []).forEach((item: any) => {
+                settings[item.key] = item.value;
+            });
+            setTenantSettings(settings);
+            setLogoUrl(settings['Logo'] || '');
+            form.setFieldsValue({
+                userName: ownerName || authStore.currentUser?.name || '',
+                userEmail: ownerEmail || authStore.currentUser?.email || '',
+                userPhone: ownerPhone || '',
+                brandName: settings['BrandName'] || '',
+                defaultCurrency: settings['DefaultCurrency'] || 'USD',
+                defaultTimeZone: settings['DefaultTimeZone'] || 'UTC',
+                logo: settings['Logo'] || '',
+                merchantFeePercentage: Number(settings['MerchantFeePercentage']) || 0,
+                isKdsAvailable: settings['IsKdsAvailable'] === 'true',
+                isExpeditorAvailable: settings['IsExpeditorAvailable'] === 'true',
+                branchCount: Number(settings['BranchCount']) || 0,
+                branchCodePrefix: settings['BranchCodePrefix'] || '',
+                posSessionTimeout: Number(settings['PosSessionTimeout']) || 0,
+                serviceCharge: Number(settings['ServiceCharge']) || 0,
+                cashbackPercentage: Number(settings['CashbackPercentage']) || 0,
+                serviceChargeType: settings['ServiceChargeType'] || 'Percentage',
+            });
+        } catch (error) {
+            console.error("Failed to fetch settings", error);
+        }
+    };
+
+    useEffect(() => {
+        fetchSettings();
+    }, []);
 
     const handleSave = () => {
-        message.success("Configurations saved successfully!");
+        form.validateFields().then(async (values) => {
+            try {
+                const payload = [
+                    { key: 'BrandName', value: String(values.brandName ?? '') },
+                    { key: 'DefaultCurrency', value: String(values.defaultCurrency ?? '') },
+                    { key: 'DefaultTimeZone', value: String(values.defaultTimeZone ?? '') },
+                    { key: 'Logo', value: String(values.logo ?? '') },
+                    { key: 'MerchantFeePercentage', value: String(values.merchantFeePercentage ?? 0) },
+                    { key: 'IsKdsAvailable', value: String(values.isKdsAvailable ?? false) },
+                    { key: 'IsExpeditorAvailable', value: String(values.isExpeditorAvailable ?? false) },
+                    { key: 'BranchCount', value: String(values.branchCount ?? 0) },
+                    { key: 'BranchCodePrefix', value: String(values.branchCodePrefix ?? '') },
+                    { key: 'PosSessionTimeout', value: String(values.posSessionTimeout ?? 0) },
+                    { key: 'ServiceCharge', value: String(values.serviceCharge ?? 0) },
+                    { key: 'CashbackPercentage', value: String(values.cashbackPercentage ?? 0) },
+                    { key: 'ServiceChargeType', value: String(values.serviceChargeType ?? 'Percentage') }
+                ];
+                await apiClient.put('/api/tenant-settings', payload);
+                message.success("Configurations saved successfully!");
+                fetchSettings();
+            } catch (error) {
+                console.error("Failed to save settings", error);
+                message.error("Failed to save configurations.");
+            }
+        });
+    };
+
+    const beforeUpload = (file: any) => {
+        const isJpgOrPng = file.type === 'image/jpeg' || file.type === 'image/png';
+        if (!isJpgOrPng) {
+            message.error('You can only upload JPG/PNG file!');
+            return Upload.LIST_IGNORE;
+        }
+        const isLt2M = file.size / 1024 / 1024 < 2;
+        if (!isLt2M) {
+            message.error('Image must smaller than 2MB!');
+            return Upload.LIST_IGNORE;
+        }
+        
+        getBase64(file).then(base64 => {
+            setLogoUrl(base64);
+            form.setFieldsValue({ logo: base64 });
+        });
+        
+        return false;
     };
 
     const renderSaveButton = () => (
@@ -64,7 +185,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
     );
 
     const ScrollablePane: React.FC<{children: React.ReactNode}> = ({children}) => (
-        <div style={{ height: '100%', overflowY: 'auto', paddingRight: 24, paddingLeft: 4 }}>
+        <div style={{ maxHeight: 'calc(100vh - 250px)', overflowY: 'auto', paddingRight: 24, paddingLeft: 4 }}>
             {children}
         </div>
     );
@@ -77,72 +198,144 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
             children: (
                 <ScrollablePane>
                     <div style={{ maxWidth: 800 }}>
-                        <Title level={4}>Business Profile & Branding</Title>
-                        <Divider />
-                        <Form layout="vertical">
+                        <Form form={form} layout="vertical">
+                            {/* SECTION 1: Business Profile & Branding */}
+                            <Title level={4}>Business Profile & Branding</Title>
+                            <Divider orientation={"left" as any}>Owner Configurations</Divider>
                             <Row gutter={24}>
-                                <Col span={12}>
-                                    <Form.Item label="Business Name">
-                                        <Input placeholder="Enter business name" defaultValue="The Burger Joint" />
-                                    </Form.Item>
-                                    <Form.Item label="Contact Email">
-                                        <Input placeholder="admin@restaurant.com" />
-                                    </Form.Item>
-                                    <Form.Item label="Contact Phone">
-                                        <Input placeholder="+1 (555) 123-4567" />
+                                <Col span={8}>
+                                    <Form.Item name="userName" label="Name">
+                                        <Input disabled />
                                     </Form.Item>
                                 </Col>
-                                <Col span={12}>
-                                    <Form.Item 
-                                        label="POS Screen Logo" 
-                                        name="logo" 
-                                        valuePropName="fileList" 
-                                        getValueFromEvent={(e: any) => {
-                                            if (Array.isArray(e)) {
-                                            return e;
-                                            }
-                                            return e?.fileList;
-                                        }}
-                                    >
-                                        <Upload {...({ name: "logo", listType: "picture", beforeUpload: () => false } as any)}>
-                                            <Button icon={<UploadOutlined />}>Upload Logo</Button>
-                                        </Upload>
+                                <Col span={8}>
+                                    <Form.Item name="userEmail" label="Email">
+                                        <Input disabled />
                                     </Form.Item>
-                                    <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 8 }}>
-                                        Upload a separate logo optimized for POS screens.
-                                    </Text>
+                                </Col>
+                                <Col span={8}>
+                                    <Form.Item name="userPhone" label="Contact Number">
+                                        <Input disabled />
+                                    </Form.Item>
+                                </Col>
+                            </Row>
+
+                            <div style={{ marginTop: 24 }}></div>
+
+                            {/* SECTION 2: Tenant Configuration */}
+                            <Divider orientation={"left" as any}>Tenant Configurations</Divider>
+                            
+                            <Row gutter={24} align="middle">
+                                <Col span={16}>
+                                    <Form.Item name="brandName" label="Business Name">
+                                        <Input placeholder="Enter business name" />
+                                    </Form.Item>
+                                    <Row gutter={24}>
+                                        <Col span={8}>
+                                            <Form.Item name="defaultTimeZone" label="Time Zone">
+                                                <Select disabled>
+                                                    <Option value="Asia/Colombo">Asia/Colombo</Option>
+                                                    <Option value="EST">Eastern Standard Time</Option>
+                                                    <Option value="PST">Pacific Standard Time</Option>
+                                                    <Option value="UTC">UTC</Option>
+                                                </Select>
+                                            </Form.Item>
+                                        </Col>
+                                        <Col span={8}>
+                                            <Form.Item label="Country">
+                                                <Select defaultValue="USA" disabled>
+                                                    <Option value="USA">Sri Lanka</Option>
+                                                </Select>
+                                            </Form.Item>
+                                        </Col>
+                                        <Col span={8}>
+                                            <Form.Item name="defaultCurrency" label="Currency">
+                                                <Select disabled>
+                                                    <Option value="LKR">LKR</Option>
+                                                    <Option value="USD">USD ($)</Option>
+                                                    <Option value="EUR">EUR (€)</Option>
+                                                </Select>
+                                            </Form.Item>
+                                        </Col>
+                                    </Row>
+                                </Col>
+                                <Col span={8} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Form.Item name="logo" label="Brand Logo" style={{ marginBottom: 0 }}>
+                                        <ImgCrop rotationSlider aspect={1}>
+                                            <Upload
+                                                name="logo"
+                                                listType="picture-card"
+                                                showUploadList={false}
+                                                beforeUpload={beforeUpload}
+                                            >
+                                                {logoUrl ? (
+                                                    <img src={logoUrl} alt="logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                                ) : (
+                                                    <div>
+                                                        <PlusOutlined />
+                                                        <div style={{ marginTop: 8 }}>Upload Logo</div>
+                                                    </div>
+                                                )}
+                                            </Upload>
+                                        </ImgCrop>
+                                    </Form.Item>
+                                </Col>
+                            </Row>
+
+                            <Row gutter={24}>
+                                <Col span={8}>
+                                    <Form.Item name="branchCodePrefix" label="Branch Code Prefix">
+                                        <Input placeholder="BR" />
+                                    </Form.Item>
+                                </Col>
+                                <Col span={8}>
+                                    <Form.Item name="branchCount" label="Branch Count Limit">
+                                        <InputNumber disabled style={{ width: '100%' }} min={1} />
+                                    </Form.Item>
+                                </Col>
+                                <Col span={8}>
+                                    <Form.Item name="posSessionTimeout" label="POS Session Timeout (mins)">
+                                        <InputNumber style={{ width: '100%' }} min={0} />
+                                    </Form.Item>
                                 </Col>
                             </Row>
                             <Row gutter={24}>
                                 <Col span={8}>
-                                    <Form.Item label="Time Zone">
-                                        <Select defaultValue="EST">
-                                            <Option value="EST">Eastern Standard Time</Option>
-                                            <Option value="PST">Pacific Standard Time</Option>
-                                            <Option value="UTC">UTC</Option>
+                                    <Form.Item name="serviceCharge" label="Service Charge">
+                                        <InputNumber style={{ width: '100%' }} min={0} />
+                                    </Form.Item>
+                                </Col>
+                                <Col span={8}>
+                                    <Form.Item name="serviceChargeType" label="Service Charge Type">
+                                        <Select>
+                                            <Option value="Percentage">Percentage</Option>
+                                            <Option value="Fixed">Fixed</Option>
                                         </Select>
                                     </Form.Item>
                                 </Col>
                                 <Col span={8}>
-                                    <Form.Item label="Country">
-                                        <Select defaultValue="USA">
-                                            <Option value="USA">United States</Option>
-                                            <Option value="CAN">Canada</Option>
-                                        </Select>
-                                    </Form.Item>
-                                </Col>
-                                <Col span={8}>
-                                    <Form.Item label="Currency">
-                                        <Select defaultValue="USD">
-                                            <Option value="USD">USD ($)</Option>
-                                            <Option value="EUR">EUR (€)</Option>
-                                        </Select>
+                                    <Form.Item name="merchantFeePercentage" label="Merchant Fee (%)">
+                                        <InputNumber style={{ width: '100%' }} min={0} step={0.1} />
                                     </Form.Item>
                                 </Col>
                             </Row>
-                            <Form.Item label="Franchise / Multi-brand Profile">
-                                <Select mode="tags" placeholder="Select brands" defaultValue={['Burger Joint HQ']} />
-                            </Form.Item>
+                            <Row gutter={24}>
+                                <Col span={8}>
+                                    <Form.Item name="cashbackPercentage" label="Cashback Percentage (%)">
+                                        <InputNumber style={{ width: '100%' }} min={0} step={0.1} />
+                                    </Form.Item>
+                                </Col>
+                                <Col span={8}>
+                                    <Form.Item name="isKdsAvailable" valuePropName="checked" label="KDS Available">
+                                        <Switch  disabled/>
+                                    </Form.Item>
+                                </Col>
+                                <Col span={8}>
+                                    <Form.Item name="isExpeditorAvailable" valuePropName="checked" label="Expeditor Available">
+                                        <Switch disabled/>
+                                    </Form.Item>
+                                </Col>
+                            </Row>
                         </Form>
                         {renderSaveButton()}
                     </div>

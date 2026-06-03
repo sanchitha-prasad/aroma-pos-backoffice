@@ -12,6 +12,7 @@
     "@ant-design/colors": "8.0.1",
     "@ant-design/icons": "6.2.5",
     "antd": "6.4.3",
+    "antd-img-crop": "^4.30.0",
     "axios": "1.16.1",
     "dayjs": "^1.11.21",
     "react": "^19.2.6",
