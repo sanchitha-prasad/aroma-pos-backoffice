@@ -201,7 +201,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                         <Form form={form} layout="vertical">
                             {/* SECTION 1: Business Profile & Branding */}
                             <Title level={4}>Business Profile & Branding</Title>
-                            <Divider orientation={"left" as any}>Owner Configurations</Divider>
+                            <Divider titlePlacement={"left" as any}>Owner Configurations</Divider>
                             <Row gutter={24}>
                                 <Col span={8}>
                                     <Form.Item name="userName" label="Name">
@@ -223,7 +223,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                             <div style={{ marginTop: 24 }}></div>
 
                             {/* SECTION 2: Tenant Configuration */}
-                            <Divider orientation={"left" as any}>Tenant Configurations</Divider>
+                            <Divider titlePlacement={"left" as any}>Tenant Configurations</Divider>
                             
                             <Row gutter={24} align="middle">
                                 <Col span={16}>
