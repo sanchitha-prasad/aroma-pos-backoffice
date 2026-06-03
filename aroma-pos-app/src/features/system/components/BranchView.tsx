@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+
 import {
     Table,
     Button,
@@ -29,6 +30,7 @@ import {
 } from '@ant-design/icons';
 
 import { Branch } from '../../../shared/types';
+import { apiClient } from '../../../shared/services/api/client';
 import dayjs from 'dayjs';
 import BranchCatalogView from './BranchCatalogView';
 
@@ -181,57 +183,89 @@ const BranchView: React.FC<BranchViewProps> = ({
     const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
     const [catalogBranch, setCatalogBranch] = useState<Branch | null>(null);
 
+    const [tenantSettings, setTenantSettings] = useState<Record<string, string>>({});
+
     const [form] = Form.useForm();
     const availabilities = Form.useWatch('availabilities', form) || [];
 
-    const showModal = (branch?: Branch) => {
-        const settings = branch?.configuration?.settings ?? [];
-
-        const getSetting = (key: string) =>
-            settings.find(s => s.key === key)?.value;
-
-        if (branch) {
-            setEditingBranch(branch);
-
-            form.setFieldsValue({
-                ...branch,
-                serviceCharge: getSetting('ServiceCharge'),
-                merchantFeePercentage: getSetting('MerchantFeePercentage'),
-                serviceChargeType: getSetting('ServiceChargeType'),
-                isKdsAvailable: getSetting('IsKdsAvailable') === 'true',
-                isExpeditorAvailable: getSetting('IsExpeditorAvailable') === 'true',
-                posSessionTimeout: Number(getSetting('PosSessionTimeout')) || 0,
-                operationStartTime: getSetting('OperationStartTime')
-                    ? dayjs(getSetting('OperationStartTime'), 'HH:mm:ss')
-                    : null,
-                operationEndTime: getSetting('OperationEndTime')
-                    ? dayjs(getSetting('OperationEndTime'), 'HH:mm:ss')
-                    : null,
-                timeZone: getSetting('TimeZone') || 'Asia/Colombo',
-                currency: getSetting('Currency') || 'LKR',
-                language: getSetting('Language') || 'English',
-                availabilities: (branch.serviceAvailabilities || []).map((a: any) => ({
-                    dayOfWeek:
-                        typeof a.dayOfWeek === 'string'
-                            ? dayMap[a.dayOfWeek]
-                            : a.dayOfWeek,
-                    timePeriods: a.timePeriods ?? []
-                }))
+    // =====================
+    // FETCH TENANT SETTINGS
+    // =====================
+    const fetchTenantSettings = async () => {
+        try {
+            const data = await apiClient.get<any[]>('/api/tenant-settings');
+            const settings: Record<string, string> = {};
+            (data || []).forEach((item: any) => {
+                settings[item.key] = item.value;
             });
-        } else {
-            setEditingBranch(null);
-            form.resetFields();
-            form.setFieldsValue({
-                isActive: true,
-                availabilities: [],
-                timeZone: 'Asia/Colombo',
-                currency: 'LKR',
-                language: 'English'
-            });
+
+            setTenantSettings(settings);
+            return settings;
+        } catch (error) {
+            console.error('Failed to load tenant settings', error);
+            return {};
         }
+    };
+
+    useEffect(() => {
+        fetchTenantSettings();
+    }, []);
+
+   const showModal = async (branch?: Branch) => {
+    const settings = branch?.configuration?.settings ?? [];
+
+    const getSetting = (key: string) =>
+        settings.find(s => s.key === key)?.value;
+
+    if (branch) {
+        setEditingBranch(branch);
+
+        form.setFieldsValue({
+            ...branch,
+            serviceCharge: getSetting('ServiceCharge'),
+            merchantFeePercentage: getSetting('MerchantFeePercentage'),
+            serviceChargeType: getSetting('ServiceChargeType'),
+            isKdsAvailable: getSetting('IsKdsAvailable') === 'true',
+            isExpeditorAvailable: getSetting('IsExpeditorAvailable') === 'true',
+            posSessionTimeout: Number(getSetting('PosSessionTimeout')) || 0,
+            timeZone: getSetting('TimeZone') || 'Asia/Colombo',
+            currency: getSetting('Currency') || 'LKR',
+            language: getSetting('Language') || 'English'
+        });
 
         setIsModalVisible(true);
-    };
+        return;
+    }
+
+    // ✅ WAIT FOR TENANT SETTINGS BEFORE OPENING NEW FORM
+    let activeSettings = tenantSettings;
+    if (!Object.keys(activeSettings).length) {
+        activeSettings = await fetchTenantSettings();
+    }
+
+    setEditingBranch(null);
+    form.resetFields();
+
+    form.setFieldsValue({
+        isActive: true,
+        availabilities: [],
+
+        serviceCharge: Number(activeSettings['ServiceCharge'] ?? 0),
+        merchantFeePercentage: Number(activeSettings['MerchantFeePercentage'] ?? 0),
+        serviceChargeType: activeSettings['ServiceChargeType'] ?? 'Percentage',
+
+        isKdsAvailable: activeSettings['IsKdsAvailable'] === 'true',
+        isExpeditorAvailable: activeSettings['IsExpeditorAvailable'] === 'true',
+
+        posSessionTimeout: Number(activeSettings['PosSessionTimeout'] ?? 0),
+
+        timeZone: activeSettings['DefaultTimeZone'] ?? 'Asia/Colombo',
+        currency: activeSettings['DefaultCurrency'] ?? 'LKR',
+        language: activeSettings['Language'] ?? 'English'
+    });
+
+    setIsModalVisible(true);
+};
 
     const handleOk = () => {
         form.validateFields().then(values => {
@@ -337,16 +371,20 @@ const BranchView: React.FC<BranchViewProps> = ({
                 </Button>
             </div>
 
-            <div style={{ background: token.colorBgContainer, borderRadius: 12, border: `1px solid ${token.colorBorderSecondary}`, overflow: 'hidden' }}>
-                 <Table 
-                    className="custom-table" 
-                    dataSource={branches} 
-                    columns={columns} 
-                    rowKey="id" 
-                    pagination={{ pageSize: 10 }} 
-                 />
+            <div style={{
+                background: token.colorBgContainer,
+                borderRadius: 12,
+                border: `1px solid ${token.colorBorderSecondary}`,
+                overflow: 'hidden'
+            }}>
+                <Table
+                    className="custom-table"
+                    dataSource={branches}
+                    columns={columns}
+                    rowKey="id"
+                    pagination={{ pageSize: 10 }}
+                />
             </div>
-            {/* <Table dataSource={branches} columns={columns} rowKey="id" /> */}
 
             {catalogBranch && (
                 <BranchCatalogView
@@ -361,21 +399,14 @@ const BranchView: React.FC<BranchViewProps> = ({
                 onOk={handleOk}
                 onCancel={() => setIsModalVisible(false)}
                 width={900}
-
-                // ✅ ONLY CHANGE: dynamic title showing branch name
                 title={
-                    <div
-                        style={{
-                            textAlign: 'center',
-                            width: '100%',
-                            fontWeight: 700,
-                            fontSize: 20,
-                            letterSpacing: 0.3
-                        }}
-                    >
-                        {editingBranch
-                            ? `${editingBranch.name}`
-                            : 'Add Branch'}
+                    <div style={{
+                        textAlign: 'center',
+                        width: '100%',
+                        fontWeight: 700,
+                        fontSize: 20
+                    }}>
+                        {editingBranch ? editingBranch.name : 'Add Branch'}
                     </div>
                 }
             >
@@ -430,12 +461,12 @@ const BranchView: React.FC<BranchViewProps> = ({
                                     <>
                                         <Row gutter={16}>
                                             <Col span={12}>
-                                                <Form.Item name={['address','addressLine1']} label="Address Line 1" rules={[{ required: true }]}>
+                                                <Form.Item name={['address', 'addressLine1']} label="Address Line 1">
                                                     <Input />
                                                 </Form.Item>
                                             </Col>
                                             <Col span={12}>
-                                                <Form.Item name={['address','addressLine2']} label="Address Line 2" rules={[{ required: true }]}>
+                                                <Form.Item name={['address', 'addressLine2']} label="Address Line 2">
                                                     <Input />
                                                 </Form.Item>
                                             </Col>
@@ -443,12 +474,12 @@ const BranchView: React.FC<BranchViewProps> = ({
 
                                         <Row gutter={16}>
                                             <Col span={12}>
-                                                <Form.Item name={['address','city']} label="City" rules={[{ required: true }]}>
+                                                <Form.Item name={['address', 'city']} label="City">
                                                     <Input />
                                                 </Form.Item>
                                             </Col>
                                             <Col span={12}>
-                                                <Form.Item name={['address','state']} label="State" rules={[{ required: true }]}>
+                                                <Form.Item name={['address', 'state']} label="State">
                                                     <Input />
                                                 </Form.Item>
                                             </Col>
@@ -456,18 +487,18 @@ const BranchView: React.FC<BranchViewProps> = ({
 
                                         <Row gutter={16}>
                                             <Col span={12}>
-                                                <Form.Item name={['address','country']} label="Country" rules={[{ required: true }]}>
+                                                <Form.Item name={['address', 'country']} label="Country">
                                                     <Input />
                                                 </Form.Item>
                                             </Col>
                                             <Col span={12}>
-                                                <Form.Item name={['address','latitude']} label="Latitude">
+                                                <Form.Item name={['address', 'latitude']} label="Latitude">
                                                     <Input />
                                                 </Form.Item>
                                             </Col>
                                         </Row>
 
-                                        <Form.Item name={['address','longitude']} label="Longitude">
+                                        <Form.Item name={['address', 'longitude']} label="Longitude">
                                             <Input />
                                         </Form.Item>
                                     </>
@@ -502,12 +533,12 @@ const BranchView: React.FC<BranchViewProps> = ({
                                         <Row gutter={16}>
                                             <Col span={12}>
                                                 <Form.Item name="isKdsAvailable" valuePropName="checked" label="KDS Available">
-                                                    <Switch />
+                                                    <Switch disabled={tenantSettings['IsKdsAvailable'] !== 'true'} />
                                                 </Form.Item>
                                             </Col>
                                             <Col span={12}>
                                                 <Form.Item name="isExpeditorAvailable" valuePropName="checked" label="Expeditor Available">
-                                                    <Switch />
+                                                    <Switch disabled={tenantSettings['IsExpeditorAvailable'] !== 'true'} />
                                                 </Form.Item>
                                             </Col>
                                         </Row>
