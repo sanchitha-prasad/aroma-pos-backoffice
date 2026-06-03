@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { App as AntdApp, ConfigProvider, theme, Spin } from 'antd';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { setGlobalMessageApi } from './shared/services/api/globalMessage';
@@ -35,6 +36,15 @@ const MessageInitializer: React.FC = () => {
   useEffect(() => { setGlobalMessageApi(message); }, [message]);
   return null;
 };
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 2,   // 2 min — data stays fresh before background refetch
+      retry: 1,
+    },
+  },
+});
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<Employee | null>(null);
@@ -123,6 +133,7 @@ const App: React.FC = () => {
   }
 
   return (
+    <QueryClientProvider client={queryClient}>
     <ConfigProvider theme={appTheme}>
       <AntdApp>
         <MessageInitializer />
@@ -155,6 +166,7 @@ const App: React.FC = () => {
         </BrowserRouter>
       </AntdApp>
     </ConfigProvider>
+    </QueryClientProvider>
   );
 };
 

@@ -11,7 +11,14 @@ export interface TicketItem {
     portion: number;
     discount: number;
     isDiscountPercentage: boolean;
+    isSplited: boolean;
+    sequence: number;
+    seatId: string | null;
+    seatNumber: string | null;
+    seatColor: string | null;
+    note: string | null;
+    isSent: boolean;
     modifiers: TicketModifier[];
-    variant?: TicketVariant;
+    variant: TicketVariant | null;
     taxes: TicketTax[];
 }

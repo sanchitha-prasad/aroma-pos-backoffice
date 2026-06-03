@@ -7,9 +7,18 @@ export interface Ticket {
     ticketCode: number;
     discount: number;
     isDiscountPercentage: boolean;
-    serviceCharge: number;
-    isServiceChargePercentage: boolean;
-    paymentStatus: number; 
+    serviceChargePercentage: number;
+    seatId: string | null;
+    seatNumber: string | null;
+    customerId: string | null;
+    customerName: string;
+    orderId: string;
+    paymentStatus: number;
+    splitedType: number;
+    note: string | null;
+    orderCode: number;
+    tableId: string | null;
+    tableName: string | null;
     items: TicketItem[];
     payments: TicketPayment[];
 }
