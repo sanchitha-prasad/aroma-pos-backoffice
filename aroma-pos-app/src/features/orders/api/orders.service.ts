@@ -1,10 +1,16 @@
 import { apiClient } from '@/src/shared/services/api/client';
 import type { OrderDetailResponse } from '../types/order-detail.types';
 
+interface PaginatedOrdersResponse {
+    data: OrderDetailResponse[];
+    meta: { currentPage: number; itemsPerPage: number; totalItems: number; totalPages: number };
+    links: { first: string; last: string; next: string; prev: string; current: string };
+}
+
 export const ordersService = {
-    /** GET /api/orders  — returns full list with nested tickets/items/payments */
+    /** GET /api/orders  — paginated; extracts the data array for backwards-compat with useOrderList */
     getOrders: (): Promise<OrderDetailResponse[]> =>
-        apiClient.get<OrderDetailResponse[]>('/api/orders'),
+        apiClient.get<PaginatedOrdersResponse>('/api/orders').then(r => r.data),
 
     /** GET /api/orders/{id} — single order (used only if detail needs refresh) */
     getOrderById: (id: string): Promise<OrderDetailResponse> =>
