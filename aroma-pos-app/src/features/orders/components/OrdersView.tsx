@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useCallback } from 'react';
-import { Typography } from 'antd';
+import { Typography, Button, Tooltip } from 'antd';
+import { ReloadOutlined } from '@ant-design/icons';
 import OrdersTable from './table/TicketsTable';
 import OrderFilters from './filters/OrderFilters';
 import OrderDetailDrawer from './detail/OrderDetailDrawer';
@@ -22,7 +23,7 @@ const OrdersView: React.FC = () => {
     const [currentPage, setCurrentPage]       = useState(1);
     const [pageSize, setPageSize]             = useState(10);
 
-    const { data: allOrders = [], isLoading } = useOrderList();
+    const { data: allOrders = [], isLoading, isFetching, refetch } = useOrderList();
 
     // Client-side filtering
     const filteredOrders = useMemo(() => allOrders.filter(order => {
@@ -78,11 +79,22 @@ const OrdersView: React.FC = () => {
 
     return (
         <div style={{ padding: 24, height: '100%', display: 'flex', flexDirection: 'column', gap: 16, overflow: 'hidden' }}>
-            <div style={{ flexShrink: 0 }}>
-                <Title level={2} style={{ margin: 0 }}>Orders</Title>
-                <Text type="secondary">
-                    {isLoading ? 'Loading…' : `${filteredOrders.length} order${filteredOrders.length !== 1 ? 's' : ''}`}
-                </Text>
+            <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                    <Title level={2} style={{ margin: 0 }}>Orders</Title>
+                    <Text type="secondary">
+                        {isLoading ? 'Loading…' : `${filteredOrders.length} order${filteredOrders.length !== 1 ? 's' : ''}`}
+                    </Text>
+                </div>
+                <Tooltip title="Refresh orders">
+                    <Button
+                        icon={<ReloadOutlined spin={isFetching} />}
+                        onClick={() => refetch()}
+                        loading={isFetching}
+                    >
+                        Refresh
+                    </Button>
+                </Tooltip>
             </div>
 
             <div style={{ flex: 1, minHeight: 0 }}>

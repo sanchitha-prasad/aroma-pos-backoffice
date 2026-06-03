@@ -75,9 +75,9 @@ export interface OrderSummary {
     balance: number;
     ticketCount: number;
     itemCount: number;
-    /** 1=Pending  2=Paid  3=PartiallyPaid — derived from actual ticket paymentStatus fields */
-    paymentStatus: 1 | 2 | 3;
-    paymentStatusLabel: 'Paid' | 'Pending' | 'PartiallyPaid';
+    /** 1=Pending  2=Paid  3=PartiallyPaid  4=Refunded — derived from actual ticket paymentStatus fields */
+    paymentStatus: 1 | 2 | 3 | 4;
+    paymentStatusLabel: 'Paid' | 'Pending' | 'PartiallyPaid' | 'Refunded';
 }
 
 export function computeOrderSummary(order: OrderDetailResponse): OrderSummary {
@@ -97,22 +97,25 @@ export function computeOrderSummary(order: OrderDetailResponse): OrderSummary {
 
     // ── Derive aggregate payment status from actual ticket paymentStatus fields ──
     // This is the source of truth — do NOT re-derive from computed amounts.
-    let paymentStatus: 1 | 2 | 3;
+    let paymentStatus: 1 | 2 | 3 | 4;
 
     if (tickets.length === 0) {
         paymentStatus = 1; // no tickets → Pending
     } else {
-        const allPaid    = tickets.every(t => t.paymentStatus === TICKET_PAYMENT_STATUS.Paid);
-        const allPending = tickets.every(t => t.paymentStatus === TICKET_PAYMENT_STATUS.Pending);
+        const allPaid     = tickets.every(t => t.paymentStatus === TICKET_PAYMENT_STATUS.Paid);
+        const allPending  = tickets.every(t => t.paymentStatus === TICKET_PAYMENT_STATUS.Pending);
+        const allRefunded = tickets.every(t => t.paymentStatus === TICKET_PAYMENT_STATUS.Refunded);
 
-        if (allPaid)    paymentStatus = 2;
-        else if (allPending) paymentStatus = 1;
-        else            paymentStatus = 3;
+        if (allPaid)     paymentStatus = 2;
+        else if (allPending)  paymentStatus = 1;
+        else if (allRefunded) paymentStatus = 4;
+        else             paymentStatus = 3;
     }
 
     const paymentStatusLabel =
         paymentStatus === 2 ? 'Paid' :
         paymentStatus === 1 ? 'Pending' :
+        paymentStatus === 4 ? 'Refunded' :
         'PartiallyPaid';
 
     return {

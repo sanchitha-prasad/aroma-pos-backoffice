@@ -8,8 +8,8 @@ import StatusDot from '@/src/shared/components/rich-table/StatusDot';
 
 const { Text } = Typography;
 
-const STATUS_VARIANT = { 1: 'warning', 2: 'success', 3: 'processing' } as const;
-const STATUS_LABEL   = { 1: 'Pending', 2: 'Paid',    3: 'Partial'    } as const;
+const STATUS_VARIANT = { 1: 'warning', 2: 'success', 3: 'processing', 4: 'default'  } as const;
+const STATUS_LABEL   = { 1: 'Pending', 2: 'Paid',    3: 'Partial',   4: 'Refunded' } as const;
 
 interface OrderDetailDrawerProps {
     order: OrderDetailResponse | null;
