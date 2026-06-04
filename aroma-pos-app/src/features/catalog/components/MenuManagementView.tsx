@@ -404,7 +404,7 @@ const MenuManagementView: React.FC<MenuManagementViewProps> = ({
         onOk={handleSaveMenu}
         onCancel={() => setFormOpen(false)}
         width={460}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item name="title" label="Menu Title" rules={[{ required: true, message: 'Title is required' }]}>
@@ -428,7 +428,7 @@ const MenuManagementView: React.FC<MenuManagementViewProps> = ({
         okText="Assign"
         okButtonProps={{ disabled: !assignCatId }}
         width={400}
-        destroyOnClose
+        destroyOnHidden
       >
         <div style={{ marginTop: 16 }}>
           <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>

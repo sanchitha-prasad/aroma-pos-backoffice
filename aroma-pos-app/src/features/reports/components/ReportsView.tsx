@@ -150,7 +150,6 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
             { key: 'item',     label: 'Sales by Item',      perm: 'BackOffice:report_sales:item' },
             { key: 'category', label: 'Sales by Category',  perm: 'BackOffice:report_sales:category' },
             { key: 'shift',    label: 'Sales by Shift',     perm: 'BackOffice:report_sales:shift' },
-            { key: 'orders',   label: 'Order Summary',      perm: 'BackOffice:report_sales:orders' },
         ].filter(t => permissions.includes(t.perm));
 
         let content;
@@ -232,18 +231,18 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
                     { title: 'Total Sales', dataIndex: 'sales', key: 'sales', render: (v: number) => `$${v.toFixed(2)}` },
                 ];
                 break;
-            case 'orders':
-                title = 'Order Summary';
-                data = [];
-                columns = [
-                    { title: 'Order ID', dataIndex: 'orderId', key: 'orderId' },
-                    { title: 'Time', dataIndex: 'time', key: 'time' },
-                    { title: 'Type', dataIndex: 'type', key: 'type', render: (t: string) => <Tag>{t}</Tag> },
-                    { title: 'Items', dataIndex: 'items', key: 'items' },
-                    { title: 'Total', dataIndex: 'total', key: 'total', render: (v: string) => `$${v}` },
-                    { title: 'Status', dataIndex: 'status', key: 'status', render: (s: string) => <Tag color="green">{s}</Tag> },
-                ];
-                break;
+            // case 'orders':
+            //     title = 'Order Summary';
+            //     data = [];
+            //     columns = [
+            //         { title: 'Order ID', dataIndex: 'orderId', key: 'orderId' },
+            //         { title: 'Time', dataIndex: 'time', key: 'time' },
+            //         { title: 'Type', dataIndex: 'type', key: 'type', render: (t: string) => <Tag>{t}</Tag> },
+            //         { title: 'Items', dataIndex: 'items', key: 'items' },
+            //         { title: 'Total', dataIndex: 'total', key: 'total', render: (v: string) => `$${v}` },
+            //         { title: 'Status', dataIndex: 'status', key: 'status', render: (s: string) => <Tag color="green">{s}</Tag> },
+            //     ];
+            //     break;
         }
 
         reportConfig = { data, columns, title };

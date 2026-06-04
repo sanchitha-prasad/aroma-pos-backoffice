@@ -461,25 +461,12 @@ const BranchView: React.FC<BranchViewProps> = ({
                                     <>
                                         <Row gutter={16}>
                                             <Col span={12}>
-                                                <Form.Item name={['address', 'addressLine1']} label="Address Line 1">
+                                                <Form.Item name={['address', 'addressLine1']} label="Address Line 1" rules={[{ required: true }]}>
                                                     <Input />
                                                 </Form.Item>
                                             </Col>
                                             <Col span={12}>
-                                                <Form.Item name={['address', 'addressLine2']} label="Address Line 2">
-                                                    <Input />
-                                                </Form.Item>
-                                            </Col>
-                                        </Row>
-
-                                        <Row gutter={16}>
-                                            <Col span={12}>
-                                                <Form.Item name={['address', 'city']} label="City">
-                                                    <Input />
-                                                </Form.Item>
-                                            </Col>
-                                            <Col span={12}>
-                                                <Form.Item name={['address', 'state']} label="State">
+                                                <Form.Item name={['address', 'addressLine2']} label="Address Line 2" rules={[{ required: true }]}>
                                                     <Input />
                                                 </Form.Item>
                                             </Col>
@@ -487,7 +474,20 @@ const BranchView: React.FC<BranchViewProps> = ({
 
                                         <Row gutter={16}>
                                             <Col span={12}>
-                                                <Form.Item name={['address', 'country']} label="Country">
+                                                <Form.Item name={['address', 'city']} label="City" rules={[{ required: true }]}>
+                                                    <Input />
+                                                </Form.Item>
+                                            </Col>
+                                            <Col span={12}>
+                                                <Form.Item name={['address', 'state']} label="State" rules={[{ required: true }]}>
+                                                    <Input />
+                                                </Form.Item>
+                                            </Col>
+                                        </Row>
+
+                                        <Row gutter={16}>
+                                            <Col span={12}>
+                                                <Form.Item name={['address', 'country']} label="Country" rules={[{ required: true }]}>
                                                     <Input />
                                                 </Form.Item>
                                             </Col>

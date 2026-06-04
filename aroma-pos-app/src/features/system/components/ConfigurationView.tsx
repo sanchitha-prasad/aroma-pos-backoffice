@@ -309,7 +309,6 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                                     <Form.Item name="serviceChargeType" label="Service Charge Type">
                                         <Select>
                                             <Option value="Percentage">Percentage</Option>
-                                            <Option value="Fixed">Fixed</Option>
                                         </Select>
                                     </Form.Item>
                                 </Col>
@@ -426,13 +425,13 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                                 <Switch defaultChecked />
                             </Form.Item>
                             
-                            <Form.Item label="Kitchen Routing Rules">
+                            {/* <Form.Item label="Kitchen Routing Rules">
                                 <Select defaultValue="Category Based">
                                     <Option value="Simple">Send all items to all screens</Option>
                                     <Option value="Category Based">Route by Category (e.g. Drinks to Bar)</Option>
                                     <Option value="Item Based">Route by specific item settings</Option>
                                 </Select>
-                            </Form.Item>
+                            </Form.Item> */}
 
                             <Row gutter={24}>
                                 <Col span={12}>
@@ -452,159 +451,159 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                 </ScrollablePane>
             )
         },
-        {
-            key: '4',
-            permission: 'BackOffice:config:alerts',
-            label: <span><NotificationOutlined /> Alerts</span>,
-            children: (
-                <ScrollablePane>
-                    <div style={{ maxWidth: 800 }}>
-                        <Title level={4}>Notifications & Alerts</Title>
-                        <Divider />
-                        <Form layout="vertical">
-                            <Card size="small" style={{ marginBottom: 16 }}>
-                                <Row align="middle" justify="space-between">
-                                    <Col><Text strong>Low Stock Notifications</Text></Col>
-                                    <Col><Switch defaultChecked /></Col>
-                                </Row>
-                            </Card>
-                            <Card size="small" style={{ marginBottom: 16 }}>
-                                <Row align="middle" justify="space-between">
-                                    <Col><Text strong>Order Ready SMS (to Customer)</Text></Col>
-                                    <Col><Switch /></Col>
-                                </Row>
-                            </Card>
+        // {
+        //     key: '4',
+        //     permission: 'BackOffice:config:alerts',
+        //     label: <span><NotificationOutlined /> Alerts</span>,
+        //     children: (
+        //         <ScrollablePane>
+        //             <div style={{ maxWidth: 800 }}>
+        //                 <Title level={4}>Notifications & Alerts</Title>
+        //                 <Divider />
+        //                 <Form layout="vertical">
+        //                     <Card size="small" style={{ marginBottom: 16 }}>
+        //                         <Row align="middle" justify="space-between">
+        //                             <Col><Text strong>Low Stock Notifications</Text></Col>
+        //                             <Col><Switch defaultChecked /></Col>
+        //                         </Row>
+        //                     </Card>
+        //                     <Card size="small" style={{ marginBottom: 16 }}>
+        //                         <Row align="middle" justify="space-between">
+        //                             <Col><Text strong>Order Ready SMS (to Customer)</Text></Col>
+        //                             <Col><Switch /></Col>
+        //                         </Row>
+        //                     </Card>
                             
-                            <Form.Item label="Email Alert Recipients (Comma separated)">
-                                <Input.TextArea rows={2} placeholder="manager@restaurant.com, owner@restaurant.com" />
-                            </Form.Item>
+        //                     <Form.Item label="Email Alert Recipients (Comma separated)">
+        //                         <Input.TextArea rows={2} placeholder="manager@restaurant.com, owner@restaurant.com" />
+        //                     </Form.Item>
 
-                            <Form.Item label="WhatsApp Integration">
-                                <Select defaultValue="Disabled">
-                                    <Option value="Disabled">Disabled</Option>
-                                    <Option value="Twilio">Via Twilio</Option>
-                                    <Option value="Business API">WhatsApp Business API</Option>
-                                </Select>
-                            </Form.Item>
-                        </Form>
-                        {renderSaveButton()}
-                    </div>
-                </ScrollablePane>
-            )
-        },
-        {
-            key: '5',
-            permission: 'BackOffice:config:view',
-            label: <span><GiftOutlined /> Loyalty</span>,
-            children: (
-                <ScrollablePane>
-                    <div style={{ maxWidth: 800 }}>
-                        <Title level={4}>Customer Loyalty & Rewards</Title>
-                        <Divider />
+        //                     <Form.Item label="WhatsApp Integration">
+        //                         <Select defaultValue="Disabled">
+        //                             <Option value="Disabled">Disabled</Option>
+        //                             <Option value="Twilio">Via Twilio</Option>
+        //                             <Option value="Business API">WhatsApp Business API</Option>
+        //                         </Select>
+        //                     </Form.Item>
+        //                 </Form>
+        //                 {renderSaveButton()}
+        //             </div>
+        //         </ScrollablePane>
+        //     )
+        // },
+        // {
+        //     key: '5',
+        //     permission: 'BackOffice:config:view',
+        //     label: <span><GiftOutlined /> Loyalty</span>,
+        //     children: (
+        //         <ScrollablePane>
+        //             <div style={{ maxWidth: 800 }}>
+        //                 <Title level={4}>Customer Loyalty & Rewards</Title>
+        //                 <Divider />
 
-                        <Form layout="vertical">
-                        <Row gutter={24}>
-                            <Col span={12}>
-                            <Form.Item label="Points Earning Rule">
-                                <Space.Compact style={{ width: "100%" }}>
-                                <Input value="Earn 1 point per" disabled style={{ width: "60%" }} />
-                                <Input defaultValue="1" style={{ width: "20%" }} />
-                                <Input value="$ spent" disabled style={{ width: "20%" }} />
-                                </Space.Compact>
-                            </Form.Item>
-                            </Col>
+        //                 <Form layout="vertical">
+        //                 <Row gutter={24}>
+        //                     <Col span={12}>
+        //                     <Form.Item label="Points Earning Rule">
+        //                         <Space.Compact style={{ width: "100%" }}>
+        //                         <Input value="Earn 1 point per" disabled style={{ width: "60%" }} />
+        //                         <Input defaultValue="1" style={{ width: "20%" }} />
+        //                         <Input value="$ spent" disabled style={{ width: "20%" }} />
+        //                         </Space.Compact>
+        //                     </Form.Item>
+        //                     </Col>
 
-                            <Col span={12}>
-                            <Form.Item label="Redemption Rule">
-                                <Space.Compact style={{ width: "100%" }}>
-                                <Input value="Redeem 100 points for" disabled style={{ width: "70%" }} />
-                                <Input defaultValue="5" style={{ width: "15%" }} />
-                                <Input value="$ credit" disabled style={{ width: "15%" }} />
-                                </Space.Compact>
-                            </Form.Item>
-                            </Col>
-                        </Row>
+        //                     <Col span={12}>
+        //                     <Form.Item label="Redemption Rule">
+        //                         <Space.Compact style={{ width: "100%" }}>
+        //                         <Input value="Redeem 100 points for" disabled style={{ width: "70%" }} />
+        //                         <Input defaultValue="5" style={{ width: "15%" }} />
+        //                         <Input value="$ credit" disabled style={{ width: "15%" }} />
+        //                         </Space.Compact>
+        //                     </Form.Item>
+        //                     </Col>
+        //                 </Row>
 
-                        <Form.Item label="Loyalty Tiers">
-                            <Select mode="tags" defaultValue={["Silver", "Gold", "VIP"]} />
-                        </Form.Item>
+        //                 <Form.Item label="Loyalty Tiers">
+        //                     <Select mode="tags" defaultValue={["Silver", "Gold", "VIP"]} />
+        //                 </Form.Item>
 
-                        <Form.Item label="Birthday Reward">
-                            <Input placeholder="e.g. Free Dessert" />
-                        </Form.Item>
-                        </Form>
+        //                 <Form.Item label="Birthday Reward">
+        //                     <Input placeholder="e.g. Free Dessert" />
+        //                 </Form.Item>
+        //                 </Form>
 
-                        {renderSaveButton()}
-                    </div>
-                    </ScrollablePane>
-            )
-        },
-        {
-            key: '6',
-            permission: 'BackOffice:config:view',
-            label: <span><GiftOutlined /> Gift Cards</span>,
-            children: (
-                <ScrollablePane>
-                    <div style={{ maxWidth: 800 }}>
-                        <Title level={4}>Gift Card System</Title>
-                        <Divider />
-                        <Form layout="vertical">
-                            <Form.Item label="Card Expiry (Months from issue)">
-                                <InputNumber min={0} defaultValue={12} style={{ width: '100%' }} />
-                            </Form.Item>
-                            <Form.Item label="Allow Partial Redemption" valuePropName="checked">
-                                <Switch defaultChecked />
-                            </Form.Item>
-                            <Form.Item label="Reload Rules">
-                                <Select defaultValue="Any Amount">
-                                    <Option value="Any Amount">Any Amount</Option>
-                                    <Option value="Fixed Denominations">Fixed Denominations ($10, $20, $50)</Option>
-                                </Select>
-                            </Form.Item>
-                        </Form>
-                        {renderSaveButton()}
-                    </div>
-                </ScrollablePane>
-            )
-        },
-        {
-            key: '7',
-            permission: 'BackOffice:config:view',
-            label: <span><CalendarOutlined /> Reservations</span>,
-            children: (
-                <ScrollablePane>
-                    <div style={{ maxWidth: 800 }}>
-                        <Title level={4}>Reservation Settings</Title>
-                        <Divider />
-                        <Form layout="vertical">
-                            <Row gutter={24}>
-                                <Col span={12}>
-                                    <Form.Item label="Time Slot Duration (mins)">
-                                        <InputNumber step={15} defaultValue={90} style={{ width: '100%' }} />
-                                    </Form.Item>
-                                </Col>
-                                <Col span={12}>
-                                    <Form.Item label="Max Party Size">
-                                        <InputNumber min={1} defaultValue={10} style={{ width: '100%' }} />
-                                    </Form.Item>
-                                </Col>
-                            </Row>
-                            <Form.Item label="Require Deposit">
-                                <Select defaultValue="For Parties > 6">
-                                    <Option value="Never">Never</Option>
-                                    <Option value="Always">Always</Option>
-                                    <Option value="For Parties > 6">For Parties &gt; 6</Option>
-                                </Select>
-                            </Form.Item>
-                            <Form.Item label="Auto-cancel Policy (mins late)">
-                                <InputNumber min={5} defaultValue={15} />
-                            </Form.Item>
-                        </Form>
-                        {renderSaveButton()}
-                    </div>
-                </ScrollablePane>
-            )
-        },
+        //                 {renderSaveButton()}
+        //             </div>
+        //             </ScrollablePane>
+        //     )
+        // },
+        // {
+        //     key: '6',
+        //     permission: 'BackOffice:config:view',
+        //     label: <span><GiftOutlined /> Gift Cards</span>,
+        //     children: (
+        //         <ScrollablePane>
+        //             <div style={{ maxWidth: 800 }}>
+        //                 <Title level={4}>Gift Card System</Title>
+        //                 <Divider />
+        //                 <Form layout="vertical">
+        //                     <Form.Item label="Card Expiry (Months from issue)">
+        //                         <InputNumber min={0} defaultValue={12} style={{ width: '100%' }} />
+        //                     </Form.Item>
+        //                     <Form.Item label="Allow Partial Redemption" valuePropName="checked">
+        //                         <Switch defaultChecked />
+        //                     </Form.Item>
+        //                     <Form.Item label="Reload Rules">
+        //                         <Select defaultValue="Any Amount">
+        //                             <Option value="Any Amount">Any Amount</Option>
+        //                             <Option value="Fixed Denominations">Fixed Denominations ($10, $20, $50)</Option>
+        //                         </Select>
+        //                     </Form.Item>
+        //                 </Form>
+        //                 {renderSaveButton()}
+        //             </div>
+        //         </ScrollablePane>
+        //     )
+        // },
+        // {
+        //     key: '7',
+        //     permission: 'BackOffice:config:view',
+        //     label: <span><CalendarOutlined /> Reservations</span>,
+        //     children: (
+        //         <ScrollablePane>
+        //             <div style={{ maxWidth: 800 }}>
+        //                 <Title level={4}>Reservation Settings</Title>
+        //                 <Divider />
+        //                 <Form layout="vertical">
+        //                     <Row gutter={24}>
+        //                         <Col span={12}>
+        //                             <Form.Item label="Time Slot Duration (mins)">
+        //                                 <InputNumber step={15} defaultValue={90} style={{ width: '100%' }} />
+        //                             </Form.Item>
+        //                         </Col>
+        //                         <Col span={12}>
+        //                             <Form.Item label="Max Party Size">
+        //                                 <InputNumber min={1} defaultValue={10} style={{ width: '100%' }} />
+        //                             </Form.Item>
+        //                         </Col>
+        //                     </Row>
+        //                     <Form.Item label="Require Deposit">
+        //                         <Select defaultValue="For Parties > 6">
+        //                             <Option value="Never">Never</Option>
+        //                             <Option value="Always">Always</Option>
+        //                             <Option value="For Parties > 6">For Parties &gt; 6</Option>
+        //                         </Select>
+        //                     </Form.Item>
+        //                     <Form.Item label="Auto-cancel Policy (mins late)">
+        //                         <InputNumber min={5} defaultValue={15} />
+        //                     </Form.Item>
+        //                 </Form>
+        //                 {renderSaveButton()}
+        //             </div>
+        //         </ScrollablePane>
+        //     )
+        // },
         {
             key: '8',
             permission: 'BackOffice:config:reports',
@@ -637,34 +636,34 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                 </ScrollablePane>
             )
         },
-        {
-            key: '9',
-            permission: 'BackOffice:config:view',
-            label: <span><QrcodeOutlined /> QR Ordering</span>,
-            children: (
-                <ScrollablePane>
-                    <div style={{ maxWidth: 800 }}>
-                        <Title level={4}>QR Ordering</Title>
-                        <Divider />
-                        <Form layout="vertical">
-                            <Form.Item label="Enable QR Ordering" valuePropName="checked">
-                                <Switch />
-                            </Form.Item>
-                            <Form.Item label="Payment Flow">
-                                <Select defaultValue="Pay at Table">
-                                    <Option value="Pay to Order">Pay before ordering</Option>
-                                    <Option value="Pay at Table">Order first, pay later</Option>
-                                </Select>
-                            </Form.Item>
-                            <Form.Item label="Order Throttling (Max orders/min)">
-                                <InputNumber min={0} defaultValue={5} />
-                            </Form.Item>
-                        </Form>
-                        {renderSaveButton()}
-                    </div>
-                </ScrollablePane>
-            )
-        },
+        // {
+        //     key: '9',
+        //     permission: 'BackOffice:config:view',
+        //     label: <span><QrcodeOutlined /> QR Ordering</span>,
+        //     children: (
+        //         <ScrollablePane>
+        //             <div style={{ maxWidth: 800 }}>
+        //                 <Title level={4}>QR Ordering</Title>
+        //                 <Divider />
+        //                 <Form layout="vertical">
+        //                     <Form.Item label="Enable QR Ordering" valuePropName="checked">
+        //                         <Switch />
+        //                     </Form.Item>
+        //                     <Form.Item label="Payment Flow">
+        //                         <Select defaultValue="Pay at Table">
+        //                             <Option value="Pay to Order">Pay before ordering</Option>
+        //                             <Option value="Pay at Table">Order first, pay later</Option>
+        //                         </Select>
+        //                     </Form.Item>
+        //                     <Form.Item label="Order Throttling (Max orders/min)">
+        //                         <InputNumber min={0} defaultValue={5} />
+        //                     </Form.Item>
+        //                 </Form>
+        //                 {renderSaveButton()}
+        //             </div>
+        //         </ScrollablePane>
+        //     )
+        // },
         {
             key: '10',
             permission: 'BackOffice:config:view',

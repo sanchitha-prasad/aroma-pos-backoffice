@@ -13,7 +13,7 @@ export const showErrorMessage = (modal: HookAPI, error: any, title: string = 'Op
     content: errorMessage,
     okText: 'Dismiss',
     centered: true,
-    maskClosable: true,
+    mask: { closable: true, },
     keyboard: true,
   });
 };
