@@ -32,7 +32,7 @@ export function useTenantSettings() {
         queryKey: TENANT_SETTINGS_KEY,
         queryFn: () => apiClient.get<TenantSetting[]>('/api/tenant-settings'),
         staleTime: 5 * 60_000,
-        enabled: !!authStore.tenantId,
+        enabled: !!authStore.accessToken && !!authStore.tenantId,
     });
 }
 
@@ -49,7 +49,7 @@ export function useTenantDetail() {
         queryKey: TENANT_DETAIL_KEY(tenantId || ''),
         queryFn: () => apiClient.get<TenantDetail>(`/api/tenants/${tenantId}`),
         staleTime: 10 * 60_000,
-        enabled: !!tenantId,
+        enabled: !!authStore.accessToken && !!tenantId,
     });
 }
 
@@ -59,7 +59,7 @@ export function useTenantUsers() {
         queryKey: TENANT_USERS_KEY(tenantId || ''),
         queryFn: () => apiClient.get<TenantUser[]>(`/api/tenants/${tenantId}/users`),
         staleTime: 10 * 60_000,
-        enabled: !!tenantId,
+        enabled: !!authStore.accessToken && !!tenantId,
     });
 }
 

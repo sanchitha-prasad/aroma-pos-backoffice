@@ -33,6 +33,10 @@ const Customers = lazyWithRetry(() => import('./pages/Customers'));
 const Variants = lazyWithRetry(() => import('./pages/Variants'));
 const Menus = lazyWithRetry(() => import('./pages/Menus'));
 
+// Skeletons
+import TableSkeleton from './shared/components/loading/TableSkeleton';
+import DashboardSkeleton from './shared/components/loading/DashboardSkeleton';
+
 import { Employee, Role } from './shared/types';
 import { DEFAULT_ROLE_PERMISSIONS } from './shared/constants';
 
@@ -149,25 +153,25 @@ const App: React.FC = () => {
               <Route path="/login" element={!currentUser ? <Login onLogin={handleLogin} /> : <Navigate to="/" replace />} />
 
               <Route path="/" element={currentUser ? <MasterLayout currentUser={currentUser} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} onLogout={handleLogout} rolePermissions={rolePermissions} /> : <Navigate to="/login" replace />}>
-                <Route index element={<Dashboard isDarkMode={isDarkMode} />} />
+                <Route index element={<Suspense fallback={<DashboardSkeleton />}><Dashboard isDarkMode={isDarkMode} /></Suspense>} />
 
-                <Route path="menus" element={<Menus />} />
-                <Route path="menu" element={<Menu currentUser={currentUser} />} />
-                <Route path="categories" element={<Categories />} />
-                <Route path="variants" element={<Variants />} />
-                <Route path="modifiers" element={<Modifiers />} />
-                <Route path="devices" element={<Devices />} />
-                <Route path="taxes" element={<Taxes />} />
-                <Route path="branches" element={<Branches />} />
-                <Route path="orders" element={<Orders />} />
-                <Route path="employees" element={<Employees />} />
-                <Route path="customers" element={<Customers />} />
+                <Route path="menus" element={<Suspense fallback={<TableSkeleton />}><Menus /></Suspense>} />
+                <Route path="menu" element={<Suspense fallback={<TableSkeleton />}><Menu currentUser={currentUser} /></Suspense>} />
+                <Route path="categories" element={<Suspense fallback={<TableSkeleton />}><Categories /></Suspense>} />
+                <Route path="variants" element={<Suspense fallback={<TableSkeleton />}><Variants /></Suspense>} />
+                <Route path="modifiers" element={<Suspense fallback={<TableSkeleton />}><Modifiers /></Suspense>} />
+                <Route path="devices" element={<Suspense fallback={<TableSkeleton />}><Devices /></Suspense>} />
+                <Route path="taxes" element={<Suspense fallback={<TableSkeleton />}><Taxes /></Suspense>} />
+                <Route path="branches" element={<Suspense fallback={<TableSkeleton />}><Branches /></Suspense>} />
+                <Route path="orders" element={<Suspense fallback={<TableSkeleton />}><Orders /></Suspense>} />
+                <Route path="employees" element={<Suspense fallback={<TableSkeleton />}><Employees /></Suspense>} />
+                <Route path="customers" element={<Suspense fallback={<TableSkeleton />}><Customers /></Suspense>} />
 
-                <Route path="roles" element={<RolePermissions />} />
-                <Route path="activities" element={<Activities />} />
+                <Route path="roles" element={<Suspense fallback={<TableSkeleton />}><RolePermissions /></Suspense>} />
+                <Route path="activities" element={<Suspense fallback={<TableSkeleton />}><Activities /></Suspense>} />
 
-                <Route path="configuration" element={<Configuration permissions={rolePermissions[currentUser?.role || 'Manager']} />} />
-                <Route path="reports" element={<Reports isDarkMode={isDarkMode} permissions={rolePermissions[currentUser?.role || 'Manager']} />} />
+                <Route path="configuration" element={<Suspense fallback={<TableSkeleton />}><Configuration permissions={rolePermissions[currentUser?.role || 'Manager']} /></Suspense>} />
+                <Route path="reports" element={<Suspense fallback={<TableSkeleton />}><Reports isDarkMode={isDarkMode} permissions={rolePermissions[currentUser?.role || 'Manager']} /></Suspense>} />
               </Route>
             </Routes>
           </Suspense>
