@@ -1,0 +1,5 @@
+{
+  "name": "ERP Product Master",
+  "description": "A comprehensive ERP dashboard featuring a dynamic Product Master for managing inventory and users, enhanced with AI-powered product description generation.",
+  "requestFramePermissions": []
+}

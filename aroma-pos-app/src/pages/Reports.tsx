@@ -1,9 +1,13 @@
-import React from "react";
+import React from 'react';
+import ReportsView from '../features/reports/components/ReportsView';
 
-const reportPage: React.FC = () => {
-    return (
-        <h1>Reprorts page</h1>
-    )
+interface ReportsPageProps {
+    isDarkMode: boolean;
+    permissions: string[];
+}
+
+const Reports: React.FC<ReportsPageProps> = ({ isDarkMode, permissions }) => {
+    return <ReportsView isDarkMode={isDarkMode} permissions={permissions} />;
 };
 
-export default reportPage;
+export default Reports;

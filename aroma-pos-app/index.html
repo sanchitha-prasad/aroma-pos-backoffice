@@ -1,13 +1,91 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>aroma-pos-app</title>
-  </head>
+    <title>ERP Product Master</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        /* Supabase-inspired colors */
+        --supa-bg-light: #f8f9fa;
+        --supa-bg-dark: #121212; /* Deep matte black */
+        --supa-card-light: #ffffff;
+        --supa-card-dark: #1c1c1c;
+        --supa-border-light: #e6e8eb;
+        --supa-border-dark: #2e2e2e;
+        --primary-purple: #6132C0;
+      }
+
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: 'Inter', sans-serif;
+        background-color: var(--supa-bg-light);
+        transition: background-color 0.3s ease;
+      }
+      
+      /* Dark mode body override */
+      body.dark-mode {
+        background-color: var(--supa-bg-dark) !important;
+      }
+
+      /* Custom Scrollbar - Supabase style (thinner, subtle) */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent; 
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #d1d5db; 
+        border-radius: 4px;
+        border: 2px solid transparent;
+        background-clip: content-box;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #9ca3af; 
+      }
+      
+      @media (prefers-color-scheme: dark) {
+        ::-webkit-scrollbar-thumb {
+            background: #404040;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #525252;
+        }
+      }
+
+      /* Ant Design Overrides for Supabase Look */
+      .ant-card {
+        border-radius: 6px !important; /* Slightly sharper corners */
+        box-shadow: 0 2px 5px rgba(0,0,0,0.04) !important; /* Very subtle shadow */
+      }
+      
+      /* Table styling */
+      .custom-table .ant-table-thead > tr > th {
+        background-color: var(--primary-purple) !important;
+        color: white !important;
+        font-weight: 500 !important;
+        border-radius: 0 !important;
+        border-bottom: none !important;
+        font-size: 13px !important;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      
+      .custom-table .ant-table-container {
+        border-radius: 6px;
+        overflow: hidden;
+        border: 1px solid rgba(0,0,0,0.06);
+      }
+    </style>
+</head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <script type="module" src="./index.tsx"></script>
   </body>
 </html>
