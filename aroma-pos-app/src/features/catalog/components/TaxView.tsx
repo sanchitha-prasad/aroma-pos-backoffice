@@ -193,7 +193,7 @@ const TaxView: React.FC<TaxViewProps> = ({
                 confirmLoading={createTax.isPending || updateTax.isPending}
                 onCancel={() => setIsModalOpen(false)}
             >
-                <Form form={form} layout="vertical" style={{ marginTop: 8 }}>
+                <Form form={form} name="tax_form" layout="vertical" style={{ marginTop: 8 }}>
                     <Form.Item name="name" label="Tax Name" rules={[{ required: true }]}>
                         <Input placeholder="e.g. Sales Tax" />
                     </Form.Item>

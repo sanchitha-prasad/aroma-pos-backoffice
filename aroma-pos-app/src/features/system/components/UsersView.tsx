@@ -231,7 +231,7 @@ const EmployeesView: React.FC<EmployeesViewProps> = ({ branches, employees, isLo
                 onOk={handleOk}
                 onCancel={() => setIsModalOpen(false)}
             >
-                <Form form={form} layout="vertical">
+                <Form form={form} name="user_form" layout="vertical">
                     <Form.Item name="name" label="Full Name" rules={[{ required: true }]}>
                         <Input placeholder="e.g. John Doe" />
                     </Form.Item>

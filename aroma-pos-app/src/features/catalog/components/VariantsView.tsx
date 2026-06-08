@@ -187,7 +187,7 @@ const VariantsView: React.FC<VariantsViewProps> = ({
                 confirmLoading={createVariant.isPending || updateVariant.isPending}
                 onCancel={() => setIsModalOpen(false)}
             >
-                <Form form={form} layout="vertical" style={{ marginTop: 8 }}>
+                <Form form={form} name="variant_form" layout="vertical" style={{ marginTop: 8 }}>
                     <Form.Item name="name" label="Name" rules={[{ required: true }]}>
                         <Input placeholder="e.g. Large" />
                     </Form.Item>

@@ -231,7 +231,7 @@ const DeviceView: React.FC<DeviceViewProps> = ({
                 onCancel={() => setIsModalOpen(false)}
                 width={600}
             >
-                <Form form={form} layout="vertical" style={{ marginTop: 8 }}>
+                <Form form={form} name="device_form" layout="vertical" style={{ marginTop: 8 }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
                         <Form.Item name="name" label="Device Name" rules={[{ required: true }]}>
                             <Input placeholder="e.g. POS 1" />

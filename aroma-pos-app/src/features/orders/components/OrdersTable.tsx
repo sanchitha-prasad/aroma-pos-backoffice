@@ -28,7 +28,7 @@ function getOrderTotal(order: Order): number {
             acc +
             ticket.items.reduce((tAcc, item) => {
                 const modTotal = item.modifiers.reduce((mAcc, m) => mAcc + m.price, 0);
-                return tAcc + (item.price + modTotal) * item.quantity * item.portion;
+                return tAcc + (item.price + modTotal) * item.quantity * item.portionNumerator / item.portionDenominator;
             }, 0),
         0
     );

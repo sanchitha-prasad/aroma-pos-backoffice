@@ -43,7 +43,7 @@ const OrderDetailDrawer: React.FC<OrderDetailDrawerProps> = ({ order, onClose })
             size="large"
             open={!!order}
             onClose={onClose}
-            destroyOnClose
+            destroyOnHidden
             extra={
                 summary && (
                     <Space size={16}>

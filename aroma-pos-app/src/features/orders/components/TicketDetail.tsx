@@ -54,7 +54,7 @@ const TicketDetail: React.FC<TicketDetailProps> = ({ ticket }) => {
             align: 'right' as const,
             render: (_: unknown, item: TicketItem) => {
                 const modTotal = item.modifiers.reduce((acc, m) => acc + m.price, 0);
-                const total    = (item.price + modTotal) * item.quantity * item.portion;
+                const total    = (item.price + modTotal) * item.quantity * item.portionNumerator / item.portionDenominator;
                 return <Text strong>{currencySymbol} {total.toFixed(2)}</Text>;
             },
         },
@@ -62,12 +62,12 @@ const TicketDetail: React.FC<TicketDetailProps> = ({ ticket }) => {
 
     const subtotal = ticket.items.reduce((acc, item) => {
         const modTotal = item.modifiers.reduce((mAcc, m) => mAcc + m.price, 0);
-        return acc + (item.price + modTotal) * item.quantity * item.portion;
+        return acc + (item.price + modTotal) * item.quantity * item.portionNumerator / item.portionDenominator;
     }, 0);
 
     const totalTax = ticket.items.reduce((acc, item) => {
         const modTotal  = item.modifiers.reduce((mAcc, m) => mAcc + m.price, 0);
-        const itemBase  = (item.price + modTotal) * item.quantity * item.portion;
+        const itemBase  = (item.price + modTotal) * item.quantity * item.portionNumerator / item.portionDenominator;
         const itemTax   = (item.taxes ?? []).reduce(
             (tAcc, tax) => (tax.isActive ? tAcc + itemBase * (tax.percentage / 100) : tAcc),
             0

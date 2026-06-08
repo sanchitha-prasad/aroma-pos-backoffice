@@ -346,7 +346,7 @@ const BranchView: React.FC<BranchViewProps> = ({ branches, loading = false, onSa
                     </div>
                 }
             >
-                <Form form={form} layout="vertical">
+                <Form form={form} name="branch_form" layout="vertical">
                     <Tabs
                         items={[
                             {

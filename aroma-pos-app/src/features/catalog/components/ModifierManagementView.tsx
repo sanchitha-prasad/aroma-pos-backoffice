@@ -379,7 +379,7 @@ const ModifierManagementView: React.FC<ModifierManagementViewProps> = ({
                 confirmLoading={createMod.isPending || updateMod.isPending}
                 onCancel={() => setIsModModalOpen(false)}
             >
-                <Form form={modForm} layout="vertical">
+                <Form form={modForm} name="modifier_form" layout="vertical">
                     <Form.Item name="name" label="Name" rules={[{ required: true }]}>
                         <Input />
                     </Form.Item>
@@ -401,7 +401,7 @@ const ModifierManagementView: React.FC<ModifierManagementViewProps> = ({
                 width={800}
                 mask={{ closable: false }}
             >
-                <Form form={groupForm} layout="vertical">
+                <Form form={groupForm} name="modifier_group_form" layout="vertical">
                     <Row gutter={16}>
                         <Col span={12}>
                             <Form.Item name="name" label="Group Name" rules={[{ required: true }]}>

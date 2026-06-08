@@ -200,7 +200,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
             children: (
                 <ScrollablePane>
                     <div style={{ maxWidth: 800 }}>
-                        <Form form={form} layout="vertical">
+                        <Form form={form} name="config_general_form" layout="vertical">
                             {/* SECTION 1: Business Profile & Branding */}
                             <Title level={4}>Business Profile & Branding</Title>
                             <Divider titlePlacement={"left" as any}>Owner Configurations</Divider>
@@ -353,7 +353,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                     <div style={{ maxWidth: 800 }}>
                         <Title level={4}>Payment Gateway & Terminals</Title>
                         <Divider />
-                        <Form layout="vertical">
+                        <Form name="config_payment_form" layout="vertical">
                             <Form.Item label="Payment Processor">
                                 <Select defaultValue="Stripe">
                                     <Option value="Stripe">Stripe</Option>
@@ -423,7 +423,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                     <div style={{ maxWidth: 800 }}>
                         <Title level={4}>Kitchen Display System (KDS)</Title>
                         <Divider />
-                        <Form layout="vertical">
+                        <Form name="config_kds_form" layout="vertical">
                             <Form.Item label="Enable KDS Functionality" valuePropName="checked">
                                 <Switch defaultChecked />
                             </Form.Item>
@@ -463,7 +463,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                     <div style={{ maxWidth: 800 }}>
                         <Title level={4}>Notifications & Alerts</Title>
                         <Divider />
-                        <Form layout="vertical">
+                        <Form name="config_alerts_form" layout="vertical">
                             <Card size="small" style={{ marginBottom: 16 }}>
                                 <Row align="middle" justify="space-between">
                                     <Col><Text strong>Low Stock Notifications</Text></Col>
@@ -504,7 +504,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                         <Title level={4}>Customer Loyalty & Rewards</Title>
                         <Divider />
 
-                        <Form layout="vertical">
+                        <Form name="config_loyalty_form" layout="vertical">
                         <Row gutter={24}>
                             <Col span={12}>
                             <Form.Item label="Points Earning Rule">
@@ -550,7 +550,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                     <div style={{ maxWidth: 800 }}>
                         <Title level={4}>Gift Card System</Title>
                         <Divider />
-                        <Form layout="vertical">
+                        <Form name="config_giftcard_form" layout="vertical">
                             <Form.Item label="Card Expiry (Months from issue)">
                                 <InputNumber min={0} defaultValue={12} style={{ width: '100%' }} />
                             </Form.Item>
@@ -578,7 +578,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                     <div style={{ maxWidth: 800 }}>
                         <Title level={4}>Reservation Settings</Title>
                         <Divider />
-                        <Form layout="vertical">
+                        <Form name="config_reservations_form" layout="vertical">
                             <Row gutter={24}>
                                 <Col span={12}>
                                     <Form.Item label="Time Slot Duration (mins)">
@@ -616,7 +616,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                     <div style={{ maxWidth: 800 }}>
                         <Title level={4}>Reports Customization</Title>
                         <Divider />
-                        <Form layout="vertical">
+                        <Form name="config_reports_form" layout="vertical">
                             <Form.Item label="Scheduled Email Reports">
                                 <Select mode="multiple" defaultValue={['Daily Sales', 'Labor Cost']}>
                                     <Option value="Daily Sales">Daily Sales</Option>
@@ -648,7 +648,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                     <div style={{ maxWidth: 800 }}>
                         <Title level={4}>QR Ordering</Title>
                         <Divider />
-                        <Form layout="vertical">
+                        <Form name="config_qr_form" layout="vertical">
                             <Form.Item label="Enable QR Ordering" valuePropName="checked">
                                 <Switch />
                             </Form.Item>
@@ -676,7 +676,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                     <div style={{ maxWidth: 800 }}>
                         <Title level={4}>Multi-Store / Franchise</Title>
                         <Divider />
-                        <Form layout="vertical">
+                        <Form name="config_multistore_form" layout="vertical">
                             <Form.Item label="Store Linking ID">
                                 <Input placeholder="Enter HQ Link ID" />
                             </Form.Item>
@@ -704,7 +704,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                     <div style={{ maxWidth: 800 }}>
                         <Title level={4}>Business Day & Shift</Title>
                         <Divider />
-                        <Form layout="vertical">
+                        <Form name="config_shifts_form" layout="vertical">
                             <Form.Item label="Business Day Start Time">
                                 <TimePicker format="HH:mm" />
                             </Form.Item>

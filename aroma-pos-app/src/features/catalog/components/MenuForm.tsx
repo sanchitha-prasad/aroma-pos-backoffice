@@ -155,7 +155,7 @@ const MenuForm: React.FC<MenuFormProps> = ({ initialData, categories, modifierGr
                     </Title>
                 </div>
 
-                <Form form={form} layout="vertical" onFinish={onFinish} requiredMark="optional">
+                <Form form={form} name="menu_form" layout="vertical" onFinish={onFinish} requiredMark="optional">
                     <Tabs activeKey={activeTab} onChange={setActiveTab} items={[
                         {
                             key: '1',

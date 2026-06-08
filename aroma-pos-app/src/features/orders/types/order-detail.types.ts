@@ -42,12 +42,13 @@ export interface TicketItemDetailResponse {
     orderItemId: string | null;
     seatId: string | null;
     quantity: number;
-    portion: number;
+    portionNumerator: number;
+    portionDenominator: number;
     price: number;
     name: string;
     isDiscountPercentage: boolean;
     discount: number;
-    isSplited: boolean;
+    isSplit: boolean;
     sequence: number;
     seatNumber: string | null;
     seatColor: string | null;
@@ -88,7 +89,7 @@ export interface TicketPaymentDetailResponse {
     tipAmount: number;
     transactionFee: number;
     paymentType: string;              // PaymentMethodType enum → "Cash" | "Card" | "GiftCard" | "GiftVoucher"
-    deviceId: string;
+    deviceId: string | null;
     deivceName: string;               // backend typo preserved
     isVoided: boolean;
     paymentTransactionType: string;   // PaymentTransactionType enum → "Sale" | "Void" | "Refund"

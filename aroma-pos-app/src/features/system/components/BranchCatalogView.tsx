@@ -372,7 +372,7 @@ const DetailPanelContent: React.FC<{
   // ── Overrides tab ─────────────────────────────────────────────────────────
   const overridesTab = (
     <div style={{ overflowY: 'auto', padding: '20px 24px 40px' }}>
-      <Form form={form} layout="vertical">
+      <Form form={form} name="branch_catalog_form" layout="vertical">
         <SectionLabel label="Status" />
         <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
           <div style={{ flex: 1, background: token.colorFillQuaternary, borderRadius: 10, padding: '16px 18px' }}>

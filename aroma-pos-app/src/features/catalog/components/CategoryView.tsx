@@ -220,7 +220,7 @@ const CategoryView: React.FC<CategoryViewProps> = ({
                 onCancel={() => setIsModalOpen(false)}
                 width={600}
             >
-                <Form form={form} layout="vertical" style={{ marginTop: 8 }}>
+                <Form form={form} name="category_form" layout="vertical" style={{ marginTop: 8 }}>
                     <Form.Item name="name" label="Name" rules={[{ required: true }]}>
                         <Input placeholder="e.g. Beverages" />
                     </Form.Item>

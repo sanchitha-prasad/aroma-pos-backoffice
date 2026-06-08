@@ -359,7 +359,7 @@ const CustomersView: React.FC<CustomersViewProps> = ({
                 confirmLoading={saving}
                 destroyOnHidden
             >
-                <Form form={form} layout="vertical" onFinish={handleFinish}>
+                <Form form={form} name="customer_form" layout="vertical" onFinish={handleFinish}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                         <Form.Item
                             name="firstName"

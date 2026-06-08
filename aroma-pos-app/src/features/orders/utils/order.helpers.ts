@@ -21,7 +21,7 @@ export function computeTicketSubtotal(ticket: OrderTicketDetailResponse): number
         const modExtra = (item.modifiers ?? []).reduce(
             (m, mod) => m + (mod.price ?? 0) * (mod.quantity ?? 1), 0,
         );
-        return acc + ((item.price ?? 0) + modExtra) * (item.quantity ?? 1) * (item.portion || 1);
+        return acc + ((item.price ?? 0) + modExtra) * (item.quantity ?? 1) * (item.portionNumerator ?? 1) / (item.portionDenominator ?? 1);
     }, 0);
 }
 
@@ -30,7 +30,7 @@ export function computeTicketTax(ticket: OrderTicketDetailResponse): number {
         const modExtra = (item.modifiers ?? []).reduce(
             (m, mod) => m + (mod.price ?? 0) * (mod.quantity ?? 1), 0,
         );
-        const lineTotal = ((item.price ?? 0) + modExtra) * (item.quantity ?? 1) * (item.portion || 1);
+        const lineTotal = ((item.price ?? 0) + modExtra) * (item.quantity ?? 1) * (item.portionNumerator ?? 1) / (item.portionDenominator ?? 1);
         return acc + (item.taxes ?? [])
             .filter(t => t.isActive)
             .reduce((t, tax) => t + lineTotal * ((tax.percentage ?? 0) / 100), 0);
