@@ -1,4 +1,4 @@
-import React, { useMemo, ReactNode } from 'react';
+import React, { useMemo, useCallback, ReactNode } from 'react';
 import { useTenantSettings } from '../../features/system/hooks/useTenantSettings';
 import { CurrencyContext, CurrencyContextValue, CURRENCY_SYMBOLS } from './CurrencyContext';
 
@@ -10,14 +10,19 @@ export const CurrencyProvider: React.FC<{ children: ReactNode }> = ({ children }
         return entry?.value || 'LKR';
     }, [settings]);
 
-    const value = useMemo<CurrencyContextValue>(() => {
-        const currencySymbol = CURRENCY_SYMBOLS[currencyCode] ?? currencyCode;
-        return {
-            currencyCode,
-            currencySymbol,
-            formatCurrency: (amount: number) => `${currencySymbol} ${amount.toFixed(2)}`,
-        };
+    const currencySymbol = useMemo(() => {
+        return CURRENCY_SYMBOLS[currencyCode] ?? currencyCode;
     }, [currencyCode]);
+
+    const formatCurrency = useCallback((amount: number) => {
+        return `${currencySymbol} ${amount.toFixed(2)}`;
+    }, [currencySymbol]);
+
+    const value = useMemo<CurrencyContextValue>(() => ({
+        currencyCode,
+        currencySymbol,
+        formatCurrency,
+    }), [currencyCode, currencySymbol, formatCurrency]);
 
     return (
         <CurrencyContext.Provider value={value}>

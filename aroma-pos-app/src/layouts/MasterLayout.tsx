@@ -27,6 +27,10 @@ const MasterLayout: React.FC<MasterLayoutProps> = ({ currentUser, isDarkMode, se
     ? rolePermissions[currentUser.role] 
     : [];
 
+  const handleOpenNotifications = React.useCallback(() => {
+    setIsNotifOpen(true);
+  }, []);
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Sidebar 
@@ -36,7 +40,7 @@ const MasterLayout: React.FC<MasterLayoutProps> = ({ currentUser, isDarkMode, se
         setIsDarkMode={setIsDarkMode}
         onLogout={onLogout}
         currentUser={currentUser}
-        onOpenNotifications={() => setIsNotifOpen(true)}
+        onOpenNotifications={handleOpenNotifications}
         notificationCount={notifications.length}
         userPermissions={userPermissions}
       />

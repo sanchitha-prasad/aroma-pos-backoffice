@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { Layout, Menu, theme, Switch, Avatar, Typography, Badge } from 'antd';
 import { 
   AppstoreOutlined,
@@ -23,7 +23,7 @@ import {
   ShoppingCartOutlined
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Employee, Role } from '../shared/types';
+import { Employee } from '../shared/types';
 
 const { Sider } = Layout;
 const { Text } = Typography;
@@ -40,7 +40,7 @@ interface SidebarProps {
   userPermissions: string[];
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ 
+const Sidebar: React.FC<SidebarProps> = React.memo(({ 
     collapsed, 
     onCollapse, 
     isDarkMode, 
@@ -54,9 +54,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   const navigate = useNavigate();
   const location = useLocation();
   const { token } = theme.useToken();
-  const role = currentUser?.role || 'Manager';
 
-  const allItems = [
+  const allItems = useMemo(() => [
     { key: '/', icon: <AppstoreOutlined />, label: 'Dashboard', permission: 'BackOffice:dashboard:view' },
     { key: '/orders', icon: <ShoppingCartOutlined />, label: 'Orders', permission: 'BackOffice:orders:getall' },
     { key: '/menus', icon: <AppstoreOutlined />, label: 'Menus', permission: 'BackOffice:menu:view' },
@@ -90,26 +89,99 @@ const Sidebar: React.FC<SidebarProps> = ({
         ), 
         permission: 'ALWAYS_VISIBLE'
     }
-  ];
+  ], [collapsed, notificationCount]);
 
-  const visibleItems = allItems.filter(item => {
-      if (item.permission === 'ALWAYS_VISIBLE') return true;
-      return userPermissions.includes(item.permission);
-  });
+  const visibleItems = useMemo(() => {
+    return allItems.filter(item => {
+        if (item.permission === 'ALWAYS_VISIBLE') return true;
+        return userPermissions.includes(item.permission);
+    });
+  }, [allItems, userPermissions]);
 
-  const handleMenuClick = ({ key }: { key: string }) => {
+  const menuItems = useMemo(() => {
+    return visibleItems.map(i => ({ key: i.key, icon: i.icon, label: i.label }));
+  }, [visibleItems]);
+
+  const handleMenuClick = useCallback(({ key }: { key: string }) => {
       if (key === 'notifications') {
           onOpenNotifications();
       } else {
           navigate(key);
       }
-  };
+  }, [navigate, onOpenNotifications]);
 
   const backgroundColor = isDarkMode ? '#121212' : '#ffffff';
   const borderColor = isDarkMode ? '#2e2e2e' : '#e6e8eb';
   const textColor = token.colorText;
   const secondaryTextColor = token.colorTextSecondary;
   const logoBg = token.colorPrimary;
+
+  const siderStyle = useMemo(() => ({ 
+    background: backgroundColor,
+    height: '100vh', 
+    position: 'sticky' as const, 
+    left: 0, 
+    top: 0, 
+    bottom: 0,
+    borderRight: `1px solid ${borderColor}`,
+    zIndex: 20,
+    overflow: 'hidden',
+    boxShadow: isDarkMode ? 'none' : '4px 0 16px 0 rgba(0,0,0,0.05)'
+  }), [backgroundColor, borderColor, isDarkMode]);
+
+  const headerContainerStyle = useMemo(() => ({ flexShrink: 0, padding: '20px 16px 24px 16px' }), []);
+  const headerStyle = useMemo(() => ({ 
+    height: 48, 
+    display: 'flex', 
+    alignItems: 'center', 
+    justifyContent: 'center',
+    color: isDarkMode ? 'white' : '#333',
+    background: 'transparent', 
+    overflow: 'hidden',
+    whiteSpace: 'nowrap' as const,
+    gap: 12
+  }), [isDarkMode]);
+
+  const logoStyle = useMemo(() => ({ 
+    width: 32, 
+    height: 32, 
+    background: logoBg, 
+    borderRadius: 6, 
+    display: 'flex', 
+    alignItems: 'center', 
+    justifyContent: 'center',
+    fontWeight: 'bold',
+    color: '#fff',
+    boxShadow: '0 2px 4px rgba(97, 50, 192, 0.4)'
+  }), [logoBg]);
+
+  const menuContainerStyle = useMemo(() => ({ flex: 1, overflowY: 'auto' as const, overflowX: 'hidden' as const, padding: '0 8px' }), []);
+  const menuStyle = useMemo(() => ({ 
+    background: 'transparent', 
+    borderRight: 0,
+    fontSize: 14,
+    fontWeight: 500
+  }), []);
+
+  const footerStyle = useMemo(() => ({ 
+    flexShrink: 0, 
+    borderTop: `1px solid ${borderColor}`, 
+    padding: '16px', 
+    background: isDarkMode ? '#1c1c1c' : '#f9fafb'
+  }), [borderColor, isDarkMode]);
+
+  const switchContainerStyle = useMemo(() => ({ display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'space-between' as const, marginBottom: 16 }), [collapsed]);
+  const switchStyle = useMemo(() => ({ background: isDarkMode ? token.colorPrimary : '#bfbfbf' }), [isDarkMode, token.colorPrimary]);
+
+  const profileStyle = useMemo(() => ({ 
+    display: 'flex', 
+    alignItems: 'center', 
+    gap: 12, 
+    padding: '8px 0',
+    justifyContent: collapsed ? 'center' : 'flex-start' as const
+  }), [collapsed]);
+
+  const avatarStyle = useMemo(() => ({ backgroundColor: token.colorPrimary, flexShrink: 0 }), [token.colorPrimary]);
 
   return (
     <Sider 
@@ -118,46 +190,14 @@ const Sidebar: React.FC<SidebarProps> = ({
       onCollapse={onCollapse}
       trigger={null}
       width={260}
-      style={{ 
-        background: backgroundColor,
-        height: '100vh', 
-        position: 'sticky', 
-        left: 0, 
-        top: 0, 
-        bottom: 0,
-        borderRight: `1px solid ${borderColor}`,
-        zIndex: 20,
-        overflow: 'hidden',
-        boxShadow: isDarkMode ? 'none' : '4px 0 16px 0 rgba(0,0,0,0.05)'
-      }}
+      style={siderStyle}
       theme={isDarkMode ? 'dark' : 'light'}
     >
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
         
-        <div style={{ flexShrink: 0, padding: '20px 16px 24px 16px' }}>
-            <div style={{ 
-                height: 48, 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                color: isDarkMode ? 'white' : '#333',
-                background: 'transparent', 
-                overflow: 'hidden',
-                whiteSpace: 'nowrap',
-                gap: 12
-            }}>
-                <div style={{ 
-                    width: 32, 
-                    height: 32, 
-                    background: logoBg, 
-                    borderRadius: 6, 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center',
-                    fontWeight: 'bold',
-                    color: '#fff',
-                    boxShadow: '0 2px 4px rgba(97, 50, 192, 0.4)'
-                }}>
+        <div style={headerContainerStyle}>
+            <div style={headerStyle}>
+                <div style={logoStyle}>
                     A
                 </div>
                 {!collapsed && (
@@ -168,30 +208,20 @@ const Sidebar: React.FC<SidebarProps> = ({
             </div>
         </div>
         
-        <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '0 8px' }}>
+        <div style={menuContainerStyle}>
             <Menu
                 theme={isDarkMode ? 'dark' : 'light'}
                 mode="inline"
                 selectedKeys={[location.pathname]}
                 onClick={handleMenuClick}
-                items={visibleItems.map(i => ({ key: i.key, icon: i.icon, label: i.label }))}
-                style={{ 
-                    background: 'transparent', 
-                    borderRight: 0,
-                    fontSize: 14,
-                    fontWeight: 500
-                }}
+                items={menuItems}
+                style={menuStyle}
             />
         </div>
         
-        <div style={{ 
-            flexShrink: 0, 
-            borderTop: `1px solid ${borderColor}`, 
-            padding: '16px', 
-            background: isDarkMode ? '#1c1c1c' : '#f9fafb'
-        }}>
+        <div style={footerStyle}>
             
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'space-between', marginBottom: 16 }}>
+            <div style={switchContainerStyle}>
                 {!collapsed && <span style={{ color: secondaryTextColor, fontSize: 12 }}>Dark Mode</span>}
                 <Switch
                     size={collapsed ? "small" : "medium"}
@@ -199,19 +229,13 @@ const Sidebar: React.FC<SidebarProps> = ({
                     unCheckedChildren={<SunOutlined />}
                     checked={isDarkMode}
                     onChange={setIsDarkMode}
-                    style={{ background: isDarkMode ? token.colorPrimary : '#bfbfbf' }}
+                    style={switchStyle}
                 />
             </div>
 
-            <div style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: 12, 
-                padding: '8px 0',
-                justifyContent: collapsed ? 'center' : 'flex-start'
-            }}>
+            <div style={profileStyle}>
                 <Avatar 
-                    style={{ backgroundColor: token.colorPrimary, flexShrink: 0 }} 
+                    style={avatarStyle} 
                     icon={<UserOutlined />} 
                 >
                     {currentUser?.name[0]}
@@ -263,6 +287,6 @@ const Sidebar: React.FC<SidebarProps> = ({
       </div>
     </Sider>
   );
-};
+});
 
 export default Sidebar;
