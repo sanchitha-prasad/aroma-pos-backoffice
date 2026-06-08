@@ -4,7 +4,8 @@ import { App as AntdApp, ConfigProvider, theme, Spin } from 'antd';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { setGlobalMessageApi } from './shared/services/api/globalMessage';
 import MasterLayout from './layouts/MasterLayout';
-import { CurrencyProvider } from './shared/context/CurrencyContext';
+import { CurrencyProvider } from './shared/context/CurrencyProvider';
+
 
 // Services
 import { authService } from './features/auth/api/auth.service';
