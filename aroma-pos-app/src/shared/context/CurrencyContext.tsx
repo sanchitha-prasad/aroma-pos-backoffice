@@ -1,6 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { apiClient } from '../services/api/client';
-import { authStore } from '../services/auth/authStore';
+import React, { createContext, useContext, useMemo, ReactNode } from 'react';
+import { useTenantSettings } from '../../features/system/hooks/useTenantSettings';
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
     USD: '$',
@@ -28,28 +27,24 @@ const CurrencyContext = createContext<CurrencyContextValue>({
 });
 
 export const CurrencyProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [currencyCode, setCurrencyCode] = useState('LKR');
+    const { data: settings } = useTenantSettings();
 
-    useEffect(() => {
-        const fetchCurrency = async () => {
-            if (!authStore.tenantId) return;
-            try {
-                const data = await apiClient.get<any[]>('/api/tenant-settings');
-                const entry = (data || []).find((item: any) => item.key === 'DefaultCurrency');
-                if (entry?.value) setCurrencyCode(entry.value);
-            } catch {
-                // keep default
-            }
+    const currencyCode = useMemo(() => {
+        const entry = (settings || []).find((item) => item.key === 'DefaultCurrency');
+        return entry?.value || 'LKR';
+    }, [settings]);
+
+    const value = useMemo<CurrencyContextValue>(() => {
+        const currencySymbol = CURRENCY_SYMBOLS[currencyCode] ?? currencyCode;
+        return {
+            currencyCode,
+            currencySymbol,
+            formatCurrency: (amount: number) => `${currencySymbol} ${amount.toFixed(2)}`,
         };
-        fetchCurrency();
-    }, []);
-
-    const currencySymbol = CURRENCY_SYMBOLS[currencyCode] ?? currencyCode;
-
-    const formatCurrency = (amount: number) => `${currencySymbol} ${amount.toFixed(2)}`;
+    }, [currencyCode]);
 
     return (
-        <CurrencyContext.Provider value={{ currencyCode, currencySymbol, formatCurrency }}>
+        <CurrencyContext.Provider value={value}>
             {children}
         </CurrencyContext.Provider>
     );
