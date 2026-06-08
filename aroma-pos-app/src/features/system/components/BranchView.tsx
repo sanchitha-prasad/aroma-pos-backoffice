@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
     Button,
     Space,
@@ -29,9 +29,9 @@ import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 
 import { Branch } from '../../../shared/types';
-import { apiClient } from '../../../shared/services/api/client';
 import RichTable from '../../../shared/components/rich-table/RichTable';
 import BranchCatalogView from './BranchCatalogView';
+import { useTenantSettingsMap } from '../hooks/useTenantSettings';
 
 const { Option } = Select;
 const { Title } = Typography;
@@ -147,7 +147,6 @@ const BranchView: React.FC<BranchViewProps> = ({ branches, loading = false, onSa
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
     const [catalogBranch, setCatalogBranch] = useState<Branch | null>(null);
-    const [tenantSettings, setTenantSettings] = useState<Record<string, string>>({});
 
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
@@ -156,21 +155,9 @@ const BranchView: React.FC<BranchViewProps> = ({ branches, loading = false, onSa
     const [form] = Form.useForm();
     const availabilities = Form.useWatch('availabilities', form) || [];
 
-    const fetchTenantSettings = async () => {
-        try {
-            const data = await apiClient.get<any[]>('/api/tenant-settings');
-            const settings: Record<string, string> = {};
-            (data || []).forEach((item: any) => { settings[item.key] = item.value; });
-            setTenantSettings(settings);
-            return settings;
-        } catch {
-            return {};
-        }
-    };
+    const { data: tenantSettings } = useTenantSettingsMap();
 
-    useEffect(() => { fetchTenantSettings(); }, []);
-
-    const showModal = async (branch?: Branch) => {
+    const showModal = (branch?: Branch) => {
         const settings = branch?.configuration?.settings ?? [];
         const getSetting = (key: string) => settings.find(s => s.key === key)?.value;
 
@@ -192,10 +179,7 @@ const BranchView: React.FC<BranchViewProps> = ({ branches, loading = false, onSa
             return;
         }
 
-        let activeSettings = tenantSettings;
-        if (!Object.keys(activeSettings).length) {
-            activeSettings = await fetchTenantSettings();
-        }
+        const activeSettings = tenantSettings;
 
         setEditingBranch(null);
         form.resetFields();

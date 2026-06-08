@@ -1,42 +1,46 @@
 import React, { useState, useEffect } from 'react';
-import { 
-    Tabs, 
-    Form, 
-    Input, 
-    Select, 
-    Switch, 
-    Button, 
-    Typography, 
-    theme, 
-    Divider, 
-    Row, 
-    Col, 
-    TimePicker, 
-    InputNumber, 
+import {
+    Tabs,
+    Form,
+    Input,
+    Select,
+    Switch,
+    Button,
+    Typography,
+    theme,
+    Divider,
+    Row,
+    Col,
+    TimePicker,
+    InputNumber,
     Upload,
     Card,
     message,
     Empty,
     Space
 } from 'antd';
-import { 
-    UploadOutlined, 
-    SaveOutlined, 
-    ShopOutlined, 
-    CreditCardOutlined, 
-    DesktopOutlined, 
-    NotificationOutlined, 
-    GiftOutlined, 
-    CalendarOutlined, 
-    QrcodeOutlined, 
-    BranchesOutlined, 
+import {
+    SaveOutlined,
+    ShopOutlined,
+    CreditCardOutlined,
+    DesktopOutlined,
+    NotificationOutlined,
+    GiftOutlined,
+    CalendarOutlined,
+    QrcodeOutlined,
+    BranchesOutlined,
     ClockCircleOutlined,
-    PlusOutlined 
+    PlusOutlined
 } from '@ant-design/icons';
-import { apiClient } from '../../../shared/services/api/client';
-import { authStore } from '../../../shared/services/auth/authStore';
 import ImgCrop from 'antd-img-crop';
 import { useCurrency } from '../../../shared/context/CurrencyContext';
+import { authStore } from '../../../shared/services/auth/authStore';
+import {
+    useTenantSettingsMap,
+    useTenantDetail,
+    useTenantUsers,
+    useUpdateTenantSettings,
+} from '../hooks/useTenantSettings';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -56,98 +60,57 @@ interface ConfigurationViewProps {
 const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) => {
     const { token } = theme.useToken();
     const [form] = Form.useForm();
-    const [tenantSettings, setTenantSettings] = useState<Record<string, string>>({});
     const [logoUrl, setLogoUrl] = useState<string>('');
     const { currencySymbol } = useCurrency();
 
-    const fetchSettings = async () => {
-        try {
-            const tenantId = authStore.tenantId;
-            let ownerName = '';
-            let ownerEmail = '';
-            let ownerPhone = '';
-
-            if (tenantId) {
-                try {
-                    // Get tenant details
-                    const tenant = await apiClient.get<any>(`/api/tenants/${tenantId}`);
-                    const emailToFind = tenant?.ownerEmail || tenant?.OwnerEmail || tenant?.email || tenant?.Email;
-
-                    // Get users list
-                    const users = await apiClient.get<any[]>(`/api/tenants/${tenantId}/users`);
-                    const owner = users?.find((u: any) => u.email === emailToFind);
-
-                    if (owner) {
-                        ownerName = owner.name;
-                        ownerEmail = owner.email;
-                        ownerPhone = owner.phoneNumber || owner.phone || owner.loginNumber || '';
-                    } else if (emailToFind) {
-                        ownerEmail = emailToFind;
-                    }
-                } catch (err) {
-                    console.error("Failed to fetch tenant/owner details", err);
-                }
-            }
-
-            const data = await apiClient.get<any[]>('/api/tenant-settings');
-            const settings: Record<string, string> = {};
-            (data || []).forEach((item: any) => {
-                settings[item.key] = item.value;
-            });
-            setTenantSettings(settings);
-            setLogoUrl(settings['Logo'] || '');
-            form.setFieldsValue({
-                userName: ownerName || authStore.currentUser?.name || '',
-                userEmail: ownerEmail || authStore.currentUser?.email || '',
-                userPhone: ownerPhone || '',
-                brandName: settings['BrandName'] || '',
-                defaultCurrency: settings['DefaultCurrency'] || 'USD',
-                defaultTimeZone: settings['DefaultTimeZone'] || 'UTC',
-                logo: settings['Logo'] || '',
-                merchantFeePercentage: Number(settings['MerchantFeePercentage']) || 0,
-                isKdsAvailable: settings['IsKdsAvailable'] === 'true',
-                isExpeditorAvailable: settings['IsExpeditorAvailable'] === 'true',
-                branchCount: Number(settings['BranchCount']) || 0,
-                branchCodePrefix: settings['BranchCodePrefix'] || '',
-                posSessionTimeout: Number(settings['PosSessionTimeout']) || 0,
-                serviceCharge: Number(settings['ServiceCharge']) || 0,
-                cashbackPercentage: Number(settings['CashbackPercentage']) || 0,
-                serviceChargeType: settings['ServiceChargeType'] || 'Percentage',
-            });
-        } catch (error) {
-            console.error("Failed to fetch settings", error);
-        }
-    };
+    const { data: settings } = useTenantSettingsMap();
+    const { data: tenant } = useTenantDetail();
+    const { data: users } = useTenantUsers();
+    const updateSettings = useUpdateTenantSettings();
 
     useEffect(() => {
-        fetchSettings();
-    }, []);
+        const emailToFind = tenant?.ownerEmail || tenant?.OwnerEmail || tenant?.email || tenant?.Email;
+        const owner = users?.find((u) => u.email === emailToFind);
+
+        setLogoUrl(settings['Logo'] || '');
+        form.setFieldsValue({
+            userName: owner?.name || authStore.currentUser?.name || '',
+            userEmail: owner?.email || emailToFind || authStore.currentUser?.email || '',
+            userPhone: owner?.phoneNumber || owner?.phone || owner?.loginNumber || '',
+            brandName: settings['BrandName'] || '',
+            defaultCurrency: settings['DefaultCurrency'] || 'USD',
+            defaultTimeZone: settings['DefaultTimeZone'] || 'UTC',
+            logo: settings['Logo'] || '',
+            merchantFeePercentage: Number(settings['MerchantFeePercentage']) || 0,
+            isKdsAvailable: settings['IsKdsAvailable'] === 'true',
+            isExpeditorAvailable: settings['IsExpeditorAvailable'] === 'true',
+            branchCount: Number(settings['BranchCount']) || 0,
+            branchCodePrefix: settings['BranchCodePrefix'] || '',
+            posSessionTimeout: Number(settings['PosSessionTimeout']) || 0,
+            serviceCharge: Number(settings['ServiceCharge']) || 0,
+            cashbackPercentage: Number(settings['CashbackPercentage']) || 0,
+            serviceChargeType: settings['ServiceChargeType'] || 'Percentage',
+        });
+    }, [settings, tenant, users, form]);
 
     const handleSave = () => {
-        form.validateFields().then(async (values) => {
-            try {
-                const payload = [
-                    { key: 'BrandName', value: String(values.brandName ?? '') },
-                    { key: 'DefaultCurrency', value: String(values.defaultCurrency ?? '') },
-                    { key: 'DefaultTimeZone', value: String(values.defaultTimeZone ?? '') },
-                    { key: 'Logo', value: String(values.logo ?? '') },
-                    { key: 'MerchantFeePercentage', value: String(values.merchantFeePercentage ?? 0) },
-                    { key: 'IsKdsAvailable', value: String(values.isKdsAvailable ?? false) },
-                    { key: 'IsExpeditorAvailable', value: String(values.isExpeditorAvailable ?? false) },
-                    { key: 'BranchCount', value: String(values.branchCount ?? 0) },
-                    { key: 'BranchCodePrefix', value: String(values.branchCodePrefix ?? '') },
-                    { key: 'PosSessionTimeout', value: String(values.posSessionTimeout ?? 0) },
-                    { key: 'ServiceCharge', value: String(values.serviceCharge ?? 0) },
-                    { key: 'CashbackPercentage', value: String(values.cashbackPercentage ?? 0) },
-                    { key: 'ServiceChargeType', value: String(values.serviceChargeType ?? 'Percentage') }
-                ];
-                await apiClient.put('/api/tenant-settings', payload);
-                message.success("Configurations saved successfully!");
-                fetchSettings();
-            } catch (error) {
-                console.error("Failed to save settings", error);
-                message.error("Failed to save configurations.");
-            }
+        form.validateFields().then((values) => {
+            const payload = [
+                { key: 'BrandName', value: String(values.brandName ?? '') },
+                { key: 'DefaultCurrency', value: String(values.defaultCurrency ?? '') },
+                { key: 'DefaultTimeZone', value: String(values.defaultTimeZone ?? '') },
+                { key: 'Logo', value: String(values.logo ?? '') },
+                { key: 'MerchantFeePercentage', value: String(values.merchantFeePercentage ?? 0) },
+                { key: 'IsKdsAvailable', value: String(values.isKdsAvailable ?? false) },
+                { key: 'IsExpeditorAvailable', value: String(values.isExpeditorAvailable ?? false) },
+                { key: 'BranchCount', value: String(values.branchCount ?? 0) },
+                { key: 'BranchCodePrefix', value: String(values.branchCodePrefix ?? '') },
+                { key: 'PosSessionTimeout', value: String(values.posSessionTimeout ?? 0) },
+                { key: 'ServiceCharge', value: String(values.serviceCharge ?? 0) },
+                { key: 'CashbackPercentage', value: String(values.cashbackPercentage ?? 0) },
+                { key: 'ServiceChargeType', value: String(values.serviceChargeType ?? 'Percentage') },
+            ];
+            updateSettings.mutate(payload);
         });
     };
 

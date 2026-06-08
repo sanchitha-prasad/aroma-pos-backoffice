@@ -4,9 +4,24 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ERP Product Master</title>
+    <!-- Preconnect to font origins so the DNS/TLS handshake is done early -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Non-blocking font load: media="print" lets the browser fetch without
+         blocking render; onload switches it to "all" once the sheet is ready.
+         The <noscript> fallback covers JS-disabled environments.
+         Weights trimmed to 400 + 600 — enough for body text and labels. -->
+    <link rel="preload" as="style"
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap">
+    <link rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap"
+          media="print"
+          onload="this.media='all'">
+    <noscript>
+      <link rel="stylesheet"
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap">
+    </noscript>
     <style>
       :root {
         /* Supabase-inspired colors */

@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import { Layout, Drawer, List, Avatar, Typography } from 'antd';
 import { BellOutlined } from '@ant-design/icons';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { Employee, Role } from '../shared/types';
+import PageLoader from '../shared/components/loading/PageLoader';
 
 const { Content } = Layout;
 const { Text } = Typography;
@@ -26,6 +27,10 @@ const MasterLayout: React.FC<MasterLayoutProps> = ({ currentUser, isDarkMode, se
     ? rolePermissions[currentUser.role] 
     : [];
 
+  const handleOpenNotifications = React.useCallback(() => {
+    setIsNotifOpen(true);
+  }, []);
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Sidebar 
@@ -35,7 +40,7 @@ const MasterLayout: React.FC<MasterLayoutProps> = ({ currentUser, isDarkMode, se
         setIsDarkMode={setIsDarkMode}
         onLogout={onLogout}
         currentUser={currentUser}
-        onOpenNotifications={() => setIsNotifOpen(true)}
+        onOpenNotifications={handleOpenNotifications}
         notificationCount={notifications.length}
         userPermissions={userPermissions}
       />
@@ -81,7 +86,9 @@ const MasterLayout: React.FC<MasterLayoutProps> = ({ currentUser, isDarkMode, se
             </div>
         </Drawer>
         <Content style={{ margin: '24px 32px 24px 24px', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 48px)' }}>
+          <Suspense fallback={<PageLoader />}>
             <Outlet />
+          </Suspense>
         </Content>
       </Layout>
     </Layout>
