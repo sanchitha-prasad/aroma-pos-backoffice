@@ -78,7 +78,9 @@ function antDesignTreeShakePlugin() {
       if (hasChanged) {
         return {
           code: transformedCode,
-          map: null
+          // returning null preserves the original source map (passthrough),
+          // which keeps Vite's HMR module graph consistent
+          map: { mappings: '' }
         };
       }
 
