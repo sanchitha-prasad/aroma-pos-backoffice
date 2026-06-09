@@ -4,6 +4,13 @@ export const ALL_PERMISSIONS: Permission[] = [
     // General
     { key: 'BackOffice:dashboard:view', label: 'View Dashboard', group: 'General' },
 
+    // POS
+    { key: 'POS:dashboard:view', label: 'View POS Dashboard', group: 'POS', application: 'POS' },
+    { key: 'POS:menu:view', label: 'View POS Menu', group: 'POS', application: 'POS' },
+    { key: 'POS:orders:create', label: 'Create Order (POS)', group: 'POS', application: 'POS' },
+    { key: 'POS:orders:refund', label: 'Refund Order (POS)', group: 'POS', application: 'POS' },
+    { key: 'POS:tickets:print', label: 'Print Ticket', group: 'POS', application: 'POS' },
+
     // Menu
     { key: 'BackOffice:menu:view',    label: 'View Menu',        group: 'Menu' },
     { key: 'BackOffice:menu:get',     label: 'Get Menu Item',    group: 'Menu' },
@@ -14,11 +21,11 @@ export const ALL_PERMISSIONS: Permission[] = [
     { key: 'BackOffice:menu:manage',  label: 'Manage Menu',      group: 'Menu' },
 
     // Modifiers
-    { key: 'BackOffice:modifiers:get',    label: 'Get Modifier',    group: 'Modifiers' },
-    { key: 'BackOffice:modifiers:getall', label: 'List Modifiers',  group: 'Modifiers' },
-    { key: 'BackOffice:modifiers:create', label: 'Create Modifier', group: 'Modifiers' },
-    { key: 'BackOffice:modifiers:update', label: 'Update Modifier', group: 'Modifiers' },
-    { key: 'BackOffice:modifiers:delete', label: 'Delete Modifier', group: 'Modifiers' },
+    { key: 'BackOffice:modifiers:get',    label: 'Get Modifier',    group: 'Modifiers', subGroup: 'Modifier Management' },
+    { key: 'BackOffice:modifiers:getall', label: 'List Modifiers',  group: 'Modifiers', subGroup: 'Modifier Management' },
+    { key: 'BackOffice:modifiers:create', label: 'Create Modifier', group: 'Modifiers', subGroup: 'Modifier Management' },
+    { key: 'BackOffice:modifiers:update', label: 'Update Modifier', group: 'Modifiers', subGroup: 'Modifier Management' },
+    { key: 'BackOffice:modifiers:delete', label: 'Delete Modifier', group: 'Modifiers', subGroup: 'Modifier Management' },
 
     // Variants
     { key: 'BackOffice:variants:get',    label: 'Get Variant',    group: 'Variants' },
@@ -117,6 +124,21 @@ export const ALL_PERMISSIONS: Permission[] = [
 ];
 
 const ALL_KEYS = ALL_PERMISSIONS.map(p => p.key);
+
+export const APPLICATIONS = ['POS', 'BackOffice'] as const;
+export type ApplicationType = (typeof APPLICATIONS)[number];
+
+export const APP_LABELS: Record<ApplicationType, string> = {
+    POS: 'POS APPLICATION',
+    BackOffice: 'BACK OFFICE APPLICATION',
+};
+
+export const APP_ROLES: Record<ApplicationType, Role[]> = {
+    BackOffice: ['SuperAdmin', 'Admin', 'Manager'],
+    POS: ['Cashier', 'Waiter', 'Kitchen'],
+};
+
+export const ROLES: Role[] = ['SuperAdmin', 'Admin', 'Manager', 'Cashier', 'Waiter', 'Kitchen'];
 
 // Only SuperAdmin, Admin, and Manager use the back-office.
 // Cashier, Waiter, and Kitchen are POS-only roles with no back-office access.

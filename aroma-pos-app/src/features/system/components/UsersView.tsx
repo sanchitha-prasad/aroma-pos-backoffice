@@ -3,6 +3,7 @@ import { Button, Tag, Space, Typography, theme, Modal, Form, Input, Select, Popc
 import { UserAddOutlined, EditOutlined, DeleteOutlined, LockOutlined, NumberOutlined, HistoryOutlined, ShopOutlined, SearchOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { Employee, Branch } from '../../../shared/types';
+import { ROLES } from '../../../shared/constants';
 import RichTable from '../../../shared/components/rich-table/RichTable';
 
 const { Text } = Typography;
@@ -189,12 +190,11 @@ const EmployeesView: React.FC<EmployeesViewProps> = ({ branches, employees, isLo
                 allowClear
                 style={{ width: 150 }}
             >
-                <Option value="SuperAdmin">Super Admin</Option>
-                <Option value="Admin">Admin</Option>
-                <Option value="Manager">Manager</Option>
-                <Option value="Cashier">Cashier</Option>
-                <Option value="Waiter">Waiter</Option>
-                <Option value="Kitchen">Kitchen</Option>
+                {ROLES.map(role => (
+                    <Option key={role} value={role}>
+                        {role === 'SuperAdmin' ? 'Super Admin' : role}
+                    </Option>
+                ))}
             </Select>
         </Space>
     );
@@ -259,12 +259,11 @@ const EmployeesView: React.FC<EmployeesViewProps> = ({ branches, employees, isLo
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                         <Form.Item name="role" label="Role" rules={[{ required: true }]}>
                             <Select>
-                                <Option value="SuperAdmin">Super Admin</Option>
-                                <Option value="Admin">Admin</Option>
-                                <Option value="Manager">Manager</Option>
-                                <Option value="Cashier">Cashier</Option>
-                                <Option value="Waiter">Waiter</Option>
-                                <Option value="Kitchen">Kitchen</Option>
+                                {ROLES.map(role => (
+                                    <Option key={role} value={role}>
+                                        {role === 'SuperAdmin' ? 'Super Admin' : role}
+                                    </Option>
+                                ))}
                             </Select>
                         </Form.Item>
                         <Form.Item name="status" label="Status" rules={[{ required: true }]}>
