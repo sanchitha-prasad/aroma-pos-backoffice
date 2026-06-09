@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   Avatar,
   Button,
+  Checkbox,
+  Divider,
   Empty,
   Form,
   Input,
@@ -13,10 +15,12 @@ import {
   Space,
   Switch,
   Tag,
+  TimePicker,
   Tooltip,
   Typography,
   theme,
 } from 'antd';
+import dayjs, { Dayjs } from 'dayjs';
 import { globalMessage as message } from '../../../shared/services/api/globalMessage';
 import {
   AppstoreAddOutlined,
@@ -32,11 +36,24 @@ import {
   SearchOutlined,
   TagsOutlined,
 } from '@ant-design/icons';
-import { Category, MenuEntity } from '../../../shared/types';
+import { Category, MenuEntity, MenuAvailability } from '../../../shared/types';
 
 const { Title, Text } = Typography;
 
 const BRAND = '#6132C0';
+
+// 0=Sunday … 6=Saturday — must match backend Contracts.Enums.DayOfWeek.
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const DEFAULT_START = '08:00:00';
+const DEFAULT_END   = '22:00:00';
+
+// Time helpers — parse/format without relying on the dayjs customParseFormat plugin.
+const toDayjs   = (t: string): Dayjs => { const [h = 0, m = 0] = t.split(':').map(Number); return dayjs().hour(h).minute(m).second(0).millisecond(0); };
+const toTimeStr = (d: Dayjs): string => d.format('HH:mm:ss');
+
+interface DayAvailability { enabled: boolean; start: Dayjs; end: Dayjs; }
+const makeDefaultDays = (): DayAvailability[] =>
+  Array.from({ length: 7 }, () => ({ enabled: false, start: toDayjs(DEFAULT_START), end: toDayjs(DEFAULT_END) }));
 
 /**
  * Category management is atomic on the backend: there are no assign/remove
@@ -48,6 +65,7 @@ interface MenuFormValues {
   subtitle?: string;
   isActive: boolean;
   categoryIds: string[];
+  availabilities?: MenuAvailability[];
 }
 
 interface MenuManagementViewProps {
@@ -87,7 +105,48 @@ const MenuManagementView: React.FC<MenuManagementViewProps> = ({
   const [catSearch, setCatSearch]       = useState('');
   const [availSearch, setAvailSearch]   = useState('');
 
+  // Weekly availability editor state (lives outside the antd Form — complex shape).
+  const [availMode, setAvailMode] = useState<'all' | 'custom'>('all');
+  const [dayAvail, setDayAvail]   = useState<DayAvailability[]>(makeDefaultDays);
+
   const [form] = Form.useForm();
+
+  const updateDay = (idx: number, patch: Partial<DayAvailability>) =>
+    setDayAvail((prev) => prev.map((d, i) => (i === idx ? { ...d, ...patch } : d)));
+
+  const enableAllDays = () =>
+    setDayAvail(() => Array.from({ length: 7 }, () => ({ enabled: true, start: toDayjs(DEFAULT_START), end: toDayjs(DEFAULT_END) })));
+
+  // Map the menu's stored availabilities into editor state.
+  const loadAvailabilities = (menu: MenuEntity | null) => {
+    const sa = menu?.serviceAvailabilities ?? [];
+    if (sa.length === 0) { setAvailMode('all'); setDayAvail(makeDefaultDays()); return; }
+    const days = makeDefaultDays();
+    sa.forEach((a) => {
+      const idx = a.dayOfWeek;
+      if (idx < 0 || idx > 6) return;
+      const tp = a.timePeriods?.[0];
+      days[idx] = {
+        enabled: true,
+        start: tp ? toDayjs(tp.startTime) : toDayjs(DEFAULT_START),
+        end:   tp ? toDayjs(tp.endTime)   : toDayjs(DEFAULT_END),
+      };
+    });
+    setAvailMode('custom');
+    setDayAvail(days);
+  };
+
+  // Build the API payload. 'all' → empty array (no restriction / clears existing).
+  const buildAvailabilities = (): MenuAvailability[] => {
+    if (availMode === 'all') return [];
+    return dayAvail
+      .map((d, idx) => ({ d, idx }))
+      .filter(({ d }) => d.enabled)
+      .map(({ d, idx }) => ({
+        dayOfWeek: idx,
+        timePeriods: [{ startTime: toTimeStr(d.start), endTime: toTimeStr(d.end) }],
+      }));
+  };
 
   // Keep selectedMenu in sync when TanStack Query refreshes the list
   useEffect(() => {
@@ -157,6 +216,7 @@ const MenuManagementView: React.FC<MenuManagementViewProps> = ({
     setEditingMenu(null);
     form.resetFields();
     form.setFieldsValue({ isActive: true, categoryIds: [] });
+    loadAvailabilities(null);
     setFormOpen(true);
   };
 
@@ -169,18 +229,30 @@ const MenuManagementView: React.FC<MenuManagementViewProps> = ({
       isActive: menu.isActive,
       categoryIds: (menu.categories ?? []).map((c) => c.categoryId),
     });
+    loadAvailabilities(menu);
     setFormOpen(true);
   };
 
   const handleSaveMenu = async () => {
     const values = (await form.validateFields()) as MenuFormValues;
+
+    // Validate custom schedule: every enabled day needs end after start.
+    if (availMode === 'custom') {
+      const bad = dayAvail.find((d) => d.enabled && !d.end.isAfter(d.start));
+      if (bad) {
+        message.error('End time must be after start time for every enabled day.');
+        return;
+      }
+    }
+
+    const payload = { ...values, availabilities: buildAvailabilities() };
     setSaving(true);
     try {
       if (editingMenu) {
-        await onUpdateMenu(editingMenu.id, values);
+        await onUpdateMenu(editingMenu.id, payload);
         message.success('Menu updated');
       } else {
-        await onCreateMenu(values);
+        await onCreateMenu(payload);
         message.success('Menu created');
       }
       setFormOpen(false);
@@ -736,7 +808,7 @@ const MenuManagementView: React.FC<MenuManagementViewProps> = ({
         okText={editingMenu ? 'Save Changes' : 'Create Menu'}
         okButtonProps={{ loading: saving }}
         onCancel={() => setFormOpen(false)}
-        width={480}
+        width={560}
         forceRender
       >
         <Form form={form} name="menu_modal_form" layout="vertical" style={{ marginTop: 16 }}>
@@ -766,6 +838,60 @@ const MenuManagementView: React.FC<MenuManagementViewProps> = ({
           <Form.Item name="isActive" label="Status" valuePropName="checked">
             <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
           </Form.Item>
+
+          <Divider style={{ margin: '4px 0 16px' }} />
+
+          {/* ── Weekly availability ── */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <div>
+              <Text strong style={{ fontSize: 14 }}>Availability</Text>
+              <div><Text type="secondary" style={{ fontSize: 12 }}>Which days &amp; hours is this menu offered?</Text></div>
+            </div>
+            <Segmented
+              size="small"
+              value={availMode}
+              onChange={(v) => setAvailMode(v as 'all' | 'custom')}
+              options={[
+                { label: 'Always', value: 'all' },
+                { label: 'Custom schedule', value: 'custom' },
+              ]}
+            />
+          </div>
+
+          {availMode === 'custom' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <Button type="link" size="small" style={{ padding: 0 }} onClick={enableAllDays}>
+                  Enable all days · 08:00–22:00
+                </Button>
+              </div>
+              {dayAvail.map((d, idx) => (
+                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <Checkbox
+                    checked={d.enabled}
+                    onChange={(e) => updateDay(idx, { enabled: e.target.checked })}
+                    style={{ width: 116, flexShrink: 0 }}
+                  >
+                    {DAYS[idx]}
+                  </Checkbox>
+                  <TimePicker.RangePicker
+                    format="HH:mm"
+                    minuteStep={15}
+                    allowClear={false}
+                    disabled={!d.enabled}
+                    value={[d.start, d.end]}
+                    onChange={(vals) => {
+                      if (vals && vals[0] && vals[1]) updateDay(idx, { start: vals[0], end: vals[1] });
+                    }}
+                    style={{ flex: 1 }}
+                  />
+                </div>
+              ))}
+              <Text type="secondary" style={{ fontSize: 11, marginTop: 2 }}>
+                Only ticked days are saved. Unticked days mean the menu isn’t offered then.
+              </Text>
+            </div>
+          )}
         </Form>
       </Modal>
 
