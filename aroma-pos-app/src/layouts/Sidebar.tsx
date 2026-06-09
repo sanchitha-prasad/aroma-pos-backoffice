@@ -1,16 +1,15 @@
 import React, { useMemo, useCallback } from 'react';
-import { Layout, Menu, theme, Switch, Avatar, Typography, Badge } from 'antd';
-import { 
+import { Layout, Menu, theme, Switch, Avatar, Typography, Badge, Dropdown } from 'antd';
+import type { MenuProps } from 'antd';
+import {
   AppstoreOutlined,
   ReadOutlined,
   TagsOutlined,
   ControlOutlined,
-  TeamOutlined, 
-  BarChartOutlined, 
+  TeamOutlined,
+  BarChartOutlined,
   LogoutOutlined,
   DesktopOutlined,
-  MenuFoldOutlined,
-  MenuUnfoldOutlined,
   ToolOutlined,
   MoonOutlined,
   SunOutlined,
@@ -20,7 +19,8 @@ import {
   SafetyCertificateOutlined,
   PercentageOutlined,
   ShopOutlined,
-  ShoppingCartOutlined
+  ShoppingCartOutlined,
+  UpOutlined
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Employee } from '../shared/types';
@@ -55,52 +55,132 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({
   const location = useLocation();
   const { token } = theme.useToken();
 
-  const allItems = useMemo(() => [
-    { key: '/', icon: <AppstoreOutlined />, label: 'Dashboard', permission: 'BackOffice:dashboard:view' },
-    { key: '/orders', icon: <ShoppingCartOutlined />, label: 'Orders', permission: 'BackOffice:orders:getall' },
-    { key: '/menus', icon: <AppstoreOutlined />, label: 'Menus', permission: 'BackOffice:menu:view' },
-    { key: '/menu', icon: <ReadOutlined />, label: 'Menu Items', permission: 'BackOffice:menu:view' },
-    { key: '/modifiers', icon: <ControlOutlined />, label: 'Modifiers', permission: 'BackOffice:modifiers:getall' },
-    { key: '/categories', icon: <TagsOutlined />, label: 'Categories', permission: 'BackOffice:categories:getall' },
-    { key: '/variants', icon: <TagsOutlined />, label: 'Variants', permission: 'BackOffice:variants:getall' },
-    { key: '/taxes', icon: <PercentageOutlined />, label: 'Taxes', permission: 'BackOffice:taxes:getall' },
-    { key: '/devices', icon: <DesktopOutlined />, label: 'Devices', permission: 'BackOffice:devices:getall' },
-    { key: '/employees', icon: <TeamOutlined />, label: 'Employees', permission: 'BackOffice:employees:getall' },
-    { key: '/customers', icon: <TeamOutlined />, label: 'Customers', permission: 'ALWAYS_VISIBLE' },
-    { key: '/branches', icon: <ShopOutlined />, label: 'Branches', permission: 'BackOffice:branches:getall' },
-    { key: '/roles', icon: <SafetyCertificateOutlined />, label: 'Roles & Permissions', permission: 'BackOffice:employees:create' },
-    { key: '/activities', icon: <HistoryOutlined />, label: 'Activity Log', permission: 'BackOffice:activity:getall' },
-    { key: '/reports', icon: <BarChartOutlined />, label: 'Reports', permission: 'BackOffice:reports:view' },
-    { key: '/configuration', icon: <ToolOutlined />, label: 'Configurations', permission: 'BackOffice:config:view' },
-    { 
-        key: 'notifications', 
-        icon: (
+  // Menu organized into logical sections. A section is either a flat group
+  // (`type: 'group'`, items always shown under a label) or a collapsible
+  // submenu (`type: 'submenu'`, items nested behind an expandable parent).
+  const menuSections = useMemo(() => [
+    {
+      type: 'group' as const,
+      key: 'grp-general',
+      label: 'General',
+      children: [
+        { key: '/', icon: <AppstoreOutlined />, label: 'Dashboard', permission: 'BackOffice:dashboard:view' },
+        { key: '/orders', icon: <ShoppingCartOutlined />, label: 'Orders', permission: 'BackOffice:orders:getall' },
+        {
+          key: 'notifications',
+          icon: (
             <Badge dot={collapsed && notificationCount > 0} offset={[5, 0]}>
-                <BellOutlined />
+              <BellOutlined />
             </Badge>
-        ), 
-        label: (
+          ),
+          label: (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                <span>Notifications</span>
-                {notificationCount > 0 && !collapsed && (
-                    <Badge count={notificationCount} size="small" style={{ marginLeft: 'auto' }} />
-                )}
+              <span>Notifications</span>
+              {notificationCount > 0 && !collapsed && (
+                <Badge count={notificationCount} size="small" style={{ marginLeft: 'auto' }} />
+              )}
             </div>
-        ), 
-        permission: 'ALWAYS_VISIBLE'
-    }
+          ),
+          permission: 'ALWAYS_VISIBLE',
+        },
+      ],
+    },
+    {
+      type: 'submenu' as const,
+      key: 'sub-catalog',
+      icon: <ReadOutlined />,
+      label: 'Catalog',
+      children: [
+        { key: '/menus', icon: <AppstoreOutlined />, label: 'Menus', permission: 'BackOffice:menu:view' },
+        { key: '/categories', icon: <TagsOutlined />, label: 'Categories', permission: 'BackOffice:categories:getall' },
+        { key: '/menu', icon: <ReadOutlined />, label: 'Menu Items', permission: 'BackOffice:menu:view' },
+        { key: '/modifiers', icon: <ControlOutlined />, label: 'Modifiers', permission: 'BackOffice:modifiers:getall' },
+        { key: '/variants', icon: <TagsOutlined />, label: 'Variants', permission: 'BackOffice:variants:getall' },
+        { key: '/taxes', icon: <PercentageOutlined />, label: 'Taxes', permission: 'BackOffice:taxes:getall' },
+      ],
+    },
+    {
+      type: 'submenu' as const,
+      key: 'sub-team',
+      icon: <TeamOutlined />,
+      label: 'Team & Access',
+      children: [
+        { key: '/employees', icon: <TeamOutlined />, label: 'Employees', permission: 'BackOffice:employees:getall' },
+        { key: '/customers', icon: <UserOutlined />, label: 'Customers', permission: 'ALWAYS_VISIBLE' },
+        { key: '/roles', icon: <SafetyCertificateOutlined />, label: 'Roles & Permissions', permission: 'BackOffice:employees:create' },
+      ],
+    },
+    {
+      type: 'submenu' as const,
+      key: 'sub-operations',
+      icon: <DesktopOutlined />,
+      label: 'Operations',
+      children: [
+        { key: '/devices', icon: <DesktopOutlined />, label: 'Devices', permission: 'BackOffice:devices:getall' },
+        { key: '/branches', icon: <ShopOutlined />, label: 'Branches', permission: 'BackOffice:branches:getall' },
+      ],
+    },
+    {
+      type: 'submenu' as const,
+      key: 'sub-insights',
+      icon: <BarChartOutlined />,
+      label: 'Insights',
+      children: [
+        { key: '/reports', icon: <BarChartOutlined />, label: 'Reports', permission: 'BackOffice:reports:view' },
+        { key: '/activities', icon: <HistoryOutlined />, label: 'Activity Log', permission: 'BackOffice:activity:getall' },
+      ],
+    },
+    {
+      type: 'group' as const,
+      key: 'grp-system',
+      label: 'System',
+      children: [
+        { key: '/configuration', icon: <ToolOutlined />, label: 'Configurations', permission: 'BackOffice:config:view' },
+      ],
+    },
   ], [collapsed, notificationCount]);
 
-  const visibleItems = useMemo(() => {
-    return allItems.filter(item => {
-        if (item.permission === 'ALWAYS_VISIBLE') return true;
-        return userPermissions.includes(item.permission);
-    });
-  }, [allItems, userPermissions]);
+  const canView = useCallback((permission: string) => {
+    return permission === 'ALWAYS_VISIBLE' || userPermissions.includes(permission);
+  }, [userPermissions]);
 
+  // Build AntD menu items, filtering by permission and dropping empty sections.
+  // When collapsed, group labels would render as ugly truncated text ("Gen..."),
+  // so we flatten groups into plain icon items in that mode.
   const menuItems = useMemo(() => {
-    return visibleItems.map(i => ({ key: i.key, icon: i.icon, label: i.label }));
-  }, [visibleItems]);
+    const items: NonNullable<MenuProps['items']> = [];
+    menuSections.forEach(section => {
+      const children = section.children
+        .filter(child => canView(child.permission))
+        .map(child => ({ key: child.key, icon: child.icon, label: child.label }));
+
+      if (children.length === 0) return;
+
+      if (section.type === 'submenu') {
+        items.push({ key: section.key, icon: section.icon, label: section.label, children });
+      } else if (collapsed) {
+        // Flatten group → plain items (no truncated label) in icon-only mode.
+        children.forEach(c => items.push(c));
+      } else {
+        items.push({ key: section.key, label: section.label, type: 'group', children });
+      }
+    });
+    return items;
+  }, [menuSections, canView, collapsed]);
+
+  // Keep the submenu that contains the active route expanded.
+  const openKeys = useMemo(() => {
+    const active = menuSections.find(
+      section => section.type === 'submenu' && section.children.some(c => c.key === location.pathname)
+    );
+    return active ? [active.key] : [];
+  }, [menuSections, location.pathname]);
+
+  const [stateOpenKeys, setStateOpenKeys] = React.useState<string[]>(openKeys);
+
+  React.useEffect(() => {
+    setStateOpenKeys(prev => Array.from(new Set([...prev, ...openKeys])));
+  }, [openKeys]);
 
   const handleMenuClick = useCallback(({ key }: { key: string }) => {
       if (key === 'notifications') {
@@ -129,59 +209,105 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({
     boxShadow: isDarkMode ? 'none' : '4px 0 16px 0 rgba(0,0,0,0.05)'
   }), [backgroundColor, borderColor, isDarkMode]);
 
-  const headerContainerStyle = useMemo(() => ({ flexShrink: 0, padding: '20px 16px 24px 16px' }), []);
-  const headerStyle = useMemo(() => ({ 
-    height: 48, 
-    display: 'flex', 
-    alignItems: 'center', 
-    justifyContent: 'center',
+  const hoverBg = isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
+
+  const headerContainerStyle = useMemo(() => ({ flexShrink: 0, padding: collapsed ? '16px 8px 12px' : '16px 12px 12px' }), [collapsed]);
+  const headerStyle = useMemo(() => ({
+    height: 48,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: collapsed ? 'center' : 'flex-start',
     color: isDarkMode ? 'white' : '#333',
-    background: 'transparent', 
+    background: 'transparent',
+    borderRadius: 8,
+    padding: collapsed ? 0 : '0 8px',
     overflow: 'hidden',
     whiteSpace: 'nowrap' as const,
     gap: 12
-  }), [isDarkMode]);
+  }), [isDarkMode, collapsed]);
 
-  const logoStyle = useMemo(() => ({ 
-    width: 32, 
-    height: 32, 
-    background: logoBg, 
-    borderRadius: 6, 
-    display: 'flex', 
-    alignItems: 'center', 
+  const logoStyle = useMemo(() => ({
+    width: 36,
+    height: 36,
+    flexShrink: 0,
+    background: logoBg,
+    borderRadius: 8,
+    display: 'flex',
+    alignItems: 'center',
     justifyContent: 'center',
     fontWeight: 'bold',
+    fontSize: 18,
     color: '#fff',
-    boxShadow: '0 2px 4px rgba(97, 50, 192, 0.4)'
+    boxShadow: '0 2px 6px rgba(97, 50, 192, 0.4)'
   }), [logoBg]);
 
   const menuContainerStyle = useMemo(() => ({ flex: 1, overflowY: 'auto' as const, overflowX: 'hidden' as const, padding: '0 8px' }), []);
-  const menuStyle = useMemo(() => ({ 
-    background: 'transparent', 
+  const menuStyle = useMemo(() => ({
+    background: 'transparent',
     borderRight: 0,
     fontSize: 14,
     fontWeight: 500
   }), []);
 
-  const footerStyle = useMemo(() => ({ 
-    flexShrink: 0, 
-    borderTop: `1px solid ${borderColor}`, 
-    padding: '16px', 
-    background: isDarkMode ? '#1c1c1c' : '#f9fafb'
-  }), [borderColor, isDarkMode]);
+  const footerStyle = useMemo(() => ({
+    flexShrink: 0,
+    borderTop: `1px solid ${borderColor}`,
+    padding: collapsed ? '12px 8px' : '12px',
+    background: 'transparent'
+  }), [borderColor, collapsed]);
 
-  const switchContainerStyle = useMemo(() => ({ display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'space-between' as const, marginBottom: 16 }), [collapsed]);
-  const switchStyle = useMemo(() => ({ background: isDarkMode ? token.colorPrimary : '#bfbfbf' }), [isDarkMode, token.colorPrimary]);
-
-  const profileStyle = useMemo(() => ({ 
-    display: 'flex', 
-    alignItems: 'center', 
-    gap: 12, 
-    padding: '8px 0',
-    justifyContent: collapsed ? 'center' : 'flex-start' as const
+  // shadcn-style user card that triggers the account dropdown.
+  const userCardStyle = useMemo(() => ({
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    width: '100%',
+    cursor: 'pointer',
+    padding: collapsed ? 6 : '8px 8px',
+    borderRadius: 8,
+    justifyContent: collapsed ? 'center' : 'flex-start' as const,
+    transition: 'background 0.15s ease'
   }), [collapsed]);
 
   const avatarStyle = useMemo(() => ({ backgroundColor: token.colorPrimary, flexShrink: 0 }), [token.colorPrimary]);
+
+  // Account dropdown shown from the footer user card (shadcn sidebar-07 pattern).
+  const userMenuItems = useMemo<MenuProps['items']>(() => [
+    {
+      key: 'profile',
+      label: (
+        <div style={{ padding: '4px 4px 6px', minWidth: 180 }}>
+          <Text strong style={{ display: 'block', fontSize: 13, lineHeight: 1.3 }}>{currentUser?.name}</Text>
+          <Text type="secondary" style={{ fontSize: 11 }}>{currentUser?.email}</Text>
+        </div>
+      ),
+      disabled: true,
+    },
+    { type: 'divider' },
+    {
+      key: 'theme',
+      icon: isDarkMode ? <MoonOutlined /> : <SunOutlined />,
+      label: (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, minWidth: 160 }}>
+          <span>Dark Mode</span>
+          <Switch
+            size="small"
+            checked={isDarkMode}
+            onChange={setIsDarkMode}
+          />
+        </div>
+      ),
+      onClick: () => setIsDarkMode(!isDarkMode),
+    },
+    { type: 'divider' },
+    {
+      key: 'logout',
+      icon: <LogoutOutlined />,
+      label: 'Logout',
+      danger: true,
+      onClick: onLogout,
+    },
+  ], [currentUser, isDarkMode, setIsDarkMode, onLogout]);
 
   return (
     <Sider 
@@ -194,25 +320,28 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({
       theme={isDarkMode ? 'dark' : 'light'}
     >
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-        
+
         <div style={headerContainerStyle}>
             <div style={headerStyle}>
                 <div style={logoStyle}>
                     A
                 </div>
                 {!collapsed && (
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: '0.2px' }}>AROMA POS</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
+                        <span style={{ fontSize: 15, fontWeight: 700, letterSpacing: '0.2px', lineHeight: 1.2 }}>AROMA POS</span>
+                        <span style={{ fontSize: 11, color: secondaryTextColor, lineHeight: 1.2 }}>Back Office</span>
                     </div>
                 )}
             </div>
         </div>
-        
+
         <div style={menuContainerStyle}>
             <Menu
                 theme={isDarkMode ? 'dark' : 'light'}
                 mode="inline"
                 selectedKeys={[location.pathname]}
+                openKeys={collapsed ? undefined : stateOpenKeys}
+                onOpenChange={(keys) => setStateOpenKeys(keys as string[])}
                 onClick={handleMenuClick}
                 items={menuItems}
                 style={menuStyle}
@@ -220,68 +349,36 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({
         </div>
         
         <div style={footerStyle}>
-            
-            <div style={switchContainerStyle}>
-                {!collapsed && <span style={{ color: secondaryTextColor, fontSize: 12 }}>Dark Mode</span>}
-                <Switch
-                    size={collapsed ? "small" : "medium"}
-                    checkedChildren={<MoonOutlined />}
-                    unCheckedChildren={<SunOutlined />}
-                    checked={isDarkMode}
-                    onChange={setIsDarkMode}
-                    style={switchStyle}
-                />
-            </div>
-
-            <div style={profileStyle}>
-                <Avatar 
-                    style={avatarStyle} 
-                    icon={<UserOutlined />} 
+            <Dropdown
+                menu={{ items: userMenuItems }}
+                trigger={['click']}
+                placement="topRight"
+                arrow
+            >
+                <div
+                    style={userCardStyle}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = hoverBg; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
                 >
-                    {currentUser?.name[0]}
-                </Avatar>
-                
-                {!collapsed && (
-                    <div style={{ overflow: 'hidden' }}>
-                        <Text strong style={{ color: textColor, display: 'block', fontSize: 13, whiteSpace: 'nowrap' }}>
-                            {currentUser?.name}
-                        </Text>
-                        <Text style={{ color: secondaryTextColor, fontSize: 11 }}>
-                            {currentUser?.role}
-                        </Text>
-                    </div>
-                )}
-            </div>
+                    <Avatar style={avatarStyle} icon={<UserOutlined />}>
+                        {currentUser?.name?.[0]}
+                    </Avatar>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
-                <div 
-                    onClick={onLogout}
-                    style={{ 
-                        cursor: 'pointer', 
-                        color: '#ef4444', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: 8,
-                        fontSize: 13,
-                        padding: '8px 4px'
-                    }}
-                >
-                    <LogoutOutlined />
-                    {!collapsed && <span>Logout</span>}
+                    {!collapsed && (
+                        <>
+                            <div style={{ overflow: 'hidden', flex: 1 }}>
+                                <Text strong style={{ color: textColor, display: 'block', fontSize: 13, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                                    {currentUser?.name}
+                                </Text>
+                                <Text style={{ color: secondaryTextColor, fontSize: 11, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', display: 'block' }}>
+                                    {currentUser?.email}
+                                </Text>
+                            </div>
+                            <UpOutlined style={{ fontSize: 10, color: secondaryTextColor, flexShrink: 0 }} />
+                        </>
+                    )}
                 </div>
-
-                <div 
-                    onClick={() => onCollapse(!collapsed)}
-                    style={{
-                        cursor: 'pointer',
-                        color: secondaryTextColor,
-                        padding: '8px'
-                    }}
-                >
-                    {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-                </div>
-            </div>
-
+            </Dropdown>
         </div>
 
       </div>
