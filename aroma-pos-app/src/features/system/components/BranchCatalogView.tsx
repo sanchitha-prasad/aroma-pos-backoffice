@@ -1,13 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Button, Drawer, Empty, Form, Input, InputNumber,
+  Avatar, Button, Drawer, Empty, Form, Input, InputNumber,
   Popconfirm, Space, Spin, Switch, Table, Tabs, Tag,
   TimePicker, Tooltip, Typography, message, theme,
 } from 'antd';
 import {
   AppstoreOutlined, CaretDownFilled, CaretRightFilled,
   CheckCircleFilled, ClockCircleOutlined, CloseCircleFilled,
-  MinusCircleOutlined, PlusCircleOutlined,
+  MinusCircleOutlined, PlusCircleOutlined, PlusOutlined,
   ReadOutlined, SaveOutlined, SearchOutlined, ShopOutlined,
   TagOutlined, UnorderedListOutlined, WarningFilled,
 } from '@ant-design/icons';
@@ -262,7 +262,7 @@ const DetailPanelContent: React.FC<{
         <Input size="large" prefix={<SearchOutlined style={{ color: token.colorTextTertiary }} />}
           placeholder={`Search ${meta.childPlural}…`} value={search} onChange={e => setSearch(e.target.value)} allowClear />
       </div>
-      <div style={{ flex: 1, overflowY: 'auto', padding: '4px 24px 32px' }}>
+      <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '4px 24px 32px' }}>
         <SectionLabel icon={<CheckCircleFilled />} label="Assigned to this branch" count={node.children.length} color="#389e0d" />
         {filteredAssigned.length === 0 ? (
           <div style={{ padding: '32px 24px', borderRadius: 12, textAlign: 'center', border: `2px dashed ${token.colorBorderSecondary}`, background: token.colorFillQuaternary, marginBottom: 28 }}>
@@ -273,20 +273,37 @@ const DetailPanelContent: React.FC<{
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 28 }}>
             {filteredAssigned.map(child => {
-              const cm = NODE_META[child.type];
+              const firstLetter = child.name.trim().charAt(0).toUpperCase() || '?';
               return (
                 <div key={child.key} style={{
-                  display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px',
+                  display: 'flex', alignItems: 'center', gap: 12, padding: 14,
                   borderRadius: 12, border: `1px solid ${token.colorBorderSecondary}`,
-                  background: token.colorBgContainer, boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-                  borderLeft: `3px solid ${cm.color}`,
-                }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 8, background: cm.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <span style={{ color: cm.color, fontSize: 16 }}>{cm.icon}</span>
-                  </div>
+                  background: token.colorBgContainer,
+                  transition: 'all 0.15s',
+                }}
+                  onMouseEnter={(e) => {
+                    const el = e.currentTarget as HTMLDivElement;
+                    el.style.borderColor = token.colorPrimaryBorder;
+                    el.style.boxShadow = `0 4px 14px ${token.colorPrimaryBg}`;
+                    el.style.transform = 'translateY(-2px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    const el = e.currentTarget as HTMLDivElement;
+                    el.style.borderColor = token.colorBorderSecondary;
+                    el.style.boxShadow = 'none';
+                    el.style.transform = 'none';
+                  }}
+                >
+                  <Avatar
+                    shape="square"
+                    size={40}
+                    style={{ background: token.colorPrimaryBg, color: token.colorPrimary, flexShrink: 0, borderRadius: 10, fontWeight: 700 }}
+                  >
+                    {firstLetter}
+                  </Avatar>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <Text strong style={{ fontSize: 14, display: 'block' }}>{child.name}</Text>
-                    {child.subtitle && <Text type="secondary" style={{ fontSize: 12 }}>{child.subtitle}</Text>}
+                    <Text strong style={{ fontSize: 13.5, display: 'block' }}>{child.name}</Text>
+                    {child.subtitle && <Text type="secondary" style={{ fontSize: 11.5, display: 'block', marginTop: 2 }}>{child.subtitle}</Text>}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                     {child.isEnabled ? <Tag color="success" style={{ fontSize: 12 }}>Enabled</Tag> : <Tag style={{ fontSize: 12 }}>Disabled</Tag>}
@@ -310,28 +327,61 @@ const DetailPanelContent: React.FC<{
                 </Text>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }}>
                 {filteredAvailable.map(entry => {
-                  const cm = NODE_META[meta.childType!];
+                  const firstLetter = entry.name.trim().charAt(0).toUpperCase() || '?';
+                  const busy = assigningId === entry.id;
                   return (
-                    <div key={entry.id} style={{
-                      display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px',
-                      borderRadius: 12, border: `1px dashed ${cm.color}66`,
-                      background: token.colorBgContainer,
-                    }}>
-                      <div style={{ width: 36, height: 36, borderRadius: 8, background: cm.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <span style={{ color: cm.color, fontSize: 16 }}>{cm.icon}</span>
-                      </div>
+                    <button
+                      key={entry.id}
+                      type="button"
+                      disabled={busy}
+                      onClick={() => handleAssign(entry)}
+                      style={{
+                        textAlign: 'left',
+                        font: 'inherit',
+                        padding: 14,
+                        borderRadius: 12,
+                        border: `1px dashed ${token.colorBorder}`,
+                        background: token.colorBgContainer,
+                        display: 'flex', gap: 12, alignItems: 'center',
+                        cursor: 'pointer',
+                        width: '100%',
+                        transition: 'border-color 0.15s, box-shadow 0.15s, background 0.15s',
+                      }}
+                      onMouseEnter={(e) => {
+                        const el = e.currentTarget as HTMLButtonElement;
+                        el.style.borderColor = '#6132C0';
+                        el.style.borderStyle = 'solid';
+                        el.style.background = token.colorPrimaryBg;
+                      }}
+                      onMouseLeave={(e) => {
+                        const el = e.currentTarget as HTMLButtonElement;
+                        el.style.borderColor = token.colorBorder;
+                        el.style.borderStyle = 'dashed';
+                        el.style.background = token.colorBgContainer;
+                      }}
+                    >
+                      <Avatar
+                        shape="square"
+                        size={40}
+                        style={{ background: token.colorFillSecondary, color: token.colorTextSecondary, flexShrink: 0, borderRadius: 10, fontWeight: 700 }}
+                      >
+                        {firstLetter}
+                      </Avatar>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <Text strong style={{ fontSize: 14, display: 'block' }}>{entry.name}</Text>
-                        {entry.subtitle && <Text type="secondary" style={{ fontSize: 12 }} ellipsis={{ tooltip: entry.subtitle }}>{entry.subtitle}</Text>}
+                        <Text strong style={{ fontSize: 13.5, display: 'block', color: token.colorText }} ellipsis={{ tooltip: entry.name }}>
+                          {entry.name}
+                        </Text>
+                        <Text type="secondary" style={{ fontSize: 11.5, display: 'block', marginTop: 2 }} ellipsis={{ tooltip: entry.subtitle || undefined }}>
+                          {entry.subtitle || '—'}
+                        </Text>
                       </div>
-                      <Button type="primary" ghost icon={<PlusCircleOutlined />}
-                        loading={assigningId === entry.id} onClick={() => handleAssign(entry)}
-                        style={{ borderRadius: 8, height: 36, fontWeight: 600, flexShrink: 0 }}>
-                        Assign
-                      </Button>
-                    </div>
+                      <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 4, color: '#6132C0', fontSize: 12.5, fontWeight: 600 }}>
+                        <PlusOutlined spin={busy} style={{ fontSize: 12 }} />
+                        Add
+                      </span>
+                    </button>
                   );
                 })}
               </div>
@@ -344,7 +394,7 @@ const DetailPanelContent: React.FC<{
 
   // ── Overrides tab ─────────────────────────────────────────────────────────
   const overridesTab = (
-    <div style={{ overflowY: 'auto', padding: '20px 24px 40px' }}>
+    <div style={{ overflowY: 'auto', overflowX: 'hidden', padding: '20px 24px 40px' }}>
       <Form form={form} name="branch_catalog_form" layout="vertical">
         <SectionLabel label="Status" />
         <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
@@ -462,7 +512,7 @@ const DetailPanelContent: React.FC<{
           {
             key: 'overrides',
             label: 'Branch Overrides',
-            children: <div style={{ height: 'calc(100vh - 310px)', overflowY: 'auto' }}>{overridesTab}</div>,
+            children: <div style={{ height: 'calc(100vh - 310px)', overflowY: 'auto', overflowX: 'hidden' }}>{overridesTab}</div>,
           },
         ]}
       />
@@ -520,7 +570,7 @@ const DetailPanel: React.FC<{
         </div>
 
         {/* Cards */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '4px 24px 32px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '4px 24px 32px' }}>
           {filtered.length === 0 ? (
             <div style={{ padding: '48px 24px', textAlign: 'center', background: token.colorFillAlter, borderRadius: 12, border: `2px dashed ${token.colorBorderSecondary}` }}>
               <Empty
@@ -533,50 +583,64 @@ const DetailPanel: React.FC<{
               />
             </div>
           ) : (
-            filtered.map(menu => (
-              <div
-                key={menu.id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 16,
-                  padding: '14px 18px',
-                  borderRadius: 12,
-                  border: `1px solid ${token.colorBorderSecondary}`,
-                  background: token.colorBgContainer,
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
-                  transition: 'all 0.2s',
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.borderColor = token.colorPrimaryBorderHover;
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)';
-                  e.currentTarget.style.transform = 'translateY(-1px)';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.borderColor = token.colorBorderSecondary;
-                  e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.02)';
-                  e.currentTarget.style.transform = 'none';
-                }}
-              >
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: '#f5f0ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <ReadOutlined style={{ color: '#6132C0', fontSize: 20 }} />
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <Text strong style={{ fontSize: 15, display: 'block', color: token.colorText }}>{menu.name}</Text>
-                  {menu.subtitle && <Text type="secondary" style={{ fontSize: 12.5, display: 'block', marginTop: 2 }} ellipsis={{ tooltip: menu.subtitle }}>{menu.subtitle}</Text>}
-                </div>
-                <Button
-                  type="primary"
-                  ghost
-                  icon={<PlusCircleOutlined />}
-                  loading={assigningMenuId === menu.id}
-                  onClick={() => onAssignMenu(menu.id)}
-                  style={{ borderRadius: 8, height: 36, fontWeight: 600 }}
-                >
-                  Assign
-                </Button>
-              </div>
-            ))
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }}>
+              {filtered.map(menu => {
+                const firstLetter = menu.name.trim().charAt(0).toUpperCase() || '?';
+                const busy = assigningMenuId === menu.id;
+                return (
+                  <button
+                    key={menu.id}
+                    type="button"
+                    disabled={busy}
+                    onClick={() => onAssignMenu(menu.id)}
+                    style={{
+                      textAlign: 'left',
+                      font: 'inherit',
+                      padding: 14,
+                      borderRadius: 12,
+                      border: `1px dashed ${token.colorBorder}`,
+                      background: token.colorBgContainer,
+                      display: 'flex', gap: 12, alignItems: 'center',
+                      cursor: 'pointer',
+                      width: '100%',
+                      transition: 'border-color 0.15s, box-shadow 0.15s, background 0.15s',
+                    }}
+                    onMouseEnter={(e) => {
+                      const el = e.currentTarget as HTMLButtonElement;
+                      el.style.borderColor = '#6132C0';
+                      el.style.borderStyle = 'solid';
+                      el.style.background = token.colorPrimaryBg;
+                    }}
+                    onMouseLeave={(e) => {
+                      const el = e.currentTarget as HTMLButtonElement;
+                      el.style.borderColor = token.colorBorder;
+                      el.style.borderStyle = 'dashed';
+                      el.style.background = token.colorBgContainer;
+                    }}
+                  >
+                    <Avatar
+                      shape="square"
+                      size={40}
+                      style={{ background: token.colorFillSecondary, color: token.colorTextSecondary, flexShrink: 0, borderRadius: 10, fontWeight: 700 }}
+                    >
+                      {firstLetter}
+                    </Avatar>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <Text strong style={{ fontSize: 13.5, display: 'block', color: token.colorText }} ellipsis={{ tooltip: menu.name }}>
+                        {menu.name}
+                      </Text>
+                      <Text type="secondary" style={{ fontSize: 11.5, display: 'block', marginTop: 2 }} ellipsis={{ tooltip: menu.subtitle || undefined }}>
+                        {menu.subtitle || '—'}
+                      </Text>
+                    </div>
+                    <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 4, color: '#6132C0', fontSize: 12.5, fontWeight: 600 }}>
+                      <PlusOutlined spin={busy} style={{ fontSize: 12 }} />
+                      Add
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           )}
         </div>
       </div>
