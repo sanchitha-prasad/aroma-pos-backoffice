@@ -95,7 +95,7 @@ const Menu: React.FC<MenuPageProps> = ({ currentUser }) => {
         <div style={{ padding: 24, height: '100%', display: 'flex', flexDirection: 'column', gap: 16, overflow: 'hidden' }}>
             {/* Page header */}
             <div style={{ flexShrink: 0 }}>
-                <Title level={2} style={{ margin: 0 }}>Menu</Title>
+                <Title level={2} style={{ margin: 0 }}>Items</Title>
                 <Text type="secondary">
                     {isLoading ? 'Loading…' : `${menuItems.length} item${menuItems.length !== 1 ? 's' : ''}`}
                 </Text>
