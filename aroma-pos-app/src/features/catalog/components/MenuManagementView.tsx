@@ -16,8 +16,8 @@ import {
   Tooltip,
   Typography,
   theme,
-  message,
 } from 'antd';
+import { globalMessage as message } from '../../../shared/services/api/globalMessage';
 import {
   AppstoreAddOutlined,
   CheckCircleFilled,
@@ -737,7 +737,7 @@ const MenuManagementView: React.FC<MenuManagementViewProps> = ({
         okButtonProps={{ loading: saving }}
         onCancel={() => setFormOpen(false)}
         width={480}
-        destroyOnHidden
+        forceRender
       >
         <Form form={form} name="menu_modal_form" layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item name="title" label="Menu Title" rules={[{ required: true, message: 'Title is required' }, { max: 100, message: 'Max 100 characters' }]}>
