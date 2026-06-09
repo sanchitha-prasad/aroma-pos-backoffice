@@ -18,9 +18,9 @@ import {
   BranchModifierAssignment, BranchModifierGroupAssignment,
   ServiceAvailability,
 } from '../../../shared/types';
-import { apiClient } from '@/src/shared/services/api/client';
 import { BranchCatalogService, BulkSavePayload, parseAvailabilities } from '../api/branch-catalog.service';
 import { useCurrency } from '../../../shared/context/CurrencyContext';
+import { useMenus } from '../../catalog/hooks/useMenus';
 
 const { Text, Title } = Typography;
 
@@ -656,7 +656,11 @@ const BranchCatalogView: React.FC<BranchCatalogViewProps> = ({ branch, open, onC
   const loadingKeysRef = useRef<Set<string>>(new Set());
 
   // ── Available menus for the "Add menu" dropdown ───────────────────────────
-  const [allMenus, setAllMenus]         = useState<CatalogEntry[]>([]);
+  const { data: menusData } = useMenus();
+  const allMenus: CatalogEntry[] = useMemo(
+    () => (menusData || []).map((m) => ({ id: m.id, name: m.title, subtitle: m.subtitle })),
+    [menusData],
+  );
 
   // ── Pending changes state ─────────────────────────────────────────────────
   const [pending, setPending] = useState<PendingChanges>(EMPTY_PENDING);
@@ -697,14 +701,6 @@ const BranchCatalogView: React.FC<BranchCatalogViewProps> = ({ branch, open, onC
       })
       .finally(() => setTreeLoading(false));
 
-    // Load all global menus for the "Add menu" dropdown.
-    // apiClient interceptor already unwraps response.data.data → array directly.
-    apiClient.get<any[]>('/api/menus')
-      .then(r => {
-        const arr = Array.isArray(r) ? r : [];
-        setAllMenus(arr.map((m: any) => ({ id: m.menuId ?? m.id, name: m.title ?? m.name, subtitle: m.subtitle })));
-      })
-      .catch(() => {});
   }, [open, branch.id]);
 
   useEffect(() => {

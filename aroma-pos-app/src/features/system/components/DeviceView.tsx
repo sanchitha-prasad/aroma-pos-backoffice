@@ -56,13 +56,30 @@ const DeviceView: React.FC<DeviceViewProps> = ({
     const selectedTypeId = useWatch('deviceTypeId', form);
     const isPax = deviceTypes.find(t => t.id === selectedTypeId)?.name === DeviceTypeEnum[DeviceTypeEnum.PAX];
 
+    const isDeviceActive = (status: any, isActive?: boolean): boolean => {
+        if (status !== undefined && status !== null && status !== '') {
+            if (typeof status === 'number') return status === DeviceStatusType.Active;
+            const s = String(status).toLowerCase();
+            return s === 'active' || s === '1' || s === 'true';
+        }
+        if (isActive !== undefined) return isActive;
+        return false;
+    };
+
     const openModal = (device?: Device) => {
         setEditingDevice(device || null);
         if (device) {
+            let statusVal: any = device.status;
+            if (typeof statusVal === 'string') {
+                const s = statusVal.toLowerCase();
+                if (s === 'active') statusVal = DeviceStatusType.Active;
+                else statusVal = DeviceStatusType.InActive;
+            }
             form.setFieldsValue({
                 ...device,
                 deviceTypeId: device.type?.id,
                 deviceProtocolId: device.protocol?.id,
+                status: statusVal,
             });
         } else {
             form.resetFields();
@@ -75,6 +92,14 @@ const DeviceView: React.FC<DeviceViewProps> = ({
         try {
             const values = await form.validateFields();
             if (!isPax) values.provider = undefined;
+            
+            // Map numeric dropdown select value back to string if needed
+            if (values.status === DeviceStatusType.Active) {
+                values.status = 'Active';
+            } else {
+                values.status = 'InActive';
+            }
+
             if (editingDevice) {
                 await updateDevice.mutateAsync({ id: editingDevice.id, data: values });
                 message.success('Device updated');
@@ -101,8 +126,9 @@ const DeviceView: React.FC<DeviceViewProps> = ({
         return devices.filter(d => {
             if (search && !d.name.toLowerCase().includes(search.toLowerCase()) &&
                 !(d.location || '').toLowerCase().includes(search.toLowerCase())) return false;
-            if (statusFilter === 'active' && d.status !== DeviceStatusType.Active) return false;
-            if (statusFilter === 'inactive' && d.status !== DeviceStatusType.InActive) return false;
+            const isActive = isDeviceActive(d.status, d.isActive);
+            if (statusFilter === 'active' && !isActive) return false;
+            if (statusFilter === 'inactive' && isActive) return false;
             return true;
         });
     }, [devices, search, statusFilter]);
@@ -114,7 +140,7 @@ const DeviceView: React.FC<DeviceViewProps> = ({
 
     const quickFilters = React.useMemo(() => {
         const all = devices.length;
-        const active = devices.filter(d => d.status === DeviceStatusType.Active).length;
+        const active = devices.filter(d => isDeviceActive(d.status, d.isActive)).length;
         return [
             { key: 'all',      label: 'All',      count: all },
             { key: 'active',   label: 'Active',   count: active },
@@ -157,10 +183,12 @@ const DeviceView: React.FC<DeviceViewProps> = ({
         },
         {
             title: 'Status', dataIndex: 'status', key: 'status', width: 100,
-            render: (v: DeviceStatusType) =>
-                v === DeviceStatusType.Active
+            render: (v: DeviceStatusType, record: Device) => {
+                const isActive = isDeviceActive(v, record.isActive);
+                return isActive
                     ? <Tag color="green">Active</Tag>
-                    : <Tag color="red">Inactive</Tag>,
+                    : <Tag color="red">Inactive</Tag>;
+            }
         },
         {
             title: 'Created At', dataIndex: 'createdOnUtc', key: 'createdAt', width: 160,

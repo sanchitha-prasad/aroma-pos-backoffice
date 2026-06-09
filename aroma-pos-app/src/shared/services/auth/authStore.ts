@@ -2,6 +2,7 @@ import { Employee } from '../../types';
 
 interface SessionData {
     accessToken: string;
+    // refreshToken: string;
     tenantId: string;
     branchId: string;
     user: Employee;
@@ -13,6 +14,7 @@ class AuthStore {
     private _branchId: string | null = null;
     private _currentUser: Employee | null = null;
 
+    private readonly RT_KEY   = '_sid';
     private readonly AT_KEY   = '_sat';
     private readonly USR_KEY  = '_susr';
     private readonly TID_KEY  = '_stid';
@@ -28,6 +30,7 @@ class AuthStore {
 
         // Persist full session in sessionStorage so a hard-refresh can restore
         // the in-memory state without a round-trip to the refresh endpoint.
+        // sessionStorage.setItem(this.RT_KEY,  data.refreshToken);
         sessionStorage.setItem(this.AT_KEY,  data.accessToken);
         sessionStorage.setItem(this.TID_KEY, data.tenantId);
         sessionStorage.setItem(this.BID_KEY, data.branchId);
@@ -39,7 +42,7 @@ class AuthStore {
         this._tenantId    = null;
         this._branchId    = null;
         this._currentUser = null;
-        [this.AT_KEY, this.USR_KEY, this.TID_KEY, this.BID_KEY]
+        [this.RT_KEY, this.AT_KEY, this.USR_KEY, this.TID_KEY, this.BID_KEY]
             .forEach(k => sessionStorage.removeItem(k));
     }
 
@@ -71,6 +74,10 @@ class AuthStore {
     get tenantId(): string | null      { return this._tenantId; }
     get branchId(): string | null      { return this._branchId; }
     get currentUser(): Employee | null { return this._currentUser; }
+
+    get refreshToken(): string | null {
+        return sessionStorage.getItem(this.RT_KEY);
+    }
 
     isAuthenticated(): boolean {
         return this._accessToken !== null;

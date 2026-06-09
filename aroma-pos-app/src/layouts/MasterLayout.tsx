@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import { Layout, Drawer, List, Avatar, Typography } from 'antd';
-import { BellOutlined } from '@ant-design/icons';
+import React, { useState, Suspense } from 'react';
+import { Layout, Drawer, List, Avatar, Typography, Button } from 'antd';
+import { BellOutlined, MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { Employee, Role } from '../shared/types';
+import PageLoader from '../shared/components/loading/PageLoader';
 
 const { Content } = Layout;
 const { Text } = Typography;
@@ -26,6 +27,10 @@ const MasterLayout: React.FC<MasterLayoutProps> = ({ currentUser, isDarkMode, se
     ? rolePermissions[currentUser.role] 
     : [];
 
+  const handleOpenNotifications = React.useCallback(() => {
+    setIsNotifOpen(true);
+  }, []);
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Sidebar 
@@ -35,12 +40,31 @@ const MasterLayout: React.FC<MasterLayoutProps> = ({ currentUser, isDarkMode, se
         setIsDarkMode={setIsDarkMode}
         onLogout={onLogout}
         currentUser={currentUser}
-        onOpenNotifications={() => setIsNotifOpen(true)}
+        onOpenNotifications={handleOpenNotifications}
         notificationCount={notifications.length}
         userPermissions={userPermissions}
       />
 
       <Layout style={{ position: 'relative' }}>
+        <Button
+          type="text"
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+          onClick={() => setCollapsed(c => !c)}
+          style={{
+            position: 'absolute',
+            top: 22,
+            left: 16,
+            zIndex: 30,
+            width: 36,
+            height: 36,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 16,
+          }}
+        />
         <Drawer title="Notifications" placement="right" onClose={() => setIsNotifOpen(false)} open={isNotifOpen}>
             {/* <List
               itemLayout="horizontal"
@@ -81,7 +105,9 @@ const MasterLayout: React.FC<MasterLayoutProps> = ({ currentUser, isDarkMode, se
             </div>
         </Drawer>
         <Content style={{ margin: '24px 32px 24px 24px', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 48px)' }}>
+          <Suspense fallback={<PageLoader />}>
             <Outlet />
+          </Suspense>
         </Content>
       </Layout>
     </Layout>

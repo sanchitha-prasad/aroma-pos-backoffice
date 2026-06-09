@@ -28,12 +28,11 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
-import { apiClient } from '../../../shared/services/api/client';
-import { authStore } from '../../../shared/services/auth/authStore';
 import RichTable from '../../../shared/components/rich-table/RichTable';
 import { EmployeesService } from '../../system/api/employees.service';
 import { Employee } from '../../../shared/types';
 import { useCurrency } from '../../../shared/context/CurrencyContext';
+import { useSalesReport } from '../hooks/useSalesReport';
 
 const { Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -55,41 +54,15 @@ const ReportsView: React.FC<ReportsViewProps> = ({ isDarkMode, permissions }) =>
         dayjs().endOf('day')
     ]);
     const [selectedFilter, setSelectedFilter] = useState<string>('today');
-    const [loading, setLoading] = useState(false);
-    const [reportData, setReportData] = useState<any>(null);
 
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
 
-    const fetchReportData = React.useCallback(async () => {
-        if (!dates[0] || !dates[1]) return;
-        setLoading(true);
-        try {
-            const branchId = authStore.branchId || '00000000-0000-0000-0000-000000000004';
-            const fromUtc = dates[0].startOf('day').toISOString();
-            const toUtc = dates[1].endOf('day').toISOString();
-
-            const res = await apiClient.get<any>(`/api/reports/sales-summary`, {
-                params: {
-                    branchId,
-                    FromUtc: fromUtc,
-                    ToUtc: toUtc
-                }
-            });
-            setReportData(res);
-        } catch (error) {
-            console.error('Error fetching report:', error);
-            message.error('Failed to fetch report data');
-        } finally {
-            setLoading(false);
-        }
-    }, [dates]);
-
-    React.useEffect(() => {
-        if (mainCategory === 'sales' || mainCategory === 'employee') {
-            fetchReportData();
-        }
-    }, [fetchReportData, mainCategory]);
+    const reportEnabled = mainCategory === 'sales' || mainCategory === 'employee';
+    const { data: reportData, isFetching: loading } = useSalesReport({
+        fromDate: reportEnabled ? dates[0] : null,
+        toDate: reportEnabled ? dates[1] : null,
+    });
 
     const handleQuickFilter = (key: string) => {
         setSelectedFilter(key);

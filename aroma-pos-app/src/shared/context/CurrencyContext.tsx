@@ -1,8 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { apiClient } from '../services/api/client';
-import { authStore } from '../services/auth/authStore';
+import { createContext, useContext } from 'react';
 
-const CURRENCY_SYMBOLS: Record<string, string> = {
+export const CURRENCY_SYMBOLS: Record<string, string> = {
     USD: '$',
     EUR: '€',
     GBP: '£',
@@ -15,44 +13,17 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
     SGD: 'S$',
 };
 
-interface CurrencyContextValue {
+export interface CurrencyContextValue {
     currencyCode: string;
     currencySymbol: string;
     formatCurrency: (amount: number) => string;
 }
 
-const CurrencyContext = createContext<CurrencyContextValue>({
+export const CurrencyContext = createContext<CurrencyContextValue>({
     currencyCode: 'LKR',
     currencySymbol: 'LKR',
     formatCurrency: (amount) => `LKR ${amount.toFixed(2)}`,
 });
 
-export const CurrencyProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [currencyCode, setCurrencyCode] = useState('LKR');
-
-    useEffect(() => {
-        const fetchCurrency = async () => {
-            if (!authStore.tenantId) return;
-            try {
-                const data = await apiClient.get<any[]>('/api/tenant-settings');
-                const entry = (data || []).find((item: any) => item.key === 'DefaultCurrency');
-                if (entry?.value) setCurrencyCode(entry.value);
-            } catch {
-                // keep default
-            }
-        };
-        fetchCurrency();
-    }, []);
-
-    const currencySymbol = CURRENCY_SYMBOLS[currencyCode] ?? currencyCode;
-
-    const formatCurrency = (amount: number) => `${currencySymbol} ${amount.toFixed(2)}`;
-
-    return (
-        <CurrencyContext.Provider value={{ currencyCode, currencySymbol, formatCurrency }}>
-            {children}
-        </CurrencyContext.Provider>
-    );
-};
-
 export const useCurrency = () => useContext(CurrencyContext);
+
