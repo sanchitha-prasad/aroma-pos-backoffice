@@ -1,13 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Badge, Button, Divider, Drawer, Empty, Form, Input, InputNumber,
-  Popconfirm, Select, Space, Spin, Switch, Table, Tabs, Tag,
+  Button, Drawer, Empty, Form, Input, InputNumber,
+  Popconfirm, Space, Spin, Switch, Table, Tabs, Tag,
   TimePicker, Tooltip, Typography, message, theme,
 } from 'antd';
 import {
   AppstoreOutlined, CaretDownFilled, CaretRightFilled,
   CheckCircleFilled, ClockCircleOutlined, CloseCircleFilled,
-  CloudUploadOutlined, MinusCircleOutlined, PlusCircleOutlined,
+  MinusCircleOutlined, PlusCircleOutlined,
   ReadOutlined, SaveOutlined, SearchOutlined, ShopOutlined,
   TagOutlined, UnorderedListOutlined, WarningFilled,
 } from '@ant-design/icons';
@@ -18,9 +18,12 @@ import {
   BranchModifierAssignment, BranchModifierGroupAssignment,
   ServiceAvailability,
 } from '../../../shared/types';
-import { BranchCatalogService, BulkSavePayload, parseAvailabilities } from '../api/branch-catalog.service';
+import { BranchCatalogService, parseAvailabilities } from '../api/branch-catalog.service';
 import { useCurrency } from '../../../shared/context/CurrencyContext';
 import { useMenus } from '../../catalog/hooks/useMenus';
+import { useMenuItems } from '../../catalog/hooks/useMenuItems';
+import { useCategories, useModifierGroups } from '../../catalog/hooks/useMenuPageData';
+import { useModifiers } from '../../catalog/hooks/useModifiers';
 
 const { Text, Title } = Typography;
 
@@ -38,105 +41,6 @@ interface BranchNode {
 
 interface CatalogEntry { id: string; name: string; subtitle?: string; basePrice?: number }
 
-// ─── Pending changes ──────────────────────────────────────────────────────────
-
-interface PendingChanges {
-  // Assignments
-  menusToAdd:       string[];
-  menusToRemove:    string[];
-  categoryAdd:      { menuId: string; categoryId: string }[];
-  categoryRemove:   { menuId: string; categoryId: string }[];
-  itemsToAdd:       string[];
-  itemsToRemove:    string[];
-  modGroupsToAdd:   string[];
-  modGroupsToRemove: string[];
-  modifiersToAdd:   string[];
-  modifiersToRemove: string[];
-  // Overrides (latest write per entity ID wins)
-  menuOverrides:     Record<string, { isEnabled: boolean; serviceAvailabilities: ServiceAvailability[] }>;
-  categoryOverrides: Record<string, { isEnabled: boolean; serviceAvailabilities: ServiceAvailability[] }>;
-  itemOverrides:     Record<string, { isEnabled: boolean; isSoldOut: boolean; serviceAvailabilities: ServiceAvailability[] }>;
-  // keyed by itemId — each entry is the variants belonging to that item
-  variantOverrides:  Record<string, { itemVariantId: string; isEnabled: boolean; branchPrice?: number }[]>;
-  modGroupOverrides: Record<string, { isEnabled: boolean; serviceAvailabilities: ServiceAvailability[] }>;
-  modifierOverrides: Record<string, { isEnabled: boolean; branchPrice?: number; serviceAvailabilities: ServiceAvailability[] }>;
-}
-
-const EMPTY_PENDING: PendingChanges = {
-  menusToAdd: [], menusToRemove: [],
-  categoryAdd: [], categoryRemove: [],
-  itemsToAdd: [], itemsToRemove: [],
-  modGroupsToAdd: [], modGroupsToRemove: [],
-  modifiersToAdd: [], modifiersToRemove: [],
-  menuOverrides: {}, categoryOverrides: {}, itemOverrides: {},
-  variantOverrides: {}, modGroupOverrides: {}, modifierOverrides: {},
-};
-
-const countPending = (p: PendingChanges): number =>
-  p.menusToAdd.length + p.menusToRemove.length +
-  p.categoryAdd.length + p.categoryRemove.length +
-  p.itemsToAdd.length + p.itemsToRemove.length +
-  p.modGroupsToAdd.length + p.modGroupsToRemove.length +
-  p.modifiersToAdd.length + p.modifiersToRemove.length +
-  Object.keys(p.menuOverrides).length + Object.keys(p.categoryOverrides).length +
-  Object.keys(p.itemOverrides).length + Object.values(p.variantOverrides).reduce((s, vs) => s + vs.length, 0) +
-  Object.keys(p.modGroupOverrides).length + Object.keys(p.modifierOverrides).length;
-
-// Idempotent: adding then removing the same entity cancels out
-const applyAssign = (list: string[], id: string, removals: string[]): [string[], string[]] =>
-  [[...list.filter(x => x !== id), id], removals.filter(x => x !== id)];
-
-const applyUnassign = (list: string[], id: string, additions: string[]): [string[], string[]] =>
-  [[...list.filter(x => x !== id), id], additions.filter(x => x !== id)];
-
-// Build the bulk save payload from pending state
-const buildPayload = (p: PendingChanges): BulkSavePayload => {
-  const catByMenu: Record<string, { toAdd: string[]; toRemove: string[] }> = {};
-  p.categoryAdd.forEach(({ menuId, categoryId }) => {
-    catByMenu[menuId] ??= { toAdd: [], toRemove: [] };
-    catByMenu[menuId].toAdd.push(categoryId);
-  });
-  p.categoryRemove.forEach(({ menuId, categoryId }) => {
-    catByMenu[menuId] ??= { toAdd: [], toRemove: [] };
-    catByMenu[menuId].toRemove.push(categoryId);
-  });
-
-  const orNull = <T,>(arr: T[]) => (arr.length > 0 ? arr : undefined);
-
-  return {
-    menusToAdd:    orNull(p.menusToAdd),
-    menusToRemove: orNull(p.menusToRemove),
-    menuOverrides: Object.keys(p.menuOverrides).length > 0
-      ? Object.entries(p.menuOverrides).map(([menuId, o]) => ({ menuId, ...o }))
-      : undefined,
-    categoryAssignments: Object.keys(catByMenu).length > 0
-      ? Object.entries(catByMenu).map(([menuId, v]) => ({ menuId, ...v }))
-      : undefined,
-    categoryOverrides: Object.keys(p.categoryOverrides).length > 0
-      ? Object.entries(p.categoryOverrides).map(([categoryId, o]) => ({ categoryId, ...o }))
-      : undefined,
-    itemsToAdd:    orNull(p.itemsToAdd),
-    itemsToRemove: orNull(p.itemsToRemove),
-    itemOverrides: Object.keys(p.itemOverrides).length > 0
-      ? Object.entries(p.itemOverrides).map(([itemId, o]) => ({
-          itemId, ...o,
-          variants: p.variantOverrides[itemId]?.map(v => ({
-            itemVariantId: v.itemVariantId, isEnabled: v.isEnabled, price: v.branchPrice,
-          })),
-        }))
-      : undefined,
-    modifierGroupsToAdd:    orNull(p.modGroupsToAdd),
-    modifierGroupsToRemove: orNull(p.modGroupsToRemove),
-    modifierGroupOverrides: Object.keys(p.modGroupOverrides).length > 0
-      ? Object.entries(p.modGroupOverrides).map(([modifierGroupId, o]) => ({ modifierGroupId, ...o }))
-      : undefined,
-    modifiersToAdd:    orNull(p.modifiersToAdd),
-    modifiersToRemove: orNull(p.modifiersToRemove),
-    modifierOverrides: Object.keys(p.modifierOverrides).length > 0
-      ? Object.entries(p.modifierOverrides).map(([modifierId, o]) => ({ modifierId, ...o }))
-      : undefined,
-  };
-};
 
 // ─── Response-to-node mapping helpers ────────────────────────────────────────
 
@@ -284,13 +188,23 @@ const SectionLabel: React.FC<{ icon?: React.ReactNode; label: string; count?: nu
 
 const DetailPanelContent: React.FC<{
   node: BranchNode;
-  onApply: (key: string, patch: Partial<BranchNode>) => void;
-}> = ({ node, onApply }) => {
+  availableChildren: CatalogEntry[];
+  availLoading: boolean;
+  onApply: (key: string, patch: Partial<BranchNode>) => Promise<void>;
+  onAddChild: (parentKey: string, entry: CatalogEntry) => Promise<void>;
+}> = ({ node, availableChildren, availLoading, onApply, onAddChild }) => {
   const { token } = theme.useToken();
   const [form] = Form.useForm();
   const [avail, setAvail] = useState<ServiceAvailability[]>([]);
   const [search, setSearch] = useState('');
+  const [applying, setApplying] = useState(false);
+  const [assigningId, setAssigningId] = useState<string | null>(null);
   const { currencySymbol } = useCurrency();
+
+  // Every parent level gets an "add from tenant" picker (menu→category,
+  // category→item, item→modifier group, group→modifier). Picking inserts the
+  // branch-level row via the matching assign endpoint.
+  const canAssignChildren = node.type !== 'modifier';
 
   useEffect(() => {
     form.resetFields();
@@ -314,15 +228,33 @@ const DetailPanelContent: React.FC<{
       ...v, isEnabled: vals[`ve_${v.itemVariantId}`] ?? v.isEnabled,
       branchPrice: vals[`vp_${v.itemVariantId}`] ?? v.branchPrice,
     }));
-    onApply(node.key, {
-      isEnabled: vals.isEnabled, isSoldOut: vals.isSoldOut,
-      branchPrice: vals.branchPrice ?? undefined,
-      serviceAvailabilities: avail, variants,
-    });
+    setApplying(true);
+    try {
+      await onApply(node.key, {
+        isEnabled: vals.isEnabled, isSoldOut: vals.isSoldOut,
+        branchPrice: vals.branchPrice ?? undefined,
+        serviceAvailabilities: avail, variants,
+      });
+    } finally {
+      setApplying(false);
+    }
+  };
+
+  const handleAssign = async (entry: CatalogEntry) => {
+    setAssigningId(entry.id);
+    try {
+      await onAddChild(node.key, entry);
+    } finally {
+      setAssigningId(null);
+    }
   };
 
   // ── Children tab ──────────────────────────────────────────────────────────
   const filteredAssigned = node.children.filter(c => c.name.toLowerCase().includes(search.toLowerCase()));
+  const assignedIds = new Set(node.children.map(c => c.id));
+  const filteredAvailable = availableChildren.filter(
+    a => !assignedIds.has(a.id) && a.name.toLowerCase().includes(search.toLowerCase()),
+  );
 
   const childrenTab = (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -364,6 +296,47 @@ const DetailPanelContent: React.FC<{
               );
             })}
           </div>
+        )}
+
+        {canAssignChildren && (
+          <>
+            <SectionLabel icon={<PlusCircleOutlined />} label={`Available ${meta.childPlural} to assign`} count={filteredAvailable.length} color={NODE_META[meta.childType!].color} />
+            {availLoading ? (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 0' }}><Spin /></div>
+            ) : filteredAvailable.length === 0 ? (
+              <div style={{ padding: '24px', borderRadius: 12, textAlign: 'center', border: `2px dashed ${token.colorBorderSecondary}`, background: token.colorFillQuaternary }}>
+                <Text type="secondary" style={{ fontSize: 14 }}>
+                  {availableChildren.length === 0 ? `All ${meta.childPlural} are already assigned` : 'No matches'}
+                </Text>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {filteredAvailable.map(entry => {
+                  const cm = NODE_META[meta.childType!];
+                  return (
+                    <div key={entry.id} style={{
+                      display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px',
+                      borderRadius: 12, border: `1px dashed ${cm.color}66`,
+                      background: token.colorBgContainer,
+                    }}>
+                      <div style={{ width: 36, height: 36, borderRadius: 8, background: cm.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <span style={{ color: cm.color, fontSize: 16 }}>{cm.icon}</span>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <Text strong style={{ fontSize: 14, display: 'block' }}>{entry.name}</Text>
+                        {entry.subtitle && <Text type="secondary" style={{ fontSize: 12 }} ellipsis={{ tooltip: entry.subtitle }}>{entry.subtitle}</Text>}
+                      </div>
+                      <Button type="primary" ghost icon={<PlusCircleOutlined />}
+                        loading={assigningId === entry.id} onClick={() => handleAssign(entry)}
+                        style={{ borderRadius: 8, height: 36, fontWeight: 600, flexShrink: 0 }}>
+                        Assign
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -443,12 +416,12 @@ const DetailPanelContent: React.FC<{
           <AvailabilityEditor value={avail} onChange={setAvail} />
         </div>
 
-        <Button type="primary" icon={<SaveOutlined />} block size="large" onClick={handleApply}
+        <Button type="primary" icon={<SaveOutlined />} block size="large" loading={applying} onClick={handleApply}
           style={{ height: 48, fontSize: 15, fontWeight: 600, borderRadius: 10 }}>
-          Apply Override
+          Save Override
         </Button>
         <Text type="secondary" style={{ display: 'block', textAlign: 'center', marginTop: 8, fontSize: 12 }}>
-          Changes are queued — click <strong>Save All</strong> in the header to commit
+          Saved to this branch immediately
         </Text>
       </Form>
     </div>
@@ -501,34 +474,126 @@ const DetailPanelContent: React.FC<{
 
 const DetailPanel: React.FC<{
   node: BranchNode | null;
-  onApply: (key: string, patch: Partial<BranchNode>) => void;
-}> = ({ node, onApply }) => {
+  availableChildren: CatalogEntry[];
+  availLoading: boolean;
+  onApply: (key: string, patch: Partial<BranchNode>) => Promise<void>;
+  onAddChild: (parentKey: string, entry: CatalogEntry) => Promise<void>;
+  availableMenus: CatalogEntry[];
+  onAssignMenu: (menuId: string) => Promise<void>;
+  assigningMenuId: string | null;
+  branchName: string;
+}> = ({ node, availableChildren, availLoading, onApply, onAddChild, availableMenus, onAssignMenu, assigningMenuId, branchName }) => {
   const { token } = theme.useToken();
+  const [search, setSearch] = useState('');
 
-  if (!node) return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: 48, opacity: 0.5 }}>
-      <ReadOutlined style={{ fontSize: 48, color: token.colorTextQuaternary }} />
-      <div style={{ textAlign: 'center' }}>
-        <Text style={{ fontSize: 16, fontWeight: 600, display: 'block', color: token.colorTextSecondary }}>Nothing selected</Text>
-        <Text type="secondary" style={{ fontSize: 14 }}>Click any item in the tree to configure its branch settings</Text>
+  if (!node) {
+    const filtered = availableMenus.filter(m => m.name.toLowerCase().includes(search.toLowerCase()));
+
+    return (
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: token.colorBgContainer }}>
+        {/* Header */}
+        <div style={{ padding: '20px 24px 16px', borderBottom: `1px solid ${token.colorBorderSecondary}`, background: `linear-gradient(135deg, #f5f0ff 0%, ${token.colorBgContainer} 60%)`, flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: '#f5f0ff', border: '1.5px solid #6132C030', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <ReadOutlined style={{ color: '#6132C0', fontSize: 16 }} />
+            </div>
+            <Tag style={{ fontSize: 12, fontWeight: 600, color: '#6132C0', borderColor: '#6132C050', background: '#f5f0ff' }}>
+              Assign Menus
+            </Tag>
+          </div>
+          <Title level={4} style={{ margin: 0, fontSize: 20 }}>Assign Menus to Branch</Title>
+          <Text type="secondary" style={{ fontSize: 14, marginTop: 2, display: 'block' }}>
+            Select from the available tenant-level menus below to assign them to {branchName}.
+          </Text>
+        </div>
+
+        {/* Search */}
+        <div style={{ padding: '16px 24px 12px', flexShrink: 0 }}>
+          <Input
+            prefix={<SearchOutlined style={{ color: token.colorTextTertiary }} />}
+            placeholder="Search available menus…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            allowClear
+            size="large"
+          />
+        </div>
+
+        {/* Cards */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '4px 24px 32px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {filtered.length === 0 ? (
+            <div style={{ padding: '48px 24px', textAlign: 'center', background: token.colorFillAlter, borderRadius: 12, border: `2px dashed ${token.colorBorderSecondary}` }}>
+              <Empty
+                description={
+                  availableMenus.length === 0
+                    ? "All available menus are already assigned to this branch. Click any assigned item in the tree on the left to configure branch overrides."
+                    : "No available menus match your search."
+                }
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+              />
+            </div>
+          ) : (
+            filtered.map(menu => (
+              <div
+                key={menu.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 16,
+                  padding: '14px 18px',
+                  borderRadius: 12,
+                  border: `1px solid ${token.colorBorderSecondary}`,
+                  background: token.colorBgContainer,
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.borderColor = token.colorPrimaryBorderHover;
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.borderColor = token.colorBorderSecondary;
+                  e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.02)';
+                  e.currentTarget.style.transform = 'none';
+                }}
+              >
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: '#f5f0ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <ReadOutlined style={{ color: '#6132C0', fontSize: 20 }} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <Text strong style={{ fontSize: 15, display: 'block', color: token.colorText }}>{menu.name}</Text>
+                  {menu.subtitle && <Text type="secondary" style={{ fontSize: 12.5, display: 'block', marginTop: 2 }} ellipsis={{ tooltip: menu.subtitle }}>{menu.subtitle}</Text>}
+                </div>
+                <Button
+                  type="primary"
+                  ghost
+                  icon={<PlusCircleOutlined />}
+                  loading={assigningMenuId === menu.id}
+                  onClick={() => onAssignMenu(menu.id)}
+                  style={{ borderRadius: 8, height: 36, fontWeight: 600 }}
+                >
+                  Assign
+                </Button>
+              </div>
+            ))
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 
-  // Use node.key so the inner component fully remounts when selection changes,
-  // which resets the form and avail state cleanly without manual imperative calls.
-  return <DetailPanelContent key={node.key} node={node} onApply={onApply} />;
+  return <DetailPanelContent key={node.key} node={node} availableChildren={availableChildren} availLoading={availLoading} onApply={onApply} onAddChild={onAddChild} />;
 };
 
 // ─── Tree row ─────────────────────────────────────────────────────────────────
 
 const TreeRow: React.FC<{
   node: BranchNode; depth: number; isSelected: boolean; isExpanded: boolean;
-  isDirty: boolean;
   onSelect: (n: BranchNode) => void; onExpand: (key: string) => void;
   onToggle: (key: string, v: boolean) => void;
   onRemove: (node: BranchNode) => void;
-}> = ({ node, depth, isSelected, isExpanded, isDirty, onSelect, onExpand, onToggle, onRemove }) => {
+}> = ({ node, depth, isSelected, isExpanded, onSelect, onExpand, onToggle, onRemove }) => {
   const { token } = theme.useToken();
   const meta = NODE_META[node.type];
   const hasKids = node.type !== 'modifier';
@@ -562,9 +627,6 @@ const TreeRow: React.FC<{
         {node.subtitle && depth < 3 && <Text type="secondary" style={{ fontSize: 12 }}>{node.subtitle}</Text>}
       </div>
 
-      {/* Dirty indicator */}
-      {isDirty && <Tooltip title="Unsaved change"><div style={{ width: 7, height: 7, borderRadius: '50%', background: '#fa8c16', flexShrink: 0, marginRight: 6 }} /></Tooltip>}
-
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, marginRight: 8 }}>
         {node.isSoldOut && <WarningFilled style={{ color: '#fa8c16', fontSize: 12 }} />}
         {node.type === 'modifier' && node.branchPrice != null && node.branchPrice !== node.basePrice && <Tag color="orange" style={{ fontSize: 10, padding: '0 5px', margin: 0 }}>✎</Tag>}
@@ -591,10 +653,10 @@ const TreeRow: React.FC<{
 const RenderTree: React.FC<{
   nodes: BranchNode[]; depth: number;
   expandedKeys: Set<string>; selectedKey: string | null;
-  dirtyKeys: Set<string>; loadingKeys: Set<string>;
+  loadingKeys: Set<string>;
   onSelect: (n: BranchNode) => void; onExpand: (key: string) => void;
   onToggle: (key: string, v: boolean) => void; onRemove: (n: BranchNode) => void;
-}> = ({ nodes, depth, expandedKeys, selectedKey, dirtyKeys, loadingKeys, onSelect, onExpand, onToggle, onRemove }) => {
+}> = ({ nodes, depth, expandedKeys, selectedKey, loadingKeys, onSelect, onExpand, onToggle, onRemove }) => {
   const { token } = theme.useToken();
   return (
     <>
@@ -605,7 +667,6 @@ const RenderTree: React.FC<{
           <React.Fragment key={node.key}>
             <TreeRow node={node} depth={depth}
               isSelected={selectedKey === node.key} isExpanded={expandedKeys.has(node.key)}
-              isDirty={dirtyKeys.has(node.key)}
               onSelect={onSelect} onExpand={onExpand} onToggle={onToggle} onRemove={onRemove}
             />
             {expandedKeys.has(node.key) && (
@@ -614,7 +675,7 @@ const RenderTree: React.FC<{
                   <div style={{ padding: '6px 12px' }}><Spin size="small" /></div>
                 ) : node.children.length > 0 ? (
                   <RenderTree nodes={node.children} depth={depth + 1}
-                    expandedKeys={expandedKeys} selectedKey={selectedKey} dirtyKeys={dirtyKeys}
+                    expandedKeys={expandedKeys} selectedKey={selectedKey}
                     loadingKeys={loadingKeys}
                     onSelect={onSelect} onExpand={onExpand} onToggle={onToggle} onRemove={onRemove}
                   />
@@ -644,8 +705,8 @@ const BranchCatalogView: React.FC<BranchCatalogViewProps> = ({ branch, open, onC
   const [selectedKey, setSelectedKey]   = useState<string | null>(null);
   const [selectedNode, setSelectedNode] = useState<BranchNode | null>(null);
   const [treeSearch, setTreeSearch]     = useState('');
-  const [addMenuOpen, setAddMenuOpen]   = useState(false);
-  const [addMenuId, setAddMenuId]       = useState<string | undefined>(undefined);
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [assignSearch, setAssignSearch]           = useState('');
 
   // ── Loading states ────────────────────────────────────────────────────────
   const [treeLoading, setTreeLoading]   = useState(false);
@@ -655,29 +716,77 @@ const BranchCatalogView: React.FC<BranchCatalogViewProps> = ({ branch, open, onC
   const loadedKeysRef  = useRef<Set<string>>(new Set());
   const loadingKeysRef = useRef<Set<string>>(new Set());
 
-  // ── Available menus for the "Add menu" dropdown ───────────────────────────
-  const { data: menusData } = useMenus();
+  // ── Tenant catalog (for assign pickers) ───────────────────────────────────
+  // Reuses the existing tenant-level endpoints — available children are derived
+  // client-side (all minus already-assigned), the same way menus already work.
+  const { data: menusData }          = useMenus(true);
+  const { data: categoriesData }     = useCategories();
+  const { data: itemsData }          = useMenuItems();
+  const { data: modifierGroupsData } = useModifierGroups();
+  const { data: modifiersData }      = useModifiers();
+
+  const allItems: CatalogEntry[] = useMemo(
+    () => (itemsData || []).map(i => ({ id: i.id, name: i.name, subtitle: i.description })),
+    [itemsData],
+  );
+
+  const allModifierGroups: CatalogEntry[] = useMemo(
+    () => (modifierGroupsData || []).map(g => ({ id: g.id, name: g.name, subtitle: g.description })),
+    [modifierGroupsData],
+  );
+
+  const allModifiers: CatalogEntry[] = useMemo(
+    () => (modifiersData || []).map(m => ({ id: m.id, name: m.name, basePrice: m.price })),
+    [modifiersData],
+  );
   const allMenus: CatalogEntry[] = useMemo(
     () => (menusData || []).map((m) => ({ id: m.id, name: m.title, subtitle: m.subtitle })),
     [menusData],
   );
 
-  // ── Pending changes state ─────────────────────────────────────────────────
-  const [pending, setPending] = useState<PendingChanges>(EMPTY_PENDING);
-  const [saving, setSaving]   = useState(false);
+  // Full tenant category catalog — any of these can be added to a branch menu
+  // (BranchMenuCategory accepts any category, not just the menu's own).
+  const allCategories: CatalogEntry[] = useMemo(
+    () => (categoriesData || []).map(c => ({ id: c.id, name: c.name, subtitle: c.description })),
+    [categoriesData],
+  );
 
-  const pendingCount = useMemo(() => countPending(pending), [pending]);
+  // Per-category item list + per-item modifier-group list, from the tenant `/api/items`.
+  const itemsByCategory = useMemo(() => {
+    const map = new Map<string, CatalogEntry[]>();
+    (itemsData || []).forEach(i => {
+      const list = map.get(i.categoryId) ?? [];
+      list.push({ id: i.id, name: i.name, subtitle: i.description });
+      map.set(i.categoryId, list);
+    });
+    return map;
+  }, [itemsData]);
 
-  // Track dirty node keys (for orange dot in tree)
-  const dirtyKeys = useMemo(() => {
-    const keys = new Set<string>();
-    [...Object.keys(pending.menuOverrides)].forEach(id => keys.add(`menu::${id}`));
-    [...Object.keys(pending.categoryOverrides)].forEach(id => keys.add(`category::${id}`));
-    [...Object.keys(pending.itemOverrides)].forEach(id => keys.add(`item::${id}`));
-    [...Object.keys(pending.modGroupOverrides)].forEach(id => keys.add(`modifierGroup::${id}`));
-    [...Object.keys(pending.modifierOverrides)].forEach(id => keys.add(`modifier::${id}`));
-    return keys;
-  }, [pending]);
+  const modifierGroupsByItem = useMemo(() => {
+    const map = new Map<string, CatalogEntry[]>();
+    (itemsData || []).forEach(i =>
+      map.set(i.id, (i.modifierGroups || []).map(g => ({
+        id: (g as any).modifierGroupId || g.id,
+        name: g.name,
+        subtitle: g.description || `Min ${(g as any).minSelectCount ?? 0} / Max ${(g as any).maxSelectCount ?? 0}`
+      }))),
+    );
+    return map;
+  }, [itemsData]);
+
+  // Per-group modifier list, resolved from the tenant `/api/modifier-groups`.
+  const modifiersByGroup = useMemo(() => {
+    const map = new Map<string, CatalogEntry[]>();
+    (modifierGroupsData || []).forEach(g =>
+      map.set(g.id, (g.modifierItems || []).map(mi => ({
+        id: mi.modifierId, name: mi.modifierName ?? 'Modifier', basePrice: mi.price,
+      }))),
+    );
+    return map;
+  }, [modifierGroupsData]);
+
+  // ── In-flight action state (replaces the batch "pending" model) ───────────
+  const [assigningMenuId, setAssigningMenuId] = useState<string | null>(null);
 
   // ── Init — load menus from API on open ───────────────────────────────────
 
@@ -686,7 +795,7 @@ const BranchCatalogView: React.FC<BranchCatalogViewProps> = ({ branch, open, onC
     setTree([]);
     setExpandedKeys(new Set());
     setSelectedKey(null); setSelectedNode(null);
-    setTreeSearch(''); setPending(EMPTY_PENDING);
+    setTreeSearch('');
     loadedKeysRef.current  = new Set();
     loadingKeysRef.current = new Set();
     setLoadingKeys(new Set());
@@ -750,67 +859,80 @@ const BranchCatalogView: React.FC<BranchCatalogViewProps> = ({ branch, open, onC
     if (node && node.type !== 'modifier') loadChildren(node);
   };
 
-  const handleSelect = (node: BranchNode) => { setSelectedKey(node.key); setSelectedNode(node); };
+  const handleSelect = (node: BranchNode) => {
+    setSelectedKey(node.key);
+    setSelectedNode(node);
+    // Lazy-load the branch's already-assigned children so the "Assigned to this
+    // branch" list (and the available-picker filter) reflect what's actually there.
+    if (node.type !== 'modifier') loadChildren(node);
+  };
 
-  const handleToggle = (key: string, v: boolean) => {
+  // Helper: find a node's parent (needed for category → menu context).
+  const findParent = (nodes: BranchNode[], targetKey: string): BranchNode | null => {
+    for (const n of nodes) {
+      if (n.children.some(c => c.key === targetKey)) return n;
+      const found = findParent(n.children, targetKey);
+      if (found) return found;
+    }
+    return null;
+  };
+
+  // ── Single-call override (toggle + Save Override) with optimistic rollback ──
+  const persistOverride = async (node: BranchNode): Promise<boolean> => {
+    const avail = node.serviceAvailabilities ?? [];
+    switch (node.type) {
+      case 'menu':
+        return (await BranchCatalogService.updateMenu(branch.id, node.id, { isEnabled: node.isEnabled, serviceAvailabilities: avail })).success;
+      case 'category':
+        return (await BranchCatalogService.updateCategory(branch.id, node.id, { isEnabled: node.isEnabled, serviceAvailabilities: avail })).success;
+      case 'item':
+        return (await BranchCatalogService.updateItem(branch.id, node.id, {
+          isEnabled: node.isEnabled, isSoldOut: node.isSoldOut ?? false, serviceAvailabilities: avail,
+          variants: (node.variants ?? []).map(v => ({ itemVariantId: v.itemVariantId, isEnabled: v.isEnabled, price: v.branchPrice })),
+        })).success;
+      case 'modifierGroup':
+        return (await BranchCatalogService.updateModifierGroup(branch.id, node.id, { isEnabled: node.isEnabled, serviceAvailabilities: avail })).success;
+      case 'modifier':
+        return (await BranchCatalogService.updateModifier(branch.id, node.id, { isEnabled: node.isEnabled, price: node.branchPrice, serviceAvailabilities: avail })).success;
+      default:
+        return false;
+    }
+  };
+
+  // Tree-row enable/disable switch → optimistic single-call.
+  const handleToggle = async (key: string, v: boolean) => {
+    const node = findNode(tree, key);
+    if (!node) return;
+    const prev = node.isEnabled;
     setTree(t => updateNode(t, key, { isEnabled: v }));
-    const node = findNode(tree, key);
-    if (!node) return;
-
-    // Record override in pending (latest write wins)
-    setPending(p => {
-      const avail = node.serviceAvailabilities ?? [];
-      switch (node.type) {
-        case 'menu':
-          return { ...p, menuOverrides: { ...p.menuOverrides, [node.id]: { isEnabled: v, serviceAvailabilities: avail } } };
-        case 'category':
-          return { ...p, categoryOverrides: { ...p.categoryOverrides, [node.id]: { isEnabled: v, serviceAvailabilities: avail } } };
-        case 'item':
-          return { ...p, itemOverrides: { ...p.itemOverrides, [node.id]: { isEnabled: v, isSoldOut: node.isSoldOut ?? false, serviceAvailabilities: avail } } };
-        case 'modifierGroup':
-          return { ...p, modGroupOverrides: { ...p.modGroupOverrides, [node.id]: { isEnabled: v, serviceAvailabilities: avail } } };
-        case 'modifier':
-          return { ...p, modifierOverrides: { ...p.modifierOverrides, [node.id]: { isEnabled: v, branchPrice: node.branchPrice, serviceAvailabilities: avail } } };
-        default: return p;
-      }
-    });
+    const ok = await persistOverride({ ...node, isEnabled: v });
+    if (!ok) {
+      setTree(t => updateNode(t, key, { isEnabled: prev }));
+      message.error(`Could not update "${node.name}"`);
+    }
   };
 
-  // Right panel "Apply Override" — updates tree + records full override in pending
-  const handleApplyOverride = (key: string, patch: Partial<BranchNode>) => {
+  // Right-panel "Save Override" → optimistic single-call.
+  const handleApplyOverride = async (key: string, patch: Partial<BranchNode>) => {
+    const node = findNode(tree, key);
+    if (!node) return;
+    const before = node;
     setTree(t => updateNode(t, key, patch));
-    const node = findNode(tree, key);
-    if (!node) return;
-    const merged = { ...node, ...patch };
-
-    setPending(p => {
-      switch (merged.type) {
-        case 'menu':
-          return { ...p, menuOverrides: { ...p.menuOverrides, [merged.id]: { isEnabled: merged.isEnabled, serviceAvailabilities: merged.serviceAvailabilities } } };
-        case 'category':
-          return { ...p, categoryOverrides: { ...p.categoryOverrides, [merged.id]: { isEnabled: merged.isEnabled, serviceAvailabilities: merged.serviceAvailabilities } } };
-        case 'item': {
-          const variants = (merged.variants ?? []).map(v => ({
-            itemVariantId: v.itemVariantId, isEnabled: v.isEnabled, branchPrice: v.branchPrice,
-          }));
-          return {
-            ...p,
-            itemOverrides: { ...p.itemOverrides, [merged.id]: { isEnabled: merged.isEnabled, isSoldOut: merged.isSoldOut ?? false, serviceAvailabilities: merged.serviceAvailabilities } },
-            variantOverrides: { ...p.variantOverrides, [merged.id]: variants },
-          };
-        }
-        case 'modifierGroup':
-          return { ...p, modGroupOverrides: { ...p.modGroupOverrides, [merged.id]: { isEnabled: merged.isEnabled, serviceAvailabilities: merged.serviceAvailabilities } } };
-        case 'modifier':
-          return { ...p, modifierOverrides: { ...p.modifierOverrides, [merged.id]: { isEnabled: merged.isEnabled, branchPrice: merged.branchPrice, serviceAvailabilities: merged.serviceAvailabilities } } };
-        default: return p;
-      }
-    });
-
-    message.success({ content: 'Override queued — click Save All to commit', duration: 2 });
+    const ok = await persistOverride({ ...node, ...patch });
+    if (ok) {
+      message.success({ content: `Saved to ${branch.name}`, duration: 2 });
+    } else {
+      setTree(t => updateNode(t, key, {
+        isEnabled: before.isEnabled, isSoldOut: before.isSoldOut,
+        branchPrice: before.branchPrice, serviceAvailabilities: before.serviceAvailabilities,
+        variants: before.variants,
+      }));
+      message.error(`Could not save "${node.name}"`);
+    }
   };
 
-  const handleAddChild = (parentKey: string, entry: CatalogEntry) => {
+  // Assign-picker → optimistic add + single-call assign.
+  const handleAddChild = async (parentKey: string, entry: CatalogEntry) => {
     const parent = findNode(tree, parentKey);
     if (!parent) return;
     const childType = NODE_META[parent.type].childType!;
@@ -818,126 +940,72 @@ const BranchCatalogView: React.FC<BranchCatalogViewProps> = ({ branch, open, onC
     setTree(t => addChild(t, parentKey, child));
     setExpandedKeys(prev => new Set([...prev, parentKey]));
 
-    // Record assignment
-    setPending(p => {
-      switch (childType) {
-        case 'category':
-          return {
-            ...p,
-            categoryAdd:    [...p.categoryAdd.filter(c => !(c.menuId === parent.id && c.categoryId === entry.id)), { menuId: parent.id, categoryId: entry.id }],
-            categoryRemove: p.categoryRemove.filter(c => !(c.menuId === parent.id && c.categoryId === entry.id)),
-          };
-        case 'item': {
-          const [add, remove] = applyAssign(p.itemsToAdd, entry.id, p.itemsToRemove);
-          return { ...p, itemsToAdd: add, itemsToRemove: remove };
-        }
-        case 'modifierGroup': {
-          const [add, remove] = applyAssign(p.modGroupsToAdd, entry.id, p.modGroupsToRemove);
-          return { ...p, modGroupsToAdd: add, modGroupsToRemove: remove };
-        }
-        case 'modifier': {
-          const [add, remove] = applyAssign(p.modifiersToAdd, entry.id, p.modifiersToRemove);
-          return { ...p, modifiersToAdd: add, modifiersToRemove: remove };
-        }
-        default: return p;
-      }
-    });
-    message.info({ content: `"${entry.name}" added — queued for save`, duration: 2, icon: <PlusCircleOutlined /> });
-  };
+    let ok = false;
+    switch (childType) {
+      case 'category':     ok = (await BranchCatalogService.addCategoryToMenu(branch.id, parent.id, entry.id)).success; break;
+      case 'item':         ok = (await BranchCatalogService.assignItem(branch.id, entry.id)).success; break;
+      case 'modifierGroup':ok = (await BranchCatalogService.assignModifierGroup(branch.id, entry.id)).success; break;
+      case 'modifier':     ok = (await BranchCatalogService.assignModifier(branch.id, entry.id)).success; break;
+    }
 
-  const handleRemoveNode = (node: BranchNode) => {
-    // Find parent to determine context
-    const findParent = (nodes: BranchNode[], targetKey: string, parent: BranchNode | null = null): BranchNode | null => {
-      for (const n of nodes) {
-        if (n.children.some(c => c.key === targetKey)) return n;
-        const found = findParent(n.children, targetKey, n);
-        if (found) return found;
-      }
-      return parent;
-    };
-    const parent = findParent(tree, node.key);
-
-    setTree(t => removeNode(t, node.key));
-    if (selectedKey === node.key) { setSelectedKey(null); setSelectedNode(null); }
-
-    setPending(p => {
-      switch (node.type) {
-        case 'menu': {
-          const [remove, add] = applyUnassign(p.menusToRemove, node.id, p.menusToAdd);
-          return { ...p, menusToRemove: remove, menusToAdd: add };
-        }
-        case 'category': {
-          const menuId = parent?.id ?? '';
-          return {
-            ...p,
-            categoryRemove: [...p.categoryRemove.filter(c => !(c.menuId === menuId && c.categoryId === node.id)), { menuId, categoryId: node.id }],
-            categoryAdd:    p.categoryAdd.filter(c => !(c.menuId === menuId && c.categoryId === node.id)),
-          };
-        }
-        case 'item': {
-          const [remove, add] = applyUnassign(p.itemsToRemove, node.id, p.itemsToAdd);
-          return { ...p, itemsToRemove: remove, itemsToAdd: add };
-        }
-        case 'modifierGroup': {
-          const [remove, add] = applyUnassign(p.modGroupsToRemove, node.id, p.modGroupsToAdd);
-          return { ...p, modGroupsToRemove: remove, modGroupsToAdd: add };
-        }
-        case 'modifier': {
-          const [remove, add] = applyUnassign(p.modifiersToRemove, node.id, p.modifiersToAdd);
-          return { ...p, modifiersToRemove: remove, modifiersToAdd: add };
-        }
-        default: return p;
-      }
-    });
-    message.info({ content: `"${node.name}" removal queued`, duration: 2, icon: <MinusCircleOutlined /> });
-  };
-
-  const handleAddMenu = () => {
-    const entry = allMenus.find(m => m.id === addMenuId);
-    if (!entry) return;
-    const node = mk('menu', entry.id, entry.name, true, { subtitle: entry.subtitle });
-    setTree(t => [...t, node]);
-    setExpandedKeys(prev => new Set([...prev, node.key]));
-    setAddMenuOpen(false); setAddMenuId(undefined);
-    const [add, remove] = applyAssign(pending.menusToAdd, entry.id, pending.menusToRemove);
-    setPending(p => ({ ...p, menusToAdd: add, menusToRemove: remove }));
-    message.info({ content: `Menu "${entry.name}" queued for assignment`, duration: 2, icon: <PlusCircleOutlined /> });
-  };
-
-  // ── Save All ──────────────────────────────────────────────────────────────
-
-  const handleSaveAll = async () => {
-    if (pendingCount === 0) return;
-    setSaving(true);
-    try {
-      const payload = buildPayload(pending);
-      const res = await BranchCatalogService.saveBulk(branch.id, payload);
-      if (res.success) {
-        message.success(`✓ ${pendingCount} change${pendingCount !== 1 ? 's' : ''} saved to ${branch.name}`);
-        setPending(EMPTY_PENDING);
-      }
-    } finally {
-      setSaving(false);
+    if (ok) {
+      message.success({ content: `"${entry.name}" assigned to ${branch.name}`, duration: 2, icon: <PlusCircleOutlined /> });
+      // Adding a category cascades its items (+ modifier groups/modifiers) on the
+      // backend — load the new node's children so the cascaded subtree shows.
+      if (childType === 'category') await loadChildren(child);
+    } else {
+      setTree(t => removeNode(t, child.key));
+      message.error(`Could not assign "${entry.name}"`);
     }
   };
 
-  const handleDiscard = () => {
-    setTree([]);
-    setExpandedKeys(new Set());
-    setSelectedKey(null); setSelectedNode(null);
-    setPending(EMPTY_PENDING);
-    loadedKeysRef.current  = new Set();
-    loadingKeysRef.current = new Set();
-    setLoadingKeys(new Set());
+  // Tree-row remove → optimistic unassign + single-call.
+  const handleRemoveNode = async (node: BranchNode) => {
+    const parent = findParent(tree, node.key);
+    const snapshot = tree;
+    setTree(t => removeNode(t, node.key));
+    if (selectedKey === node.key) { setSelectedKey(null); setSelectedNode(null); }
 
-    setTreeLoading(true);
-    BranchCatalogService.getMenus(branch.id)
-      .then(res => {
-        if (res.success && res.data) setTree(res.data.map(menuToNode));
-      })
-      .finally(() => setTreeLoading(false));
+    let ok = false;
+    switch (node.type) {
+      case 'menu':          ok = (await BranchCatalogService.unassignMenu(branch.id, node.id)).success; break;
+      case 'category':      ok = (await BranchCatalogService.removeCategoryFromMenu(branch.id, parent?.id ?? '', node.id)).success; break;
+      case 'item':          ok = (await BranchCatalogService.unassignItem(branch.id, node.id)).success; break;
+      case 'modifierGroup': ok = (await BranchCatalogService.unassignModifierGroup(branch.id, node.id)).success; break;
+      case 'modifier':      ok = (await BranchCatalogService.unassignModifier(branch.id, node.id)).success; break;
+    }
 
-    message.info('All pending changes discarded');
+    if (ok) {
+      message.success({ content: `"${node.name}" removed from ${branch.name}`, duration: 2, icon: <MinusCircleOutlined /> });
+    } else {
+      setTree(snapshot); // restore the full previous tree
+      message.error(`Could not remove "${node.name}"`);
+    }
+  };
+
+  // Assign a tenant menu to the branch → optimistic add + single-call.
+  const handleAssignMenu = async (menuId: string) => {
+    const entry = allMenus.find(m => m.id === menuId);
+    if (!entry) return;
+    const node = mk('menu', entry.id, entry.name, true, { subtitle: entry.subtitle });
+    setAssigningMenuId(menuId);
+    setTree(t => [...t, node]);
+    setExpandedKeys(prev => new Set([...prev, node.key]));
+    try {
+      const ok = (await BranchCatalogService.assignMenu(branch.id, entry.id)).success;
+      if (ok) {
+        message.success({ content: `Menu "${entry.name}" assigned to ${branch.name}`, duration: 2, icon: <PlusCircleOutlined /> });
+        // The backend cascade just created the branch hierarchy — load the menu's
+        // categories so they show under "Assigned" and drop out of the picker.
+        await loadChildren(node);
+        setSelectedKey(node.key);
+      } else {
+        setTree(t => removeNode(t, node.key));
+        message.error(`Could not assign menu "${entry.name}"`);
+      }
+    } finally {
+      setAssigningMenuId(null);
+    }
   };
 
   // ── Stats ─────────────────────────────────────────────────────────────────
@@ -951,6 +1019,24 @@ const BranchCatalogView: React.FC<BranchCatalogViewProps> = ({ branch, open, onC
     w(tree);
     setExpandedKeys(all);
   };
+
+  // Available children for the selected node's assign picker (tenant minus assigned).
+  const availableChildren: CatalogEntry[] = useMemo(() => {
+    if (!selectedNode) return [];
+    switch (selectedNode.type) {
+      case 'menu':          return allCategories;
+      case 'category':      return allItems;
+      case 'item':          return allModifierGroups;
+      case 'modifierGroup': return allModifiers;
+      default:              return [];
+    }
+  }, [selectedNode, allCategories, allItems, allModifierGroups, allModifiers]);
+
+  const availLoading =
+    (selectedNode?.type === 'menu' && !categoriesData) ||
+    (selectedNode?.type === 'category' && !itemsData) ||
+    (selectedNode?.type === 'item' && !modifierGroupsData) ||
+    (selectedNode?.type === 'modifierGroup' && !modifiersData);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -987,23 +1073,6 @@ const BranchCatalogView: React.FC<BranchCatalogViewProps> = ({ branch, open, onC
               <Text style={{ fontSize: 10, color: s.color, opacity: 0.8 }}>{s.label}</Text>
             </div>
           ))}
-
-          {/* Pending / Save All */}
-          {pendingCount > 0 && (
-            <Space size={8} style={{ marginLeft: 8 }}>
-              <Badge count={pendingCount} color="#fa8c16" overflowCount={99}>
-                <Button type="primary" icon={<CloudUploadOutlined />} loading={saving}
-                  onClick={handleSaveAll}
-                  style={{ background: '#389e0d', borderColor: '#389e0d', fontWeight: 600, height: 38 }}
-                >
-                  Save All
-                </Button>
-              </Badge>
-              <Popconfirm title="Discard all pending changes?" onConfirm={handleDiscard} okText="Discard" okButtonProps={{ danger: true }}>
-                <Button size="middle" style={{ height: 38 }}>Discard</Button>
-              </Popconfirm>
-            </Space>
-          )}
         </div>
       }
     >
@@ -1011,16 +1080,6 @@ const BranchCatalogView: React.FC<BranchCatalogViewProps> = ({ branch, open, onC
 
         {/* ── Left: Tree (55%) ── */}
         <div style={{ width: '55%', flexShrink: 0, borderRight: `1px solid ${token.colorBorderSecondary}`, display: 'flex', flexDirection: 'column', background: token.colorBgContainer }}>
-
-          {/* Unsaved changes ribbon */}
-          {pendingCount > 0 && (
-            <div style={{ background: '#fffbe6', borderBottom: `1px solid #ffe58f`, padding: '6px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
-              <WarningFilled style={{ color: '#fa8c16' }} />
-              <Text style={{ fontSize: 13, color: '#d46b08', fontWeight: 500 }}>
-                {pendingCount} unsaved change{pendingCount !== 1 ? 's' : ''} — click <strong>Save All</strong> to commit
-              </Text>
-            </div>
-          )}
 
           {/* Toolbar */}
           <div style={{ padding: '12px 16px', borderBottom: `1px solid ${token.colorBorderSecondary}`, display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1031,20 +1090,11 @@ const BranchCatalogView: React.FC<BranchCatalogViewProps> = ({ branch, open, onC
               onClick={() => expandedKeys.size > 0 ? setExpandedKeys(new Set()) : expandAll()}>
               {expandedKeys.size > 0 ? '⊟ Collapse' : '⊞ Expand'}
             </Button>
-            {addMenuOpen ? (
-              <Space size={6}>
-                <Select size="large" style={{ width: 180 }} placeholder="Select menu…" value={addMenuId} onChange={setAddMenuId}
-                  showSearch optionFilterProp="label" options={availableMenus.map(m => ({ value: m.id, label: m.name }))} autoFocus />
-                <Button size="large" type="primary" onClick={handleAddMenu} disabled={!addMenuId}>Add</Button>
-                <Button size="large" onClick={() => { setAddMenuOpen(false); setAddMenuId(undefined); }}>✕</Button>
-              </Space>
-            ) : (
-              <Button type="dashed" size="large" icon={<PlusCircleOutlined />}
-                onClick={() => setAddMenuOpen(true)} disabled={availableMenus.length === 0}
-                style={{ whiteSpace: 'nowrap', fontWeight: 500 }}>
-                Add menu
-              </Button>
-            )}
+            <Button type="primary" size="large" icon={<PlusCircleOutlined />}
+              onClick={() => { setSelectedKey(null); setSelectedNode(null); }}
+              style={{ whiteSpace: 'nowrap', fontWeight: 600 }}>
+              Assign Menus
+            </Button>
           </div>
 
           {/* Level legend */}
@@ -1057,7 +1107,6 @@ const BranchCatalogView: React.FC<BranchCatalogViewProps> = ({ branch, open, onC
                 <Text style={{ fontSize: 12, fontWeight: 500 }}>{type === 'modifierGroup' ? 'Mod Group' : type.charAt(0).toUpperCase() + type.slice(1)}</Text>
               </Space>
             ))}
-            <Space size={4}><div style={{ width: 7, height: 7, borderRadius: '50%', background: '#fa8c16' }} /><Text style={{ fontSize: 12 }}>Unsaved</Text></Space>
           </div>
 
           {/* Tree */}
@@ -1066,11 +1115,11 @@ const BranchCatalogView: React.FC<BranchCatalogViewProps> = ({ branch, open, onC
               <div style={{ display: 'flex', justifyContent: 'center', marginTop: 80 }}><Spin size="large" /></div>
             ) : tree.length === 0 ? (
               <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={<Text style={{ fontSize: 14 }}>No menus assigned to this branch</Text>} style={{ marginTop: 80 }}>
-                <Button type="primary" size="large" icon={<PlusCircleOutlined />} onClick={() => setAddMenuOpen(true)}>Add First Menu</Button>
+                <Button type="primary" size="large" icon={<PlusCircleOutlined />} onClick={() => { setSelectedKey(null); setSelectedNode(null); }}>Assign Menus</Button>
               </Empty>
             ) : (
               <RenderTree nodes={tree} depth={0}
-                expandedKeys={expandedKeys} selectedKey={selectedKey} dirtyKeys={dirtyKeys}
+                expandedKeys={expandedKeys} selectedKey={selectedKey}
                 loadingKeys={loadingKeys}
                 onSelect={handleSelect} onExpand={handleExpand} onToggle={handleToggle} onRemove={handleRemoveNode}
               />
@@ -1080,7 +1129,17 @@ const BranchCatalogView: React.FC<BranchCatalogViewProps> = ({ branch, open, onC
 
         {/* ── Right: Detail panel (45%) ── */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: token.colorBgLayout }}>
-          <DetailPanel node={selectedNode} onApply={handleApplyOverride} />
+          <DetailPanel
+            node={selectedNode}
+            availableChildren={availableChildren}
+            availLoading={availLoading}
+            onApply={handleApplyOverride}
+            onAddChild={handleAddChild}
+            availableMenus={availableMenus}
+            onAssignMenu={handleAssignMenu}
+            assigningMenuId={assigningMenuId}
+            branchName={branch.name}
+          />
         </div>
       </div>
     </Drawer>

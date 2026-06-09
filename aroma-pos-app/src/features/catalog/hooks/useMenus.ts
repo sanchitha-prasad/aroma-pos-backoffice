@@ -26,10 +26,10 @@ export interface UpdateMenuPayload {
     availabilities?: MenuAvailability[];
 }
 
-export function useMenus() {
+export function useMenus(skipBranchId = false) {
     return useQuery<MenuEntity[]>({
-        queryKey: MENUS_KEY,
-        queryFn: () => apiClient.get<MenuEntity[]>('/api/menus'),
+        queryKey: [...MENUS_KEY, { skipBranchId }],
+        queryFn: () => apiClient.get<MenuEntity[]>('/api/menus', { skipBranchId } as any),
         staleTime: 60_000,
     });
 }
