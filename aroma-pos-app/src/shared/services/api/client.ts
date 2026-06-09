@@ -9,6 +9,7 @@ interface CustomRequestConfig extends AxiosRequestConfig {
     skipErrorRedirect?: boolean;
     suppressErrorToast?: boolean;
     overrideBaseURL?: string;
+    skipBranchId?: boolean;
 }
 
 // Standard API Response Structure
@@ -55,7 +56,7 @@ class ApiClient {
                 const tenantId = authStore.tenantId;
                 const branchId = authStore.branchId;
                 if (tenantId) config.headers.set('X-Tenant-Id', tenantId);
-                if (branchId) config.headers.set('X-Branch-Id', branchId);
+                if (branchId && !config.skipBranchId) config.headers.set('X-Branch-Id', branchId);
 
                 // 4. Ensure JSON Content-Type
                 if (!config.headers.get('Content-Type')) {

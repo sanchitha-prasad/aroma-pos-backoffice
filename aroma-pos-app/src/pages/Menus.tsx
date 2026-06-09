@@ -6,8 +6,6 @@ import {
     useCreateMenu,
     useUpdateMenu,
     useDeleteMenu,
-    useAssignCategory,
-    useRemoveCategory,
 } from '../features/catalog/hooks/useMenus';
 import { useCategories } from '../features/catalog/hooks/useMenuPageData';
 
@@ -17,11 +15,9 @@ const Menus: React.FC = () => {
     const { data: menus = [], isLoading, isFetching, refetch } = useMenus();
     const { data: categories = [], isLoading: loadingCats }    = useCategories();
 
-    const createMenu      = useCreateMenu();
-    const updateMenu      = useUpdateMenu();
-    const deleteMenu      = useDeleteMenu();
-    const assignCategory  = useAssignCategory();
-    const removeCategory  = useRemoveCategory();
+    const createMenu = useCreateMenu();
+    const updateMenu = useUpdateMenu();
+    const deleteMenu = useDeleteMenu();
 
     return (
         <div style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 20, padding: 24 }}>
@@ -36,8 +32,6 @@ const Menus: React.FC = () => {
                     onCreateMenu={(values) => createMenu.mutateAsync(values)}
                     onUpdateMenu={(id, values) => updateMenu.mutateAsync({ id, data: values })}
                     onDeleteMenu={(id) => deleteMenu.mutateAsync(id)}
-                    onAssignCategory={(menuId, categoryId) => assignCategory.mutateAsync({ menuId, categoryId })}
-                    onRemoveCategory={(menuId, categoryId) => removeCategory.mutateAsync({ menuId, categoryId })}
                 />
             </div>
         </div>

@@ -156,7 +156,7 @@ const App: React.FC = () => {
                 <Route index element={<Suspense fallback={<DashboardSkeleton />}><Dashboard isDarkMode={isDarkMode} /></Suspense>} />
 
                 <Route path="menus" element={<Suspense fallback={<TableSkeleton />}><Menus /></Suspense>} />
-                <Route path="menu" element={<Suspense fallback={<TableSkeleton />}><Menu currentUser={currentUser} /></Suspense>} />
+                <Route path="items" element={<Suspense fallback={<TableSkeleton />}><Menu currentUser={currentUser} /></Suspense>} />
                 <Route path="categories" element={<Suspense fallback={<TableSkeleton />}><Categories /></Suspense>} />
                 <Route path="variants" element={<Suspense fallback={<TableSkeleton />}><Variants /></Suspense>} />
                 <Route path="modifiers" element={<Suspense fallback={<TableSkeleton />}><Modifiers /></Suspense>} />
