@@ -6,6 +6,7 @@ import {
     Form,
     Input,
     Modal,
+    Popover,
     Popconfirm,
     Segmented,
     Select,
@@ -25,6 +26,7 @@ import {
     DeleteOutlined,
     EditOutlined,
     FolderOpenOutlined,
+    MinusCircleOutlined,
     PauseCircleFilled,
     PlusOutlined,
     SearchOutlined,
@@ -91,6 +93,8 @@ const CategoryView: React.FC<CategoryViewProps> = ({
 
     // Per-row loading
     const [assigningId, setAssigningId] = useState<string | null>(null);
+    const [movingItemId, setMovingItemId] = useState<string | null>(null);
+    const [targetCatId, setTargetCatId] = useState<string | null>(null);
 
     const printers   = useMemo(() => devices.filter(d => d.type?.name === 'PRINTER'), [devices]);
     const kdsScreens = useMemo(() => devices.filter(d => d.type?.name === 'KDS' || d.type?.name === 'Kitchen Display'), [devices]);
@@ -259,6 +263,78 @@ const CategoryView: React.FC<CategoryViewProps> = ({
                 },
             });
             message.success(`"${item.name}" moved to ${selectedCat.name}`);
+        } catch {
+            // axios interceptor already shows a toast
+        } finally {
+            setAssigningId(null);
+        }
+    };
+
+    const handleMoveItem = async (item: MenuItem, targetCategoryId: string) => {
+        setAssigningId(item.id);
+        try {
+            const targetCat = categories.find(c => c.id === targetCategoryId);
+            await updateItem.mutateAsync({
+                id: item.id,
+                data: {
+                    name: item.name,
+                    description: item.description,
+                    isActive: item.isActive,
+                    categoryId: targetCategoryId,
+                    variants: (item.variants ?? []).map(v => ({
+                        variantId: v.variantId,
+                        price: v.price,
+                        status: v.status,
+                    })),
+                },
+            });
+            message.success(`"${item.name}" moved to ${targetCat?.name ?? 'new category'}`);
+        } catch {
+            // axios interceptor already shows a toast
+        } finally {
+            setAssigningId(null);
+            setMovingItemId(null);
+            setTargetCatId(null);
+        }
+    };
+
+    const handleRemoveFromCategory = async (item: MenuItem) => {
+        setAssigningId(item.id);
+        try {
+            let uncategorizedCat = categories.find(
+                c => c.name.toLowerCase() === 'uncategorized'
+            );
+
+            let targetCategoryId = '';
+            if (uncategorizedCat) {
+                targetCategoryId = uncategorizedCat.id;
+            } else {
+                const response = await createCategory.mutateAsync({
+                    name: 'Uncategorized',
+                    description: 'Default category for items without a category',
+                    isActive: true,
+                    taxIds: [],
+                    kitchenDisplayIds: [],
+                    printerIds: [],
+                });
+                targetCategoryId = response.id;
+            }
+
+            await updateItem.mutateAsync({
+                id: item.id,
+                data: {
+                    name: item.name,
+                    description: item.description,
+                    isActive: item.isActive,
+                    categoryId: targetCategoryId,
+                    variants: (item.variants ?? []).map(v => ({
+                        variantId: v.variantId,
+                        price: v.price,
+                        status: v.status,
+                    })),
+                },
+            });
+            message.success(`"${item.name}" removed from ${selectedCat?.name ?? 'category'}`);
         } catch {
             // axios interceptor already shows a toast
         } finally {
@@ -535,7 +611,24 @@ const CategoryView: React.FC<CategoryViewProps> = ({
                                                         {item.variants?.length ? `${item.variants.length} variant${item.variants.length === 1 ? '' : 's'}` : 'No variants'}
                                                     </Text>
                                                 </div>
-                                                {!item.isActive && <Tag color="orange" style={{ fontSize: 10, margin: 0 }}>Inactive</Tag>}
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                                                    {!item.isActive && <Tag color="orange" style={{ fontSize: 10, margin: 0 }}>Inactive</Tag>}
+                                                    <Tooltip title="Remove">
+                                                        <Popconfirm
+                                                            title="Remove from category?"
+                                                            onConfirm={() => handleRemoveFromCategory(item)}
+                                                            okButtonProps={{ danger: true }}
+                                                        >
+                                                            <Button
+                                                                type="text"
+                                                                size="small"
+                                                                danger
+                                                                icon={<MinusCircleOutlined style={{ fontSize: 15 }} />}
+                                                                loading={assigningId === item.id}
+                                                            />
+                                                        </Popconfirm>
+                                                    </Tooltip>
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
