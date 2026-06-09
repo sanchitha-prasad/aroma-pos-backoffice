@@ -37,10 +37,9 @@ import { useCurrency } from '../../../shared/context/CurrencyContext';
 import { authStore } from '../../../shared/services/auth/authStore';
 import {
     useTenantSettingsMap,
-    useTenantDetail,
-    useTenantUsers,
     useUpdateTenantSettings,
 } from '../hooks/useTenantSettings';
+import { useEmployees } from '../hooks/useEmployees';
 import { red } from '@ant-design/colors';
 
 const { Title, Text } = Typography;
@@ -66,19 +65,17 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
     const { currencySymbol } = useCurrency();
 
     const { data: settings } = useTenantSettingsMap();
-    const { data: tenant } = useTenantDetail();
-    const { data: users } = useTenantUsers();
+    const { data: employees } = useEmployees();
     const updateSettings = useUpdateTenantSettings();
 
     useEffect(() => {
-        const emailToFind = tenant?.ownerEmail || tenant?.OwnerEmail || tenant?.email || tenant?.Email;
-        const owner = users?.find((u) => u.email === emailToFind);
+        const admin = employees?.find((e) => e.role === 'Admin');
 
         setLogoUrl(settings['Logo'] || '');
         form.setFieldsValue({
-            userName: owner?.name || authStore.currentUser?.name || '',
-            userEmail: owner?.email || emailToFind || authStore.currentUser?.email || '',
-            userPhone: owner?.phoneNumber || owner?.phone || owner?.loginNumber || '',
+            userName: admin?.name || '',
+            userEmail: admin?.email || '',
+            userPhone: admin?.loginNumber || '',
             brandName: settings['BrandName'] || '',
             defaultCurrency: settings['DefaultCurrency'] || 'USD',
             defaultTimeZone: settings['DefaultTimeZone'] || 'UTC',
@@ -93,7 +90,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
             cashbackPercentage: Number(settings['CashbackPercentage']) || 0,
             serviceChargeType: settings['ServiceChargeType'] || 'Percentage',
         });
-    }, [settings, tenant, users, form]);
+    }, [settings, employees, form]);
 
     const handleSave = () => {
         if (activeTab === '1') {
@@ -712,6 +709,18 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                         activeKey={resolvedActiveTab}
                         onChange={setActiveTab}
                         more={{ icon: null, trigger: [] as any }}
+                        renderTabBar={(props, DefaultTabBar) => (
+                            <div style={{
+                                width: 236,
+                                overflowY: 'auto',
+                                overflowX: 'hidden',
+                                maxHeight: 'calc(100vh - 220px)',
+                                scrollbarWidth: 'thin' as any,
+                                flexShrink: 0,
+                            }}>
+                                <DefaultTabBar {...props} style={{ width: '100%' }} />
+                            </div>
+                        )}
                     />
                 </div>
                 <div style={{

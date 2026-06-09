@@ -1,4 +1,4 @@
-/* ── Configuration sidebar: scrollable tab list, no overflow controls ─────── */
+/* ── Configuration sidebar: hide Ant Design tab overflow controls ─────────── */
 .config-tabs .ant-tabs-nav-operations,
 .config-tabs [class*="tabs-nav-operations"],
 .config-tabs .ant-tabs-nav-more,
@@ -8,17 +8,6 @@
     min-height: 0 !important;
     overflow: hidden !important;
     padding: 0 !important;
-}
-
-.config-tabs .ant-tabs-nav-wrap {
-    overflow: visible !important;
-}
-
-.config-tabs .ant-tabs-nav-list {
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    max-height: 100% !important;
-    scrollbar-width: thin !important;
 }
 
 /* ── Rich Table styles ────────────────────────────────────────────────────── */
