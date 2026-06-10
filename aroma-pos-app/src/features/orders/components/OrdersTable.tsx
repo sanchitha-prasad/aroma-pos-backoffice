@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Table, Button, Tag, Typography, Alert, Card, Flex } from 'antd';
+import { useCurrency } from '../../../shared/context/CurrencyContext';
 import type { TableColumnsType } from 'antd';
 import { EyeOutlined, ReloadOutlined } from '@ant-design/icons';
 import { Order } from '../../../shared/types';
@@ -27,7 +28,7 @@ function getOrderTotal(order: Order): number {
             acc +
             ticket.items.reduce((tAcc, item) => {
                 const modTotal = item.modifiers.reduce((mAcc, m) => mAcc + m.price, 0);
-                return tAcc + (item.price + modTotal) * item.quantity * item.portion;
+                return tAcc + (item.price + modTotal) * item.quantity * item.portionNumerator / item.portionDenominator;
             }, 0),
         0
     );
@@ -57,6 +58,7 @@ function OrderTypeTag({ type }: { type: OrderType }) {
 }
 
 const OrdersTable: React.FC<OrdersTableProps> = ({ orders, isLoading, isError, onRefresh }) => {
+    const { currencySymbol } = useCurrency();
     const [pageSize, setPageSize]       = useState<number>(10);
     const [currentPage, setCurrentPage] = useState<number>(1);
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -111,7 +113,7 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ orders, isLoading, isError, o
             width: 130,
             align: 'right',
             render: (_: unknown, record: Order) => (
-                <Text strong>${getOrderTotal(record).toFixed(2)}</Text>
+                <Text strong>{currencySymbol} {getOrderTotal(record).toFixed(2)}</Text>
             ),
         },
         {

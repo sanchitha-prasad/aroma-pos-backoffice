@@ -2,6 +2,7 @@ import React from 'react';
 import { Table, Tag, Typography, List, Divider, Descriptions, Card, Space, Flex, theme } from 'antd';
 import { CreditCardOutlined, DollarOutlined } from '@ant-design/icons';
 import { Ticket, TicketItem } from '../../../shared/types';
+import { useCurrency } from '../../../shared/context/CurrencyContext';
 
 interface TicketDetailProps {
     ticket: Ticket;
@@ -18,54 +19,55 @@ function getPaymentStatusTag(status: number) {
     }
 }
 
-const itemColumns = [
-    {
-        title: 'Item',
-        dataIndex: 'name',
-        key: 'name',
-        render: (text: string, item: TicketItem) => (
-            <Space direction="vertical" size={2}>
-                <Text strong>{text}</Text>
-                {item.variant && (
-                    <Tag color="purple" style={{ fontSize: 10, margin: 0 }}>
-                        {item.variant.variantName}
-                    </Tag>
-                )}
-                {item.modifiers.length > 0 && (
-                    <Text type="secondary" style={{ fontSize: 11 }}>
-                        {item.modifiers.map((m) => `+ ${m.name}`).join(', ')}
-                    </Text>
-                )}
-                {item.note && (
-                    <Text type="secondary" italic style={{ fontSize: 11 }}>{item.note}</Text>
-                )}
-            </Space>
-        ),
-    },
-    { title: 'Qty', dataIndex: 'quantity', key: 'qty', width: 60 },
-    {
-        title: 'Price',
-        key: 'price',
-        align: 'right' as const,
-        render: (_: unknown, item: TicketItem) => {
-            const modTotal = item.modifiers.reduce((acc, m) => acc + m.price, 0);
-            const total    = (item.price + modTotal) * item.quantity * item.portion;
-            return <Text strong>${total.toFixed(2)}</Text>;
-        },
-    },
-];
-
 const TicketDetail: React.FC<TicketDetailProps> = ({ ticket }) => {
     const { token } = theme.useToken();
+    const { currencySymbol } = useCurrency();
+
+    const itemColumns = [
+        {
+            title: 'Item',
+            dataIndex: 'name',
+            key: 'name',
+            render: (text: string, item: TicketItem) => (
+                <Space direction="vertical" size={2}>
+                    <Text strong>{text}</Text>
+                    {item.variant && (
+                        <Tag color="purple" style={{ fontSize: 10, margin: 0 }}>
+                            {item.variant.variantName}
+                        </Tag>
+                    )}
+                    {item.modifiers.length > 0 && (
+                        <Text type="secondary" style={{ fontSize: 11 }}>
+                            {item.modifiers.map((m) => `+ ${m.name}`).join(', ')}
+                        </Text>
+                    )}
+                    {item.note && (
+                        <Text type="secondary" italic style={{ fontSize: 11 }}>{item.note}</Text>
+                    )}
+                </Space>
+            ),
+        },
+        { title: 'Qty', dataIndex: 'quantity', key: 'qty', width: 60 },
+        {
+            title: 'Price',
+            key: 'price',
+            align: 'right' as const,
+            render: (_: unknown, item: TicketItem) => {
+                const modTotal = item.modifiers.reduce((acc, m) => acc + m.price, 0);
+                const total    = (item.price + modTotal) * item.quantity * item.portionNumerator / item.portionDenominator;
+                return <Text strong>{currencySymbol} {total.toFixed(2)}</Text>;
+            },
+        },
+    ];
 
     const subtotal = ticket.items.reduce((acc, item) => {
         const modTotal = item.modifiers.reduce((mAcc, m) => mAcc + m.price, 0);
-        return acc + (item.price + modTotal) * item.quantity * item.portion;
+        return acc + (item.price + modTotal) * item.quantity * item.portionNumerator / item.portionDenominator;
     }, 0);
 
     const totalTax = ticket.items.reduce((acc, item) => {
         const modTotal  = item.modifiers.reduce((mAcc, m) => mAcc + m.price, 0);
-        const itemBase  = (item.price + modTotal) * item.quantity * item.portion;
+        const itemBase  = (item.price + modTotal) * item.quantity * item.portionNumerator / item.portionDenominator;
         const itemTax   = (item.taxes ?? []).reduce(
             (tAcc, tax) => (tax.isActive ? tAcc + itemBase * (tax.percentage / 100) : tAcc),
             0
@@ -86,21 +88,21 @@ const TicketDetail: React.FC<TicketDetailProps> = ({ ticket }) => {
 
     // Build Descriptions items dynamically so optional rows only appear when non-zero
     const summaryItems = [
-        { key: 'subtotal', label: 'Subtotal', children: `$${subtotal.toFixed(2)}` },
+        { key: 'subtotal', label: 'Subtotal', children: `${currencySymbol}${subtotal.toFixed(2)}` },
         ...(totalTax > 0
-            ? [{ key: 'tax', label: 'Tax', children: `$${totalTax.toFixed(2)}` }]
+            ? [{ key: 'tax', label: 'Tax', children: `${currencySymbol}${totalTax.toFixed(2)}` }]
             : []),
         ...(serviceChargeAmount > 0
             ? [{
                 key: 'sc',
                 label: `Service Charge (${ticket.serviceChargePercentage}%)`,
-                children: `$${serviceChargeAmount.toFixed(2)}`,
+                children: `${currencySymbol}${serviceChargeAmount.toFixed(2)}`,
             }]
             : []),
         {
             key: 'total',
             label: <Text strong>Total</Text>,
-            children: <Text strong>${grandTotal.toFixed(2)}</Text>,
+            children: <Text strong>{currencySymbol}{grandTotal.toFixed(2)}</Text>,
         },
     ];
 
@@ -108,14 +110,14 @@ const TicketDetail: React.FC<TicketDetailProps> = ({ ticket }) => {
         {
             key: 'paid',
             label: 'Paid',
-            children: <Text type="success" strong>${totalPaid.toFixed(2)}</Text>,
+            children: <Text type="success" strong>{currencySymbol}{totalPaid.toFixed(2)}</Text>,
         },
         {
             key: 'balance',
             label: <Text strong>{balance <= 0 ? 'Change' : 'Balance Due'}</Text>,
             children: (
                 <Text strong style={{ color: balance > 0 ? token.colorError : token.colorSuccess }}>
-                    ${Math.abs(balance).toFixed(2)}
+                    {currencySymbol}{Math.abs(balance).toFixed(2)}
                 </Text>
             ),
         },
@@ -172,7 +174,7 @@ const TicketDetail: React.FC<TicketDetailProps> = ({ ticket }) => {
                                             : undefined
                                     }
                                 />
-                                <Text strong>${payment.totalAmount.toFixed(2)}</Text>
+                                <Text strong>{currencySymbol}{payment.totalAmount.toFixed(2)}</Text>
                             </List.Item>
                         )}
                     />

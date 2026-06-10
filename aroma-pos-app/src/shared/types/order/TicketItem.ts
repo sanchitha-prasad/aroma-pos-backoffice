@@ -8,10 +8,11 @@ export interface TicketItem {
     name: string;
     quantity: number;
     price: number;
-    portion: number;
+    portionNumerator: number;
+    portionDenominator: number;
     discount: number;
     isDiscountPercentage: boolean;
-    isSplited: boolean;
+    isSplit: boolean;
     sequence: number;
     seatId: string | null;
     seatNumber: string | null;

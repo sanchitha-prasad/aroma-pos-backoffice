@@ -8,6 +8,7 @@ export interface Device {
   id: string;
   name: string;
   status: DeviceStatusType;
+  isActive?: boolean;
   location?: string;
   provider?: CardProviderType;
   serialNumber?: string;
@@ -17,4 +18,5 @@ export interface Device {
   deviceProtocolId?: string;
   type?: DeviceType;
   protocol?: DeviceProtocol;
+  createdOnUtc?: string;
 }

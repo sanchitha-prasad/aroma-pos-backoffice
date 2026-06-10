@@ -6,9 +6,10 @@ export interface Category {
   description?: string;
   isActive: boolean;
   taxIds?: string[];
-  PrinterIds?: string[]; 
-  KitichenDisplayIds?: string[];
+  printerIds?: string[];
+  kitchenDisplayIds?: string[];
   taxes?: Tax[];
   printers?: any[];
   kitchenDisplays?: any[];
+  createdOnUtc?: string;
 }

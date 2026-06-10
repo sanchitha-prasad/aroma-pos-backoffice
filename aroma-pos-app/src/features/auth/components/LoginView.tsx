@@ -105,7 +105,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
                             { type: 'email', message: 'Please enter a valid email' }
                         ]}
                     >
-                        <Input prefix={<UserOutlined style={{ color: token.colorTextTertiary }} />} placeholder="name@company.com" />
+                        <Input prefix={<UserOutlined style={{ color: token.colorTextTertiary }} />} placeholder="name@company.com" autoComplete="username" />
                     </Form.Item>
 
                     <Form.Item
@@ -113,7 +113,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
                         label="Password"
                         rules={[{ required: true, message: 'Please enter your password' }]}
                     >
-                        <Input.Password prefix={<LockOutlined style={{ color: token.colorTextTertiary }} />} placeholder="••••••••" />
+                        <Input.Password prefix={<LockOutlined style={{ color: token.colorTextTertiary }} />} placeholder="••••••••" autoComplete="current-password" />
                     </Form.Item>
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>

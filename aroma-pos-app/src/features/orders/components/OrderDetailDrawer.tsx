@@ -31,7 +31,7 @@ const OrderDetailDrawer: React.FC<OrderDetailDrawerProps> = ({ order, open, onCl
     ) : 'Order Details';
 
     return (
-        <Drawer title={title} size="large" open={open} onClose={onClose} destroyOnClose>
+        <Drawer title={title} size="large" open={open} onClose={onClose} destroyOnHidden>
             {order && (
                 <Tabs
                     defaultActiveKey="0"

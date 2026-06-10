@@ -1,41 +1,46 @@
 import React, { useState, useEffect } from 'react';
-import { 
-    Tabs, 
-    Form, 
-    Input, 
-    Select, 
-    Switch, 
-    Button, 
-    Typography, 
-    theme, 
-    Divider, 
-    Row, 
-    Col, 
-    TimePicker, 
-    InputNumber, 
+import {
+    Tabs,
+    Form,
+    Input,
+    Select,
+    Switch,
+    Button,
+    Typography,
+    theme,
+    Divider,
+    Row,
+    Col,
+    TimePicker,
+    InputNumber,
     Upload,
     Card,
     message,
     Empty,
     Space
 } from 'antd';
-import { 
-    UploadOutlined, 
-    SaveOutlined, 
-    ShopOutlined, 
-    CreditCardOutlined, 
-    DesktopOutlined, 
-    NotificationOutlined, 
-    GiftOutlined, 
-    CalendarOutlined, 
-    QrcodeOutlined, 
-    BranchesOutlined, 
+import {
+    SaveOutlined,
+    ShopOutlined,
+    CreditCardOutlined,
+    DesktopOutlined,
+    NotificationOutlined,
+    GiftOutlined,
+    CalendarOutlined,
+    QrcodeOutlined,
+    BranchesOutlined,
     ClockCircleOutlined,
-    PlusOutlined 
+    PlusOutlined
 } from '@ant-design/icons';
-import { apiClient } from '../../../shared/services/api/client';
-import { authStore } from '../../../shared/services/auth/authStore';
 import ImgCrop from 'antd-img-crop';
+import { useCurrency } from '../../../shared/context/CurrencyContext';
+import { authStore } from '../../../shared/services/auth/authStore';
+import {
+    useTenantSettingsMap,
+    useTenantDetail,
+    useTenantUsers,
+    useUpdateTenantSettings,
+} from '../hooks/useTenantSettings';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -55,97 +60,57 @@ interface ConfigurationViewProps {
 const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) => {
     const { token } = theme.useToken();
     const [form] = Form.useForm();
-    const [tenantSettings, setTenantSettings] = useState<Record<string, string>>({});
     const [logoUrl, setLogoUrl] = useState<string>('');
+    const { currencySymbol } = useCurrency();
 
-    const fetchSettings = async () => {
-        try {
-            const tenantId = authStore.tenantId;
-            let ownerName = '';
-            let ownerEmail = '';
-            let ownerPhone = '';
-
-            if (tenantId) {
-                try {
-                    // Get tenant details
-                    const tenant = await apiClient.get<any>(`/api/tenants/${tenantId}`);
-                    const emailToFind = tenant?.ownerEmail || tenant?.OwnerEmail || tenant?.email || tenant?.Email;
-
-                    // Get users list
-                    const users = await apiClient.get<any[]>(`/api/tenants/${tenantId}/users`);
-                    const owner = users?.find((u: any) => u.email === emailToFind);
-
-                    if (owner) {
-                        ownerName = owner.name;
-                        ownerEmail = owner.email;
-                        ownerPhone = owner.phoneNumber || owner.phone || owner.loginNumber || '';
-                    } else if (emailToFind) {
-                        ownerEmail = emailToFind;
-                    }
-                } catch (err) {
-                    console.error("Failed to fetch tenant/owner details", err);
-                }
-            }
-
-            const data = await apiClient.get<any[]>('/api/tenant-settings');
-            const settings: Record<string, string> = {};
-            (data || []).forEach((item: any) => {
-                settings[item.key] = item.value;
-            });
-            setTenantSettings(settings);
-            setLogoUrl(settings['Logo'] || '');
-            form.setFieldsValue({
-                userName: ownerName || authStore.currentUser?.name || '',
-                userEmail: ownerEmail || authStore.currentUser?.email || '',
-                userPhone: ownerPhone || '',
-                brandName: settings['BrandName'] || '',
-                defaultCurrency: settings['DefaultCurrency'] || 'USD',
-                defaultTimeZone: settings['DefaultTimeZone'] || 'UTC',
-                logo: settings['Logo'] || '',
-                merchantFeePercentage: Number(settings['MerchantFeePercentage']) || 0,
-                isKdsAvailable: settings['IsKdsAvailable'] === 'true',
-                isExpeditorAvailable: settings['IsExpeditorAvailable'] === 'true',
-                branchCount: Number(settings['BranchCount']) || 0,
-                branchCodePrefix: settings['BranchCodePrefix'] || '',
-                posSessionTimeout: Number(settings['PosSessionTimeout']) || 0,
-                serviceCharge: Number(settings['ServiceCharge']) || 0,
-                cashbackPercentage: Number(settings['CashbackPercentage']) || 0,
-                serviceChargeType: settings['ServiceChargeType'] || 'Percentage',
-            });
-        } catch (error) {
-            console.error("Failed to fetch settings", error);
-        }
-    };
+    const { data: settings } = useTenantSettingsMap();
+    const { data: tenant } = useTenantDetail();
+    const { data: users } = useTenantUsers();
+    const updateSettings = useUpdateTenantSettings();
 
     useEffect(() => {
-        fetchSettings();
-    }, []);
+        const emailToFind = tenant?.ownerEmail || tenant?.OwnerEmail || tenant?.email || tenant?.Email;
+        const owner = users?.find((u) => u.email === emailToFind);
+
+        setLogoUrl(settings['Logo'] || '');
+        form.setFieldsValue({
+            userName: owner?.name || authStore.currentUser?.name || '',
+            userEmail: owner?.email || emailToFind || authStore.currentUser?.email || '',
+            userPhone: owner?.phoneNumber || owner?.phone || owner?.loginNumber || '',
+            brandName: settings['BrandName'] || '',
+            defaultCurrency: settings['DefaultCurrency'] || 'USD',
+            defaultTimeZone: settings['DefaultTimeZone'] || 'UTC',
+            logo: settings['Logo'] || '',
+            merchantFeePercentage: Number(settings['MerchantFeePercentage']) || 0,
+            isKdsAvailable: settings['IsKdsAvailable'] === 'true',
+            isExpeditorAvailable: settings['IsExpeditorAvailable'] === 'true',
+            branchCount: Number(settings['BranchCount']) || 0,
+            branchCodePrefix: settings['BranchCodePrefix'] || '',
+            posSessionTimeout: Number(settings['PosSessionTimeout']) || 0,
+            serviceCharge: Number(settings['ServiceCharge']) || 0,
+            cashbackPercentage: Number(settings['CashbackPercentage']) || 0,
+            serviceChargeType: settings['ServiceChargeType'] || 'Percentage',
+        });
+    }, [settings, tenant, users, form]);
 
     const handleSave = () => {
-        form.validateFields().then(async (values) => {
-            try {
-                const payload = [
-                    { key: 'BrandName', value: String(values.brandName ?? '') },
-                    { key: 'DefaultCurrency', value: String(values.defaultCurrency ?? '') },
-                    { key: 'DefaultTimeZone', value: String(values.defaultTimeZone ?? '') },
-                    { key: 'Logo', value: String(values.logo ?? '') },
-                    { key: 'MerchantFeePercentage', value: String(values.merchantFeePercentage ?? 0) },
-                    { key: 'IsKdsAvailable', value: String(values.isKdsAvailable ?? false) },
-                    { key: 'IsExpeditorAvailable', value: String(values.isExpeditorAvailable ?? false) },
-                    { key: 'BranchCount', value: String(values.branchCount ?? 0) },
-                    { key: 'BranchCodePrefix', value: String(values.branchCodePrefix ?? '') },
-                    { key: 'PosSessionTimeout', value: String(values.posSessionTimeout ?? 0) },
-                    { key: 'ServiceCharge', value: String(values.serviceCharge ?? 0) },
-                    { key: 'CashbackPercentage', value: String(values.cashbackPercentage ?? 0) },
-                    { key: 'ServiceChargeType', value: String(values.serviceChargeType ?? 'Percentage') }
-                ];
-                await apiClient.put('/api/tenant-settings', payload);
-                message.success("Configurations saved successfully!");
-                fetchSettings();
-            } catch (error) {
-                console.error("Failed to save settings", error);
-                message.error("Failed to save configurations.");
-            }
+        form.validateFields().then((values) => {
+            const payload = [
+                { key: 'BrandName', value: String(values.brandName ?? '') },
+                { key: 'DefaultCurrency', value: String(values.defaultCurrency ?? '') },
+                { key: 'DefaultTimeZone', value: String(values.defaultTimeZone ?? '') },
+                { key: 'Logo', value: String(values.logo ?? '') },
+                { key: 'MerchantFeePercentage', value: String(values.merchantFeePercentage ?? 0) },
+                { key: 'IsKdsAvailable', value: String(values.isKdsAvailable ?? false) },
+                { key: 'IsExpeditorAvailable', value: String(values.isExpeditorAvailable ?? false) },
+                { key: 'BranchCount', value: String(values.branchCount ?? 0) },
+                { key: 'BranchCodePrefix', value: String(values.branchCodePrefix ?? '') },
+                { key: 'PosSessionTimeout', value: String(values.posSessionTimeout ?? 0) },
+                { key: 'ServiceCharge', value: String(values.serviceCharge ?? 0) },
+                { key: 'CashbackPercentage', value: String(values.cashbackPercentage ?? 0) },
+                { key: 'ServiceChargeType', value: String(values.serviceChargeType ?? 'Percentage') },
+            ];
+            updateSettings.mutate(payload);
         });
     };
 
@@ -198,7 +163,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
             children: (
                 <ScrollablePane>
                     <div style={{ maxWidth: 800 }}>
-                        <Form form={form} layout="vertical">
+                        <Form form={form} name="config_general_form" layout="vertical">
                             {/* SECTION 1: Business Profile & Branding */}
                             <Title level={4}>Business Profile & Branding</Title>
                             <Divider titlePlacement={"left" as any}>Owner Configurations</Divider>
@@ -309,6 +274,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                                     <Form.Item name="serviceChargeType" label="Service Charge Type">
                                         <Select>
                                             <Option value="Percentage">Percentage</Option>
+                                            <Option value="Fixed">Fixed</Option>
                                         </Select>
                                     </Form.Item>
                                 </Col>
@@ -350,7 +316,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                     <div style={{ maxWidth: 800 }}>
                         <Title level={4}>Payment Gateway & Terminals</Title>
                         <Divider />
-                        <Form layout="vertical">
+                        <Form name="config_payment_form" layout="vertical">
                             <Form.Item label="Payment Processor">
                                 <Select defaultValue="Stripe">
                                     <Option value="Stripe">Stripe</Option>
@@ -420,18 +386,18 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                     <div style={{ maxWidth: 800 }}>
                         <Title level={4}>Kitchen Display System (KDS)</Title>
                         <Divider />
-                        <Form layout="vertical">
+                        <Form name="config_kds_form" layout="vertical">
                             <Form.Item label="Enable KDS Functionality" valuePropName="checked">
                                 <Switch defaultChecked />
                             </Form.Item>
                             
-                            {/* <Form.Item label="Kitchen Routing Rules">
+                            <Form.Item label="Kitchen Routing Rules">
                                 <Select defaultValue="Category Based">
                                     <Option value="Simple">Send all items to all screens</Option>
                                     <Option value="Category Based">Route by Category (e.g. Drinks to Bar)</Option>
                                     <Option value="Item Based">Route by specific item settings</Option>
                                 </Select>
-                            </Form.Item> */}
+                            </Form.Item>
 
                             <Row gutter={24}>
                                 <Col span={12}>
@@ -451,159 +417,159 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                 </ScrollablePane>
             )
         },
-        // {
-        //     key: '4',
-        //     permission: 'BackOffice:config:alerts',
-        //     label: <span><NotificationOutlined /> Alerts</span>,
-        //     children: (
-        //         <ScrollablePane>
-        //             <div style={{ maxWidth: 800 }}>
-        //                 <Title level={4}>Notifications & Alerts</Title>
-        //                 <Divider />
-        //                 <Form layout="vertical">
-        //                     <Card size="small" style={{ marginBottom: 16 }}>
-        //                         <Row align="middle" justify="space-between">
-        //                             <Col><Text strong>Low Stock Notifications</Text></Col>
-        //                             <Col><Switch defaultChecked /></Col>
-        //                         </Row>
-        //                     </Card>
-        //                     <Card size="small" style={{ marginBottom: 16 }}>
-        //                         <Row align="middle" justify="space-between">
-        //                             <Col><Text strong>Order Ready SMS (to Customer)</Text></Col>
-        //                             <Col><Switch /></Col>
-        //                         </Row>
-        //                     </Card>
+        {
+            key: '4',
+            permission: 'BackOffice:config:alerts',
+            label: <span><NotificationOutlined /> Alerts</span>,
+            children: (
+                <ScrollablePane>
+                    <div style={{ maxWidth: 800 }}>
+                        <Title level={4}>Notifications & Alerts</Title>
+                        <Divider />
+                        <Form name="config_alerts_form" layout="vertical">
+                            <Card size="small" style={{ marginBottom: 16 }}>
+                                <Row align="middle" justify="space-between">
+                                    <Col><Text strong>Low Stock Notifications</Text></Col>
+                                    <Col><Switch defaultChecked /></Col>
+                                </Row>
+                            </Card>
+                            <Card size="small" style={{ marginBottom: 16 }}>
+                                <Row align="middle" justify="space-between">
+                                    <Col><Text strong>Order Ready SMS (to Customer)</Text></Col>
+                                    <Col><Switch /></Col>
+                                </Row>
+                            </Card>
                             
-        //                     <Form.Item label="Email Alert Recipients (Comma separated)">
-        //                         <Input.TextArea rows={2} placeholder="manager@restaurant.com, owner@restaurant.com" />
-        //                     </Form.Item>
+                            <Form.Item label="Email Alert Recipients (Comma separated)">
+                                <Input.TextArea rows={2} placeholder="manager@restaurant.com, owner@restaurant.com" />
+                            </Form.Item>
 
-        //                     <Form.Item label="WhatsApp Integration">
-        //                         <Select defaultValue="Disabled">
-        //                             <Option value="Disabled">Disabled</Option>
-        //                             <Option value="Twilio">Via Twilio</Option>
-        //                             <Option value="Business API">WhatsApp Business API</Option>
-        //                         </Select>
-        //                     </Form.Item>
-        //                 </Form>
-        //                 {renderSaveButton()}
-        //             </div>
-        //         </ScrollablePane>
-        //     )
-        // },
-        // {
-        //     key: '5',
-        //     permission: 'BackOffice:config:view',
-        //     label: <span><GiftOutlined /> Loyalty</span>,
-        //     children: (
-        //         <ScrollablePane>
-        //             <div style={{ maxWidth: 800 }}>
-        //                 <Title level={4}>Customer Loyalty & Rewards</Title>
-        //                 <Divider />
+                            <Form.Item label="WhatsApp Integration">
+                                <Select defaultValue="Disabled">
+                                    <Option value="Disabled">Disabled</Option>
+                                    <Option value="Twilio">Via Twilio</Option>
+                                    <Option value="Business API">WhatsApp Business API</Option>
+                                </Select>
+                            </Form.Item>
+                        </Form>
+                        {renderSaveButton()}
+                    </div>
+                </ScrollablePane>
+            )
+        },
+        {
+            key: '5',
+            permission: 'BackOffice:config:view',
+            label: <span><GiftOutlined /> Loyalty</span>,
+            children: (
+                <ScrollablePane>
+                    <div style={{ maxWidth: 800 }}>
+                        <Title level={4}>Customer Loyalty & Rewards</Title>
+                        <Divider />
 
-        //                 <Form layout="vertical">
-        //                 <Row gutter={24}>
-        //                     <Col span={12}>
-        //                     <Form.Item label="Points Earning Rule">
-        //                         <Space.Compact style={{ width: "100%" }}>
-        //                         <Input value="Earn 1 point per" disabled style={{ width: "60%" }} />
-        //                         <Input defaultValue="1" style={{ width: "20%" }} />
-        //                         <Input value="$ spent" disabled style={{ width: "20%" }} />
-        //                         </Space.Compact>
-        //                     </Form.Item>
-        //                     </Col>
+                        <Form name="config_loyalty_form" layout="vertical">
+                        <Row gutter={24}>
+                            <Col span={12}>
+                            <Form.Item label="Points Earning Rule">
+                                <Space.Compact style={{ width: "100%" }}>
+                                <Input value="Earn 1 point per" disabled style={{ width: "60%" }} />
+                                <Input defaultValue="1" style={{ width: "20%" }} />
+                                <Input value={`${currencySymbol} spent`} disabled style={{ width: "20%" }} />
+                                </Space.Compact>
+                            </Form.Item>
+                            </Col>
 
-        //                     <Col span={12}>
-        //                     <Form.Item label="Redemption Rule">
-        //                         <Space.Compact style={{ width: "100%" }}>
-        //                         <Input value="Redeem 100 points for" disabled style={{ width: "70%" }} />
-        //                         <Input defaultValue="5" style={{ width: "15%" }} />
-        //                         <Input value="$ credit" disabled style={{ width: "15%" }} />
-        //                         </Space.Compact>
-        //                     </Form.Item>
-        //                     </Col>
-        //                 </Row>
+                            <Col span={12}>
+                            <Form.Item label="Redemption Rule">
+                                <Space.Compact style={{ width: "100%" }}>
+                                <Input value="Redeem 100 points for" disabled style={{ width: "70%" }} />
+                                <Input defaultValue="5" style={{ width: "15%" }} />
+                                <Input value={`${currencySymbol} credit`} disabled style={{ width: "15%" }} />
+                                </Space.Compact>
+                            </Form.Item>
+                            </Col>
+                        </Row>
 
-        //                 <Form.Item label="Loyalty Tiers">
-        //                     <Select mode="tags" defaultValue={["Silver", "Gold", "VIP"]} />
-        //                 </Form.Item>
+                        <Form.Item label="Loyalty Tiers">
+                            <Select mode="tags" defaultValue={["Silver", "Gold", "VIP"]} />
+                        </Form.Item>
 
-        //                 <Form.Item label="Birthday Reward">
-        //                     <Input placeholder="e.g. Free Dessert" />
-        //                 </Form.Item>
-        //                 </Form>
+                        <Form.Item label="Birthday Reward">
+                            <Input placeholder="e.g. Free Dessert" />
+                        </Form.Item>
+                        </Form>
 
-        //                 {renderSaveButton()}
-        //             </div>
-        //             </ScrollablePane>
-        //     )
-        // },
-        // {
-        //     key: '6',
-        //     permission: 'BackOffice:config:view',
-        //     label: <span><GiftOutlined /> Gift Cards</span>,
-        //     children: (
-        //         <ScrollablePane>
-        //             <div style={{ maxWidth: 800 }}>
-        //                 <Title level={4}>Gift Card System</Title>
-        //                 <Divider />
-        //                 <Form layout="vertical">
-        //                     <Form.Item label="Card Expiry (Months from issue)">
-        //                         <InputNumber min={0} defaultValue={12} style={{ width: '100%' }} />
-        //                     </Form.Item>
-        //                     <Form.Item label="Allow Partial Redemption" valuePropName="checked">
-        //                         <Switch defaultChecked />
-        //                     </Form.Item>
-        //                     <Form.Item label="Reload Rules">
-        //                         <Select defaultValue="Any Amount">
-        //                             <Option value="Any Amount">Any Amount</Option>
-        //                             <Option value="Fixed Denominations">Fixed Denominations ($10, $20, $50)</Option>
-        //                         </Select>
-        //                     </Form.Item>
-        //                 </Form>
-        //                 {renderSaveButton()}
-        //             </div>
-        //         </ScrollablePane>
-        //     )
-        // },
-        // {
-        //     key: '7',
-        //     permission: 'BackOffice:config:view',
-        //     label: <span><CalendarOutlined /> Reservations</span>,
-        //     children: (
-        //         <ScrollablePane>
-        //             <div style={{ maxWidth: 800 }}>
-        //                 <Title level={4}>Reservation Settings</Title>
-        //                 <Divider />
-        //                 <Form layout="vertical">
-        //                     <Row gutter={24}>
-        //                         <Col span={12}>
-        //                             <Form.Item label="Time Slot Duration (mins)">
-        //                                 <InputNumber step={15} defaultValue={90} style={{ width: '100%' }} />
-        //                             </Form.Item>
-        //                         </Col>
-        //                         <Col span={12}>
-        //                             <Form.Item label="Max Party Size">
-        //                                 <InputNumber min={1} defaultValue={10} style={{ width: '100%' }} />
-        //                             </Form.Item>
-        //                         </Col>
-        //                     </Row>
-        //                     <Form.Item label="Require Deposit">
-        //                         <Select defaultValue="For Parties > 6">
-        //                             <Option value="Never">Never</Option>
-        //                             <Option value="Always">Always</Option>
-        //                             <Option value="For Parties > 6">For Parties &gt; 6</Option>
-        //                         </Select>
-        //                     </Form.Item>
-        //                     <Form.Item label="Auto-cancel Policy (mins late)">
-        //                         <InputNumber min={5} defaultValue={15} />
-        //                     </Form.Item>
-        //                 </Form>
-        //                 {renderSaveButton()}
-        //             </div>
-        //         </ScrollablePane>
-        //     )
-        // },
+                        {renderSaveButton()}
+                    </div>
+                    </ScrollablePane>
+            )
+        },
+        {
+            key: '6',
+            permission: 'BackOffice:config:view',
+            label: <span><GiftOutlined /> Gift Cards</span>,
+            children: (
+                <ScrollablePane>
+                    <div style={{ maxWidth: 800 }}>
+                        <Title level={4}>Gift Card System</Title>
+                        <Divider />
+                        <Form name="config_giftcard_form" layout="vertical">
+                            <Form.Item label="Card Expiry (Months from issue)">
+                                <InputNumber min={0} defaultValue={12} style={{ width: '100%' }} />
+                            </Form.Item>
+                            <Form.Item label="Allow Partial Redemption" valuePropName="checked">
+                                <Switch defaultChecked />
+                            </Form.Item>
+                             <Form.Item label="Reload Rules">
+                                <Select defaultValue="Any Amount">
+                                    <Option value="Any Amount">Any Amount</Option>
+                                    <Option value="Fixed Denominations">Fixed Denominations ({currencySymbol}10, {currencySymbol}20, {currencySymbol}50)</Option>
+                                </Select>
+                            </Form.Item>
+                        </Form>
+                        {renderSaveButton()}
+                    </div>
+                </ScrollablePane>
+            )
+        },
+        {
+            key: '7',
+            permission: 'BackOffice:config:view',
+            label: <span><CalendarOutlined /> Reservations</span>,
+            children: (
+                <ScrollablePane>
+                    <div style={{ maxWidth: 800 }}>
+                        <Title level={4}>Reservation Settings</Title>
+                        <Divider />
+                        <Form name="config_reservations_form" layout="vertical">
+                            <Row gutter={24}>
+                                <Col span={12}>
+                                    <Form.Item label="Time Slot Duration (mins)">
+                                        <InputNumber step={15} defaultValue={90} style={{ width: '100%' }} />
+                                    </Form.Item>
+                                </Col>
+                                <Col span={12}>
+                                    <Form.Item label="Max Party Size">
+                                        <InputNumber min={1} defaultValue={10} style={{ width: '100%' }} />
+                                    </Form.Item>
+                                </Col>
+                            </Row>
+                            <Form.Item label="Require Deposit">
+                                <Select defaultValue="For Parties > 6">
+                                    <Option value="Never">Never</Option>
+                                    <Option value="Always">Always</Option>
+                                    <Option value="For Parties > 6">For Parties &gt; 6</Option>
+                                </Select>
+                            </Form.Item>
+                            <Form.Item label="Auto-cancel Policy (mins late)">
+                                <InputNumber min={5} defaultValue={15} />
+                            </Form.Item>
+                        </Form>
+                        {renderSaveButton()}
+                    </div>
+                </ScrollablePane>
+            )
+        },
         {
             key: '8',
             permission: 'BackOffice:config:reports',
@@ -613,7 +579,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                     <div style={{ maxWidth: 800 }}>
                         <Title level={4}>Reports Customization</Title>
                         <Divider />
-                        <Form layout="vertical">
+                        <Form name="config_reports_form" layout="vertical">
                             <Form.Item label="Scheduled Email Reports">
                                 <Select mode="multiple" defaultValue={['Daily Sales', 'Labor Cost']}>
                                     <Option value="Daily Sales">Daily Sales</Option>
@@ -636,34 +602,34 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                 </ScrollablePane>
             )
         },
-        // {
-        //     key: '9',
-        //     permission: 'BackOffice:config:view',
-        //     label: <span><QrcodeOutlined /> QR Ordering</span>,
-        //     children: (
-        //         <ScrollablePane>
-        //             <div style={{ maxWidth: 800 }}>
-        //                 <Title level={4}>QR Ordering</Title>
-        //                 <Divider />
-        //                 <Form layout="vertical">
-        //                     <Form.Item label="Enable QR Ordering" valuePropName="checked">
-        //                         <Switch />
-        //                     </Form.Item>
-        //                     <Form.Item label="Payment Flow">
-        //                         <Select defaultValue="Pay at Table">
-        //                             <Option value="Pay to Order">Pay before ordering</Option>
-        //                             <Option value="Pay at Table">Order first, pay later</Option>
-        //                         </Select>
-        //                     </Form.Item>
-        //                     <Form.Item label="Order Throttling (Max orders/min)">
-        //                         <InputNumber min={0} defaultValue={5} />
-        //                     </Form.Item>
-        //                 </Form>
-        //                 {renderSaveButton()}
-        //             </div>
-        //         </ScrollablePane>
-        //     )
-        // },
+        {
+            key: '9',
+            permission: 'BackOffice:config:view',
+            label: <span><QrcodeOutlined /> QR Ordering</span>,
+            children: (
+                <ScrollablePane>
+                    <div style={{ maxWidth: 800 }}>
+                        <Title level={4}>QR Ordering</Title>
+                        <Divider />
+                        <Form name="config_qr_form" layout="vertical">
+                            <Form.Item label="Enable QR Ordering" valuePropName="checked">
+                                <Switch />
+                            </Form.Item>
+                            <Form.Item label="Payment Flow">
+                                <Select defaultValue="Pay at Table">
+                                    <Option value="Pay to Order">Pay before ordering</Option>
+                                    <Option value="Pay at Table">Order first, pay later</Option>
+                                </Select>
+                            </Form.Item>
+                            <Form.Item label="Order Throttling (Max orders/min)">
+                                <InputNumber min={0} defaultValue={5} />
+                            </Form.Item>
+                        </Form>
+                        {renderSaveButton()}
+                    </div>
+                </ScrollablePane>
+            )
+        },
         {
             key: '10',
             permission: 'BackOffice:config:view',
@@ -673,7 +639,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                     <div style={{ maxWidth: 800 }}>
                         <Title level={4}>Multi-Store / Franchise</Title>
                         <Divider />
-                        <Form layout="vertical">
+                        <Form name="config_multistore_form" layout="vertical">
                             <Form.Item label="Store Linking ID">
                                 <Input placeholder="Enter HQ Link ID" />
                             </Form.Item>
@@ -701,7 +667,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                     <div style={{ maxWidth: 800 }}>
                         <Title level={4}>Business Day & Shift</Title>
                         <Divider />
-                        <Form layout="vertical">
+                        <Form name="config_shifts_form" layout="vertical">
                             <Form.Item label="Business Day Start Time">
                                 <TimePicker format="HH:mm" />
                             </Form.Item>

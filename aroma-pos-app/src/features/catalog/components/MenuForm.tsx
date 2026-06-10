@@ -2,11 +2,12 @@ import React, { useEffect,useMemo, useState } from 'react';
 import { Form, Input, InputNumber, Select, Button, theme, message, Popconfirm, Typography, Tabs, Table, Switch, Modal } from 'antd';
 import { DeleteOutlined, SaveOutlined, PlusOutlined } from '@ant-design/icons';
 import { MenuItem, ModifierGroup, Category, Device, ItemVariant, Variant } from '../../../shared/types';
-import { VariantService } from '../api/variants.service';
+import { useVariants } from '../hooks/useVariants';
 
 const { Option } = Select;
 import { showErrorMessage } from '@/src/shared/types/ui/ErrorMessageModel';
 import { ItemVarientStatusType } from '@/src/shared/enums';
+import { useCurrency } from '../../../shared/context/CurrencyContext';
 
 interface MenuFormProps {
     initialData?: MenuItem | null;
@@ -25,25 +26,23 @@ const MenuForm: React.FC<MenuFormProps> = ({ initialData, categories, modifierGr
     const [form] = Form.useForm();
     const { token } = theme.useToken();
     const [variants, setVariants] = useState<ItemVariant[]>([]);
-    const [availableVariants, setAvailableVariants] = useState<Variant[]>([]);
+    const { data: availableVariants = [] } = useVariants();
     const [activeTab, setActiveTab] = useState('1');
+    const { currencySymbol } = useCurrency();
 
     const [popup, contextHolder] = Modal.useModal();
 
-    useEffect(() => {
-        const fetchVariants = async () => {
-            const data = await VariantService.getVariants();
-
-            if (data.success) {
-                console.log(data);
-                setAvailableVariants(data.data || []);
-            } else {
-                showErrorMessage(popup, data.message, "Variant Fetch Failed");
-            }
-        };
-        fetchVariants();
-
-    }, []);
+    const modifierGroupOptions = useMemo(() => {
+        const map = new Map<string, string>();
+        modifierGroups.forEach(g => map.set(g.id, g.name));
+        if (initialData?.modifierGroups) {
+            initialData.modifierGroups.forEach(g => map.set(g.id, g.name));
+        }
+        return Array.from(map.entries()).map(([id, name]) => ({
+            value: id,
+            label: name
+        }));
+    }, [modifierGroups, initialData]);
 
     useEffect(() => {
         if (initialData) {
@@ -134,7 +133,7 @@ const MenuForm: React.FC<MenuFormProps> = ({ initialData, categories, modifierGr
         render: (val: number, record: ItemVariant, index: number) => (
             <InputNumber
                 min={0}
-                prefix="$"
+                prefix={currencySymbol}
                 value={val}
                 // Ensure this triggers the state update correctly
                 onChange={val => handleVariantChange(index, 'price', val)}
@@ -168,7 +167,7 @@ const MenuForm: React.FC<MenuFormProps> = ({ initialData, categories, modifierGr
                     </Title>
                 </div>
 
-                <Form form={form} layout="vertical" onFinish={onFinish} requiredMark="optional">
+                <Form form={form} name="menu_form" layout="vertical" onFinish={onFinish} requiredMark="optional">
                     <Tabs activeKey={activeTab} onChange={setActiveTab} items={[
                         {
                             key: '1',
@@ -179,9 +178,13 @@ const MenuForm: React.FC<MenuFormProps> = ({ initialData, categories, modifierGr
                                         <Input placeholder="e.g. Classic Burger" size="large" />
                                     </Form.Item>
                                     <Form.Item name="categoryId" label="Category" rules={[{ required: true }]}>
-                                        <Select placeholder="Select Category" size="large">
-                                            {categories.map(cat => <Option key={cat.id} value={cat.id}>{cat.name}</Option>)}
-                                        </Select>
+                                        <Select
+                                            showSearch
+                                            placeholder="Select Category"
+                                            size="large"
+                                            optionFilterProp="label"
+                                            options={categories.map(cat => ({ value: cat.id, label: cat.name }))}
+                                        />
                                     </Form.Item>
                                     <Form.Item label="Description" name="description">
                                         <TextArea rows={4} style={{ resize: 'none' }} />
@@ -217,11 +220,14 @@ const MenuForm: React.FC<MenuFormProps> = ({ initialData, categories, modifierGr
                             label: 'Modifiers',
                             children: (
                                 <Form.Item name="modifierGroupIds" label="Select Modifier Groups">
-                                    <Select mode="multiple" placeholder="Select groups" size="large" style={{ width: '100%' }}>
-                                        {modifierGroups.map(grp => (
-                                            <Option key={grp.id} value={grp.id}>{grp.name}</Option>
-                                        ))}
-                                    </Select>
+                                    <Select
+                                        mode="multiple"
+                                        placeholder="Select groups"
+                                        size="large"
+                                        style={{ width: '100%' }}
+                                        optionFilterProp="label"
+                                        options={modifierGroupOptions}
+                                    />
                                 </Form.Item>
                             )
                         }
@@ -232,7 +238,7 @@ const MenuForm: React.FC<MenuFormProps> = ({ initialData, categories, modifierGr
             <div style={{ padding: '16px 32px', borderTop: `1px solid ${token.colorBorderSecondary}`, display: 'flex', gap: 16, background: token.colorBgLayout, justifyContent: 'flex-end' }}>
                 {initialData && onDelete && (
                     <Popconfirm title="Delete Item" onConfirm={() => onDelete(initialData.id)} okButtonProps={{ danger: true }}>
-                        <Button type="text" danger icon={<DeleteOutlined />} style={{ marginRight: 'auto' }}>Delete</Button>
+                        <Button type="primary" danger icon={<DeleteOutlined />} style={{ marginRight: 'auto' }}>Delete Item</Button>
                     </Popconfirm>
                 )}
                 <Button onClick={onCancel}>Cancel</Button>

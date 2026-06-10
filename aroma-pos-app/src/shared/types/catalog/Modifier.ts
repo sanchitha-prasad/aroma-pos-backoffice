@@ -4,4 +4,5 @@ export interface Modifier {
   description?: string;
   price: number;
   isActive: boolean;
+  createdOnUtc?: string;
 }

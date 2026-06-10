@@ -1,101 +1,51 @@
-import React, { useState, useEffect } from 'react';
-import { message, Spin } from 'antd';
+import React from 'react';
+import { message } from 'antd';
 import EmployeesView from '../features/system/components/UsersView';
-import { Activity, Branch, Employee } from '../shared/types';
-import { systemService } from '../features/system/api/system.service';
-import { EmployeesService } from '../features/system/api/employees.service';
-import { BranchServices } from '../features/system/api/branch.service';
-import { AsyncLocalStorage } from 'node:async_hooks';
-
-
-const  stringEmpty = "";
+import { Employee } from '../shared/types';
+import {
+    useEmployees,
+    useCreateEmployee,
+    useUpdateEmployee,
+    useDeleteEmployee,
+} from '../features/system/hooks/useEmployees';
+import { useBranches } from '../features/system/hooks/useBranches';
 
 const Employees: React.FC = () => {
-    const [employees, setEmployees] = useState<Employee[]>([]);
-    const [branches, setBranches] = useState<Branch[]>([]);
-    const [activities, setActivities] = useState<Activity[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [tenantId, setTenantId] = useState<string>(stringEmpty);
+    const { data: employees = [], isLoading: empLoading } = useEmployees();
+    const { data: branches = [], isLoading: branchLoading } = useBranches();
 
-   useEffect(() => {
-        const loadTenant = () => {
-            const id = sessionStorage.getItem("_stid");
-
-            if (!id) {
-                message.error("Tenant not found. Please login again.");
-                return null;
-            }
-
-            setTenantId(id);
-            return id;
-        };
-
-        const id = loadTenant();
-
-        if (id) {
-            fetchData(id);
-        }
-    }, [tenantId]);
-
-    const fetchData = async (tenantId: string) => {
-        setLoading(true);
-        try {
-            const [empData, branchData] = await Promise.all([
-                EmployeesService.getEmployees(tenantId), // Pass tenantId if needed
-                BranchServices.getBranches(),
-                // systemService.getActivities()
-            ]);
-            if (empData.success) setEmployees(empData.data ?? []);
-            if (branchData.success) setBranches(branchData.data ?? []);
-            // setActivities(actData);
-        } catch (error) {
-            message.error("Failed to load employee data");
-        } finally {
-            setLoading(false);
-        }
-    };
+    const createEmployee = useCreateEmployee();
+    const updateEmployee = useUpdateEmployee();
+    const deleteEmployee = useDeleteEmployee();
 
     const handleSave = async (emp: Employee) => {
         try {
             if (emp.id) {
-                await EmployeesService.updateEmployee(tenantId, emp.id, emp);
+                await updateEmployee.mutateAsync({ id: emp.id, data: emp });
             } else {
                 const { id, ...createData } = emp;
-                await EmployeesService.createEmployee(tenantId, createData);
+                await createEmployee.mutateAsync(createData);
             }
-            message.success("Employee saved");
-            fetchData(tenantId);
-        } catch (e) { }
+            message.success('Employee saved');
+        } catch {
+            message.error('Failed to save employee');
+        }
     };
 
     const handleDelete = async (id: string) => {
         try {
-            await EmployeesService.deleteEmployee(tenantId, id);
-            setEmployees(prev => prev.filter(x => x.id !== id));
-            message.success("Employee deleted");
-        } catch (e) { }
+            await deleteEmployee.mutateAsync(id);
+            message.success('Employee deleted');
+        } catch {
+            message.error('Failed to delete employee');
+        }
     };
-
-    const handleLogActivity = (action: string, target: string) => {
-        // systemService.logActivity({ action, target, user: 'User' });
-        const newAct: Activity = {
-            id: Date.now().toString(),
-            user: 'User',
-            action,
-            target,
-            time: new Date()
-        };
-        setActivities(prev => [newAct, ...prev]);
-    };
-
-    if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: 50 }}><Spin size="large" /></div>;
 
     return (
         <EmployeesView
-            onLogActivity={handleLogActivity}
-            activities={activities}
             branches={branches}
             employees={employees}
+            isLoading={empLoading || branchLoading}
             onSave={handleSave}
             onDelete={handleDelete}
         />

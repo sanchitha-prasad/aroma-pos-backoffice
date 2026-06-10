@@ -9,6 +9,7 @@ interface CustomRequestConfig extends AxiosRequestConfig {
     skipErrorRedirect?: boolean;
     suppressErrorToast?: boolean;
     overrideBaseURL?: string;
+    skipBranchId?: boolean;
 }
 
 // Standard API Response Structure
@@ -41,7 +42,6 @@ class ApiClient {
                 // 1. Allow dynamic override of baseURL
                 if (config.overrideBaseURL) {
                     config.baseURL = config.overrideBaseURL;
-                    console.log(config.baseURL);
                 }
 
                 // 2. Inject Bearer Token (from in-memory store — never localStorage)
@@ -56,7 +56,7 @@ class ApiClient {
                 const tenantId = authStore.tenantId;
                 const branchId = authStore.branchId;
                 if (tenantId) config.headers.set('X-Tenant-Id', tenantId);
-                if (branchId) config.headers.set('X-Branch-Id', branchId);
+                if (branchId && !config.skipBranchId) config.headers.set('X-Branch-Id', branchId);
 
                 // 4. Ensure JSON Content-Type
                 if (!config.headers.get('Content-Type')) {
@@ -67,7 +67,9 @@ class ApiClient {
                 config.headers.set('ngrok-skip-browser-warning', 'true');
 
                 // ── Debug logging (dev only) ──────────────────────────────────
-                if (process.env.NODE_ENV === 'development') {
+                // import.meta.env.DEV is a compile-time boolean — esbuild strips
+                // the entire block in production with no runtime overhead.
+                if (import.meta.env.DEV) {
                     console.groupCollapsed(`🚀 API Request: [${config.method?.toUpperCase()}] ${config.url}`);
                     console.log('URL:', `${config.baseURL || ''}${config.url}`);
                     console.log('Headers:', config.headers);
@@ -85,7 +87,9 @@ class ApiClient {
                 return config;
             },
             (error) => {
-                console.error('Request Error:', error);
+                if (import.meta.env.DEV) {
+                    console.error('Request Error:', error);
+                }
                 return Promise.reject(error);
             }
         );
@@ -96,7 +100,7 @@ class ApiClient {
                 const { data } = response;
                 const config = response.config as CustomRequestConfig;
 
-                if (process.env.NODE_ENV === 'development') {
+                if (import.meta.env.DEV) {
                     console.groupCollapsed(`✅ API Response: [${response.config.method?.toUpperCase()}] ${response.config.url}`);
                     console.log('Status:', response.status);
                     console.log('📦 Response Data:', data);

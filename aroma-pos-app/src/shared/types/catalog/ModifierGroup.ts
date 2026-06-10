@@ -8,4 +8,5 @@ export interface ModifierGroup {
   maxSelectCount: number;
   isActive: boolean;
   modifierItems: ModifierItem[];
+  createdOnUtc?: string;
 }

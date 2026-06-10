@@ -1,5 +1,6 @@
 import React from 'react';
 import { Table, Tag, Typography, theme } from 'antd';
+import { useCurrency } from '@/src/shared/context/CurrencyContext';
 import type { ColumnsType } from 'antd/es/table';
 import type { TicketItemDetailResponse } from '../../types/order-detail.types';
 
@@ -12,6 +13,7 @@ interface TicketItemsTableProps {
 const TicketItemsTable: React.FC<TicketItemsTableProps> = ({ items: rawItems }) => {
     const items = rawItems ?? [];
     const { token } = theme.useToken();
+    const { currencySymbol } = useCurrency();
 
     const columns: ColumnsType<TicketItemDetailResponse> = [
         {
@@ -47,11 +49,13 @@ const TicketItemsTable: React.FC<TicketItemsTableProps> = ({ items: rawItems }) 
         },
         {
             title: 'Portion',
-            dataIndex: 'portion',
             key: 'portion',
             width: 65,
             align: 'center',
-            render: (val: number) => val < 1 ? `${(val * 100).toFixed(0)}%` : '—',
+            render: (_: unknown, item: TicketItemDetailResponse) => {
+                const p = item.portionNumerator / item.portionDenominator;
+                return p < 1 ? `${(p * 100).toFixed(0)}%` : '—';
+            },
         },
         {
             title: 'Unit Price',
@@ -59,7 +63,7 @@ const TicketItemsTable: React.FC<TicketItemsTableProps> = ({ items: rawItems }) 
             key: 'unitPrice',
             width: 90,
             align: 'right',
-            render: (val: number) => `$${val.toFixed(2)}`,
+            render: (val: number) => `${currencySymbol} ${val.toFixed(2)}`,
         },
         {
             title: 'Total',
@@ -68,8 +72,8 @@ const TicketItemsTable: React.FC<TicketItemsTableProps> = ({ items: rawItems }) 
             align: 'right',
             render: (_: unknown, item: TicketItemDetailResponse) => {
                 const modTotal = (item.modifiers ?? []).reduce((acc, m) => acc + (m.price ?? 0) * (m.quantity ?? 1), 0);
-                const total = (item.price + modTotal) * item.quantity * (item.portion || 1);
-                return <Text strong>${total.toFixed(2)}</Text>;
+                const total = (item.price + modTotal) * item.quantity * ((item.portionNumerator ?? 1) / (item.portionDenominator ?? 1));
+                return <Text strong>{currencySymbol} {total.toFixed(2)}</Text>;
             },
         },
     ];

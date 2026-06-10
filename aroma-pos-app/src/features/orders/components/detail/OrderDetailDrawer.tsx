@@ -5,11 +5,12 @@ import TicketDetailPanel from './TicketDetailPanel';
 import type { OrderDetailResponse } from '../../types/order-detail.types';
 import { computeOrderSummary, getOrderTypeLabel, ORDER_TYPE } from '../../utils/order.helpers';
 import StatusDot from '@/src/shared/components/rich-table/StatusDot';
+import { useCurrency } from '@/src/shared/context/CurrencyContext';
 
 const { Text } = Typography;
 
-const STATUS_VARIANT = { 1: 'warning', 2: 'success', 3: 'processing' } as const;
-const STATUS_LABEL   = { 1: 'Pending', 2: 'Paid',    3: 'Partial'    } as const;
+const STATUS_VARIANT = { 1: 'warning', 2: 'success', 3: 'processing', 4: 'default'  } as const;
+const STATUS_LABEL   = { 1: 'Pending', 2: 'Paid',    3: 'Partial',   4: 'Refunded' } as const;
 
 interface OrderDetailDrawerProps {
     order: OrderDetailResponse | null;
@@ -17,6 +18,7 @@ interface OrderDetailDrawerProps {
 }
 
 const OrderDetailDrawer: React.FC<OrderDetailDrawerProps> = ({ order, onClose }) => {
+    const { currencySymbol } = useCurrency();
     const summary = order ? computeOrderSummary(order) : null;
     const tickets = order?.tickets ?? [];
 
@@ -41,13 +43,13 @@ const OrderDetailDrawer: React.FC<OrderDetailDrawerProps> = ({ order, onClose })
             size="large"
             open={!!order}
             onClose={onClose}
-            destroyOnClose
+            destroyOnHidden
             extra={
                 summary && (
                     <Space size={16}>
                         <div style={{ textAlign: 'right' }}>
                             <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>Total</Text>
-                            <Text strong style={{ fontSize: 16 }}>${summary.totalAmount.toFixed(2)}</Text>
+                            <Text strong style={{ fontSize: 16 }}>{currencySymbol} {summary.totalAmount.toFixed(2)}</Text>
                         </div>
                         <StatusDot
                             variant={STATUS_VARIANT[summary.paymentStatus]}
@@ -71,14 +73,14 @@ const OrderDetailDrawer: React.FC<OrderDetailDrawerProps> = ({ order, onClose })
                             { key: 'items',   label: 'Items',   children: summary?.itemCount },
                             {
                                 key: 'paid', label: 'Paid',
-                                children: <Text type="success">${summary?.paidAmount.toFixed(2)}</Text>,
+                                children: <Text type="success">{currencySymbol} {summary?.paidAmount.toFixed(2)}</Text>,
                             },
                             {
                                 key: 'balance',
                                 label: (summary?.balance ?? 0) > 0 ? 'Balance Due' : 'Change',
                                 children: (
                                     <Text type={(summary?.balance ?? 0) > 0 ? 'danger' : 'secondary'}>
-                                        ${Math.abs(summary?.balance ?? 0).toFixed(2)}
+                                        {currencySymbol} {Math.abs(summary?.balance ?? 0).toFixed(2)}
                                     </Text>
                                 ),
                             },

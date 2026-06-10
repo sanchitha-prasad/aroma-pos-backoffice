@@ -18,6 +18,7 @@ const STATUS_MAP: Record<string, { variant: StatusVariant; label: string }> = {
 
 export function buildOrderColumns(
     onViewDetail: (order: OrderDetailResponse) => void,
+    currencySymbol = 'LKR',
 ): ColumnsType<OrderDetailResponse> {
     return [
         {
@@ -110,12 +111,12 @@ export function buildOrderColumns(
                 const s = computeOrderSummary(order);
                 return (
                     <div style={{ textAlign: 'right' }}>
-                        <Text strong style={{ fontSize: 15 }}>${s.totalAmount.toFixed(2)}</Text>
+                        <Text strong style={{ fontSize: 15 }}>{currencySymbol} {s.totalAmount.toFixed(2)}</Text>
                         {s.paidAmount > 0 && (
-                            <div><Text type="success" style={{ fontSize: 11 }}>Paid ${s.paidAmount.toFixed(2)}</Text></div>
+                            <div><Text type="success" style={{ fontSize: 11 }}>Paid {currencySymbol} {s.paidAmount.toFixed(2)}</Text></div>
                         )}
                         {s.balance > 0.001 && (
-                            <div><Text type="danger" style={{ fontSize: 11 }}>Due ${s.balance.toFixed(2)}</Text></div>
+                            <div><Text type="danger" style={{ fontSize: 11 }}>Due {currencySymbol} {s.balance.toFixed(2)}</Text></div>
                         )}
                     </div>
                 );

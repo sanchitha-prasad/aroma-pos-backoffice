@@ -1,73 +1,39 @@
-import React, { useState, useEffect } from 'react';
-import { message, Modal, Spin } from 'antd';
+import React from 'react';
 import BranchView from '../features/system/components/BranchView';
-import { Branch } from '../shared/types';
-import { BranchServices } from '../features/system/api/branch.service';
-import { showErrorMessage } from '../shared/types/ui/ErrorMessageModel';
+import {
+    useBranches,
+    useCreateBranch,
+    useUpdateBranch,
+    useDeleteBranch,
+} from '../features/system/hooks/useBranches';
+import type { Branch } from '../shared/types';
 
 const Branches: React.FC = () => {
-    const [branches, setBranches] = useState<Branch[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { data: branches = [], isLoading } = useBranches();
+    const createBranch = useCreateBranch();
+    const updateBranch = useUpdateBranch();
+    const deleteBranch = useDeleteBranch();
 
-    // const [popup, contextHolder] = Modal.useModal();
-
-
-    useEffect(() => {
-        fetchData();
-    }, []);
-
-    const fetchData = async () => {
-        setLoading(true);
-        try {
-            const data = await BranchServices.getBranches();
-            if (data.success) {
-                setBranches(data.data ?? []);
-            } else {
-                message.error("Branch Fetch Failed");
-            }
-        } catch (error) {
-            message.error("Failed to load branches");
-        } finally {
-            setLoading(false);
+    const handleSave = async (branch: Branch) => {
+        if (branch.id) {
+            await updateBranch.mutateAsync({ id: branch.id, data: branch });
+        } else {
+            const { id, ...createDto } = branch;
+            await createBranch.mutateAsync(createDto);
         }
     };
 
-    const handleSave = async (b: Branch) => {
-        try {
-            const {id,...createBrach} = b;
-            const data = b.id ? await BranchServices.updateBranch(b.id, b) : await BranchServices.createBranch(createBrach);
-            if (data.success) {
-                message.success("Branch saved");
-                fetchData();
-            } else {
-                message.error("Save Failed");
-            }
-        } catch (e) { }
-    };
-
     const handleDelete = async (id: string) => {
-        try {
-            const data = await BranchServices.deleteBranch(id);
-            if (data.success) {
-                message.success("Branch deleted");
-                fetchData();
-            } else {
-                message.error("Delete Failed");
-            }
-        } catch (e) { }
+        await deleteBranch.mutateAsync(id);
     };
-
-    if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: 50 }}><Spin size="large" /></div>;
 
     return (
-        <>
-            {/* {contextHolder} */}
-            <BranchView
-                branches={branches ?? []}
-                onSave={handleSave}
-                onDelete={handleDelete}
-            />
-        </>
+        <BranchView
+            branches={branches}
+            loading={isLoading}
+            onSave={handleSave}
+            onDelete={handleDelete}
+        />
     );
 };
 
