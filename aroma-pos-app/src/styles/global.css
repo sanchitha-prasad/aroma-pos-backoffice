@@ -1,3 +1,15 @@
+/* ── Configuration sidebar: hide Ant Design tab overflow controls ─────────── */
+.config-tabs .ant-tabs-nav-operations,
+.config-tabs [class*="tabs-nav-operations"],
+.config-tabs .ant-tabs-nav-more,
+.config-tabs [class*="tabs-nav-more"] {
+    display: none !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+}
+
 /* ── Rich Table styles ────────────────────────────────────────────────────── */
 
 /* Row hover: soft purple tint */
