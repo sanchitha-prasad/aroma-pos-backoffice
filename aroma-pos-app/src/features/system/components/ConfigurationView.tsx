@@ -37,10 +37,10 @@ import { useCurrency } from '../../../shared/context/CurrencyContext';
 import { authStore } from '../../../shared/services/auth/authStore';
 import {
     useTenantSettingsMap,
-    useTenantDetail,
-    useTenantUsers,
     useUpdateTenantSettings,
 } from '../hooks/useTenantSettings';
+import { useEmployees } from '../hooks/useEmployees';
+import { red } from '@ant-design/colors';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -61,22 +61,21 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
     const { token } = theme.useToken();
     const [form] = Form.useForm();
     const [logoUrl, setLogoUrl] = useState<string>('');
+    const [activeTab, setActiveTab] = useState<string>('1');
     const { currencySymbol } = useCurrency();
 
     const { data: settings } = useTenantSettingsMap();
-    const { data: tenant } = useTenantDetail();
-    const { data: users } = useTenantUsers();
+    const { data: employees } = useEmployees();
     const updateSettings = useUpdateTenantSettings();
 
     useEffect(() => {
-        const emailToFind = tenant?.ownerEmail || tenant?.OwnerEmail || tenant?.email || tenant?.Email;
-        const owner = users?.find((u) => u.email === emailToFind);
+        const admin = employees?.find((e) => e.role === 'Admin');
 
         setLogoUrl(settings['Logo'] || '');
         form.setFieldsValue({
-            userName: owner?.name || authStore.currentUser?.name || '',
-            userEmail: owner?.email || emailToFind || authStore.currentUser?.email || '',
-            userPhone: owner?.phoneNumber || owner?.phone || owner?.loginNumber || '',
+            userName: admin?.name || '',
+            userEmail: admin?.email || '',
+            userPhone: admin?.loginNumber || '',
             brandName: settings['BrandName'] || '',
             defaultCurrency: settings['DefaultCurrency'] || 'USD',
             defaultTimeZone: settings['DefaultTimeZone'] || 'UTC',
@@ -91,27 +90,31 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
             cashbackPercentage: Number(settings['CashbackPercentage']) || 0,
             serviceChargeType: settings['ServiceChargeType'] || 'Percentage',
         });
-    }, [settings, tenant, users, form]);
+    }, [settings, employees, form]);
 
     const handleSave = () => {
-        form.validateFields().then((values) => {
-            const payload = [
-                { key: 'BrandName', value: String(values.brandName ?? '') },
-                { key: 'DefaultCurrency', value: String(values.defaultCurrency ?? '') },
-                { key: 'DefaultTimeZone', value: String(values.defaultTimeZone ?? '') },
-                { key: 'Logo', value: String(values.logo ?? '') },
-                { key: 'MerchantFeePercentage', value: String(values.merchantFeePercentage ?? 0) },
-                { key: 'IsKdsAvailable', value: String(values.isKdsAvailable ?? false) },
-                { key: 'IsExpeditorAvailable', value: String(values.isExpeditorAvailable ?? false) },
-                { key: 'BranchCount', value: String(values.branchCount ?? 0) },
-                { key: 'BranchCodePrefix', value: String(values.branchCodePrefix ?? '') },
-                { key: 'PosSessionTimeout', value: String(values.posSessionTimeout ?? 0) },
-                { key: 'ServiceCharge', value: String(values.serviceCharge ?? 0) },
-                { key: 'CashbackPercentage', value: String(values.cashbackPercentage ?? 0) },
-                { key: 'ServiceChargeType', value: String(values.serviceChargeType ?? 'Percentage') },
-            ];
-            updateSettings.mutate(payload);
-        });
+        if (activeTab === '1') {
+            form.validateFields().then((values) => {
+                const payload = [
+                    { key: 'BrandName', value: String(values.brandName ?? '') },
+                    { key: 'DefaultCurrency', value: String(values.defaultCurrency ?? '') },
+                    { key: 'DefaultTimeZone', value: String(values.defaultTimeZone ?? '') },
+                    { key: 'Logo', value: String(values.logo ?? '') },
+                    { key: 'MerchantFeePercentage', value: String(values.merchantFeePercentage ?? 0) },
+                    { key: 'IsKdsAvailable', value: String(values.isKdsAvailable ?? false) },
+                    { key: 'IsExpeditorAvailable', value: String(values.isExpeditorAvailable ?? false) },
+                    { key: 'BranchCount', value: String(values.branchCount ?? 0) },
+                    { key: 'BranchCodePrefix', value: String(values.branchCodePrefix ?? '') },
+                    { key: 'PosSessionTimeout', value: String(values.posSessionTimeout ?? 0) },
+                    { key: 'ServiceCharge', value: String(values.serviceCharge ?? 0) },
+                    { key: 'CashbackPercentage', value: String(values.cashbackPercentage ?? 0) },
+                    { key: 'ServiceChargeType', value: String(values.serviceChargeType ?? 'Percentage') },
+                ];
+                updateSettings.mutate(payload);
+            });
+        } else {
+            message.success('Settings saved successfully.');
+        }
     };
 
     const beforeUpload = (file: any) => {
@@ -134,23 +137,8 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
         return false;
     };
 
-    const renderSaveButton = () => (
-        <>
-            <Divider />
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-                <Button 
-                    type="primary" 
-                    icon={<SaveOutlined />} 
-                    onClick={handleSave}
-                >
-                    Save Changes
-                </Button>
-            </div>
-        </>
-    );
-
     const ScrollablePane: React.FC<{children: React.ReactNode}> = ({children}) => (
-        <div style={{ maxHeight: 'calc(100vh - 250px)', overflowY: 'auto', paddingRight: 24, paddingLeft: 4 }}>
+        <div style={{ maxHeight: 'calc(100vh - 310px)', overflowY: 'auto', paddingRight: 24, paddingLeft: 4 }}>
             {children}
         </div>
     );
@@ -302,7 +290,6 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                                 </Col>
                             </Row>
                         </Form>
-                        {renderSaveButton()}
                     </div>
                 </ScrollablePane>
             )
@@ -372,7 +359,6 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                                 </Col>
                             </Row>
                         </Form>
-                        {renderSaveButton()}
                     </div>
                 </ScrollablePane>
             )
@@ -412,7 +398,6 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                                 </Col>
                             </Row>
                         </Form>
-                        {renderSaveButton()}
                     </div>
                 </ScrollablePane>
             )
@@ -452,7 +437,6 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                                 </Select>
                             </Form.Item>
                         </Form>
-                        {renderSaveButton()}
                     </div>
                 </ScrollablePane>
             )
@@ -499,7 +483,6 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                         </Form.Item>
                         </Form>
 
-                        {renderSaveButton()}
                     </div>
                     </ScrollablePane>
             )
@@ -527,7 +510,6 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                                 </Select>
                             </Form.Item>
                         </Form>
-                        {renderSaveButton()}
                     </div>
                 </ScrollablePane>
             )
@@ -565,7 +547,6 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                                 <InputNumber min={5} defaultValue={15} />
                             </Form.Item>
                         </Form>
-                        {renderSaveButton()}
                     </div>
                 </ScrollablePane>
             )
@@ -597,7 +578,6 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                                 </Select>
                             </Form.Item>
                         </Form>
-                        {renderSaveButton()}
                     </div>
                 </ScrollablePane>
             )
@@ -625,7 +605,6 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                                 <InputNumber min={0} defaultValue={5} />
                             </Form.Item>
                         </Form>
-                        {renderSaveButton()}
                     </div>
                 </ScrollablePane>
             )
@@ -653,7 +632,6 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                                 <Switch defaultChecked />
                             </Form.Item>
                         </Form>
-                        {renderSaveButton()}
                     </div>
                 </ScrollablePane>
             )
@@ -682,7 +660,6 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                                 </Select>
                             </Form.Item>
                         </Form>
-                        {renderSaveButton()}
                     </div>
                 </ScrollablePane>
             )
@@ -690,6 +667,8 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
     ];
 
     const visibleTabs = allTabs.filter(tab => permissions.includes(tab.permission));
+    const defaultTab = visibleTabs[0]?.key ?? '1';
+    const resolvedActiveTab = visibleTabs.find(t => t.key === activeTab) ? activeTab : defaultTab;
 
     if (visibleTabs.length === 0) {
         return (
@@ -711,20 +690,55 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                 <Title level={2} style={{ margin: 0 }}>Configurations</Title>
             </div>
             
-            <div style={{ 
-                background: token.colorBgContainer, 
-                borderRadius: 12, 
+            <div style={{
+                background: token.colorBgContainer,
+                borderRadius: 12,
                 border: `1px solid ${token.colorBorderSecondary}`,
                 flex: 1,
                 overflow: 'hidden',
-                padding: '24px 0'
+                display: 'flex',
+                flexDirection: 'column'
             }}>
-                <Tabs 
-                    tabPlacement="start" 
-                    items={visibleTabs} 
-                    style={{ height: '100%' }}
-                    tabBarStyle={{ width: 220 }}
-                />
+                <div style={{ flex: 1, overflow: 'hidden', paddingTop: 24 }}>
+                    <Tabs
+                        className="config-tabs"
+                        tabPlacement="start"
+                        items={visibleTabs}
+                        style={{ height: '100%' }}
+                        tabBarStyle={{ width: 236 }}
+                        activeKey={resolvedActiveTab}
+                        onChange={setActiveTab}
+                        more={{ icon: null, trigger: [] as any }}
+                        renderTabBar={(props, DefaultTabBar) => (
+                            <div style={{
+                                width: 236,
+                                overflowY: 'auto',
+                                overflowX: 'hidden',
+                                maxHeight: 'calc(100vh - 220px)',
+                                scrollbarWidth: 'thin' as any,
+                                flexShrink: 0,
+                            }}>
+                                <DefaultTabBar {...props} style={{ width: '100%' }} />
+                            </div>
+                        )}
+                    />
+                </div>
+                <div style={{
+                    borderTop: `1px solid ${token.colorBorderSecondary}`,
+                    padding: '12px 24px',
+                    display: 'flex',
+                    justifyContent: 'flex-end',
+                    background: token.colorBgContainer,
+                    borderRadius: '0 0 12px 12px',
+                }}>
+                    <Button
+                        type="primary"
+                        icon={<SaveOutlined />}
+                        onClick={handleSave}
+                    >
+                        Save Changes
+                    </Button>
+                </div>
             </div>
         </div>
     );
