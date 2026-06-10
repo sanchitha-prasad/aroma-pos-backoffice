@@ -761,6 +761,36 @@ const RenderTree: React.FC<{
 
 interface BranchCatalogViewProps { branch: Branch; open: boolean; onClose: () => void }
 
+
+const filterTree = (nodes: BranchNode[], query: string): BranchNode[] => {
+  if (!query.trim()) return nodes;
+
+  const q = query.toLowerCase().trim();
+
+  const match = (n: BranchNode) =>
+    n.name.toLowerCase().includes(q) ||
+    (n.subtitle ?? '').toLowerCase().includes(q);
+
+  const walk = (ns: BranchNode[]): BranchNode[] => {
+    const res: BranchNode[] = [];
+
+    for (const n of ns) {
+      const filteredChildren = walk(n.children);
+
+      if (match(n) || filteredChildren.length > 0) {
+        res.push({
+          ...n,
+          children: filteredChildren,
+        });
+      }
+    }
+
+    return res;
+  };
+
+  return walk(nodes);
+};
+
 const BranchCatalogView: React.FC<BranchCatalogViewProps> = ({ branch, open, onClose }) => {
   const { token } = theme.useToken();
 
@@ -916,6 +946,55 @@ const BranchCatalogView: React.FC<BranchCatalogViewProps> = ({ branch, open, onC
       setLoadingKeys(prev => { const n = new Set(prev); n.delete(node.key); return n; });
     }
   }, [branch.id]);
+
+  
+  const visibleTree = useMemo(() => {
+  return filterTree(tree, treeSearch);
+}, [tree, treeSearch]);
+
+useEffect(() => {
+  if (!treeSearch.trim()) {
+    setExpandedKeys(new Set());
+    return;
+  }
+
+  const q = treeSearch.toLowerCase().trim();
+  const newExpanded = new Set<string>();
+
+  const searchWalk = async (nodes: BranchNode[]) => {
+    for (const n of nodes) {
+      const match =
+        n.name.toLowerCase().includes(q) ||
+        (n.subtitle ?? '').toLowerCase().includes(q);
+
+      // Always expand path
+      newExpanded.add(n.key);
+
+      // 🔥 IMPORTANT: load children BEFORE deciding visibility
+      if (n.type !== 'modifier' && n.children.length === 0) {
+        await loadChildren(n);
+      }
+
+      // recurse after loading
+      if (n.children?.length) {
+        await searchWalk(n.children);
+      }
+
+      // If match → ensure full branch is expanded
+      if (match) {
+        let parent = findParent(tree, n.key);
+        while (parent) {
+          newExpanded.add(parent.key);
+          parent = findParent(tree, parent.key);
+        }
+      }
+    }
+  };
+
+  searchWalk(tree).then(() => {
+    setExpandedKeys(newExpanded);
+  });
+}, [treeSearch, tree, loadChildren]);
 
   const handleExpand = (key: string) => {
     setExpandedKeys(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
@@ -1182,7 +1261,7 @@ const BranchCatalogView: React.FC<BranchCatalogViewProps> = ({ branch, open, onC
                 <Button type="primary" size="large" icon={<PlusCircleOutlined />} onClick={() => { setSelectedKey(null); setSelectedNode(null); }}>Assign Menus</Button>
               </Empty>
             ) : (
-              <RenderTree nodes={tree} depth={0}
+              <RenderTree nodes={visibleTree} depth={0}
                 expandedKeys={expandedKeys} selectedKey={selectedKey}
                 loadingKeys={loadingKeys}
                 onSelect={handleSelect} onExpand={handleExpand} onToggle={handleToggle} onRemove={handleRemoveNode}
