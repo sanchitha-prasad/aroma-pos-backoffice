@@ -748,7 +748,10 @@ const CategoryView: React.FC<CategoryViewProps> = ({
                 forceRender
             >
                 <Form form={form} name="category_form" layout="vertical" style={{ marginTop: 8 }}>
-                    <Form.Item name="name" label="Name" rules={[{ required: true }]}>
+                    <Form.Item name="name" label="Name" rules={[
+                                    { required: true, message: 'Category name is required' },
+                                    { pattern: /^[a-zA-Z0-9 ]+$/, message: 'Only letters, numbers, and spaces are allowed' }
+                                  ]}>
                         <Input placeholder="e.g. Beverages" />
                     </Form.Item>
                     <Form.Item name="description" label="Description">

@@ -174,10 +174,15 @@ const MenuForm: React.FC<MenuFormProps> = ({ initialData, categories, modifierGr
                             label: 'Basic Info',
                             children: (
                                 <div style={{ padding: '8px 0' }}>
-                                    <Form.Item name="name" label="Item Name" rules={[{ required: true }]}>
+                                    <Form.Item name="name" label="Item Name" rules={[
+                                        { required: true, message: 'Item name is required' },
+                                        { pattern: /^[a-zA-Z0-9 ]+$/, message: 'Only letters, numbers, and spaces are allowed' }
+                                    ]}>
                                         <Input placeholder="e.g. Classic Burger" size="large" />
                                     </Form.Item>
-                                    <Form.Item name="categoryId" label="Category" rules={[{ required: true }]}>
+                                    <Form.Item name="categoryId" label="Category" rules={[
+                                        { required: true, message: 'Category is required' }
+                                    ]}>
                                         <Select
                                             showSearch
                                             placeholder="Select Category"
