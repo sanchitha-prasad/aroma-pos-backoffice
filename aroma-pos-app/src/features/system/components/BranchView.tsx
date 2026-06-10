@@ -170,6 +170,7 @@ const BranchView: React.FC<BranchViewProps> = ({ branches, loading = false, onSa
                 serviceChargeType: getSetting('ServiceChargeType'),
                 isKdsAvailable: getSetting('IsKdsAvailable') === 'true',
                 isExpeditorAvailable: getSetting('IsExpeditorAvailable') === 'true',
+                printerServer: getSetting('PrinterServer') || '',
                 posSessionTimeout: Number(getSetting('PosSessionTimeout')) || 0,
                 timeZone: getSetting('TimeZone') || 'Asia/Colombo',
                 currency: getSetting('Currency') || 'LKR',
@@ -191,6 +192,7 @@ const BranchView: React.FC<BranchViewProps> = ({ branches, loading = false, onSa
             serviceChargeType: activeSettings['ServiceChargeType'] ?? 'Percentage',
             isKdsAvailable: activeSettings['IsKdsAvailable'] === 'true',
             isExpeditorAvailable: activeSettings['IsExpeditorAvailable'] === 'true',
+            printerServer: activeSettings['PrinterServer'] ?? '',
             posSessionTimeout: Number(activeSettings['PosSessionTimeout'] ?? 0),
             timeZone: activeSettings['DefaultTimeZone'] ?? 'Asia/Colombo',
             currency: activeSettings['DefaultCurrency'] ?? 'LKR',
@@ -216,6 +218,7 @@ const BranchView: React.FC<BranchViewProps> = ({ branches, loading = false, onSa
                         { key: 'ServiceChargeType', value: safe(values.serviceChargeType) },
                         { key: 'IsKdsAvailable', value: String(values.isKdsAvailable ?? false) },
                         { key: 'IsExpeditorAvailable', value: String(values.isExpeditorAvailable ?? false) },
+                        { key: 'PrinterServer', value: safe(values.printerServer) },
                         { key: 'PosSessionTimeout', value: safe(values.posSessionTimeout) },
                         {
                             key: 'OperationStartTime',
@@ -450,6 +453,16 @@ const BranchView: React.FC<BranchViewProps> = ({ branches, loading = false, onSa
                                             <Col span={12}>
                                                 <Form.Item name="isExpeditorAvailable" valuePropName="checked" label="Expeditor Available">
                                                     <Switch disabled={tenantSettings['IsExpeditorAvailable'] !== 'true'} />
+                                                </Form.Item>
+                                            </Col>
+                                        </Row>
+                                        <Row gutter={16}>
+                                            <Col span={24}>
+                                                <Form.Item
+                                                    name="printerServer"
+                                                    label="Printer Server"
+                                                >
+                                                    <Input placeholder="Enter printer server" />
                                                 </Form.Item>
                                             </Col>
                                         </Row>
