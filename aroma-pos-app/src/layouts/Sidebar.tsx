@@ -1,5 +1,5 @@
 import React, { useMemo, useCallback } from 'react';
-import { Layout, Menu, theme, Switch, Avatar, Typography, Badge, Dropdown } from 'antd';
+import { Layout, Menu, theme, Switch, Avatar, Typography, Badge, Dropdown, Button } from 'antd';
 import type { MenuProps } from 'antd';
 import {
   AppstoreOutlined,
@@ -20,7 +20,9 @@ import {
   PercentageOutlined,
   ShopOutlined,
   ShoppingCartOutlined,
-  UpOutlined
+  UpOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Employee } from '../shared/types';
@@ -322,17 +324,33 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
 
         <div style={headerContainerStyle}>
-            <div style={headerStyle}>
-                <div style={logoStyle}>
-                    A
+            {collapsed ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+                    <Button
+                        type="text"
+                        icon={<MenuUnfoldOutlined />}
+                        onClick={() => onCollapse(false)}
+                        style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}
+                    />
+                    <div style={logoStyle}>A</div>
                 </div>
-                {!collapsed && (
-                    <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
-                        <span style={{ fontSize: 15, fontWeight: 700, letterSpacing: '0.2px', lineHeight: 1.2 }}>AROMA POS</span>
-                        <span style={{ fontSize: 11, color: secondaryTextColor, lineHeight: 1.2 }}>Back Office</span>
+            ) : (
+                <div style={{ ...headerStyle, justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, overflow: 'hidden', flex: 1 }}>
+                        <div style={logoStyle}>A</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
+                            <span style={{ fontSize: 15, fontWeight: 700, letterSpacing: '0.2px', lineHeight: 1.2 }}>AROMA POS</span>
+                            <span style={{ fontSize: 11, color: secondaryTextColor, lineHeight: 1.2 }}>Back Office</span>
+                        </div>
                     </div>
-                )}
-            </div>
+                    <Button
+                        type="text"
+                        icon={<MenuFoldOutlined />}
+                        onClick={() => onCollapse(true)}
+                        style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 20 }}
+                    />
+                </div>
+            )}
         </div>
 
         <div style={menuContainerStyle}>
