@@ -16,6 +16,7 @@ import {
     Switch,
     Row,
     Col,
+    Divider,
 } from 'antd';
 import {
     PlusOutlined,
@@ -33,103 +34,14 @@ import RichTable from '../../../shared/components/rich-table/RichTable';
 import BranchCatalogView from './BranchCatalogView';
 import { useTenantSettingsMap } from '../hooks/useTenantSettings';
 
+import { parseAvailabilities, toBackendAvail } from '../api/branch-catalog.service';
+import { AvailabilityEditor } from './AvailabilityEditor';
+
 const { Option } = Select;
 const { Title } = Typography;
 
-const DAYS = [
-    { label: 'Sun', value: 0 },
-    { label: 'Mon', value: 1 },
-    { label: 'Tue', value: 2 },
-    { label: 'Wed', value: 3 },
-    { label: 'Thu', value: 4 },
-    { label: 'Fri', value: 5 },
-    { label: 'Sat', value: 6 },
-];
-
 const safe = (v: any) =>
     v === undefined || v === null || v === '' ? '' : String(v);
-
-// =====================
-// AVAILABILITY EDITOR
-// =====================
-const AvailabilityEditor: React.FC<{
-    value: any[];
-    onChange: (v: any[]) => void;
-}> = ({ value, onChange }) => {
-    const { token } = theme.useToken();
-
-    const get = (d: number) => value?.find(v => v.dayOfWeek === d);
-
-    const toggle = (d: number, enabled: boolean) => {
-        const current = value || [];
-        if (enabled) {
-            if (current.some(v => v.dayOfWeek === d)) return;
-            onChange([
-                ...current,
-                { dayOfWeek: d, timePeriods: [{ startTime: '09:00:00', endTime: '22:00:00' }] },
-            ]);
-        } else {
-            onChange(current.filter(v => v.dayOfWeek !== d));
-        }
-    };
-
-    const updateTime = (d: number, start: string, end: string) => {
-        onChange(
-            (value || []).map(v =>
-                v.dayOfWeek === d
-                    ? { ...v, timePeriods: [{ startTime: start, endTime: end }] }
-                    : v
-            )
-        );
-    };
-
-    return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {DAYS.map(d => {
-                const entry = get(d.value);
-                const active = !!entry;
-                return (
-                    <div
-                        key={d.value}
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 12,
-                            padding: 12,
-                            border: `1px solid ${token.colorBorderSecondary}`,
-                            borderRadius: 8,
-                            background: active ? token.colorPrimaryBg : token.colorFillQuaternary,
-                        }}
-                    >
-                        <Switch checked={active} onChange={v => toggle(d.value, v)} />
-                        <strong style={{ width: 50 }}>{d.label}</strong>
-                        {active ? (
-                            <TimePicker.RangePicker
-                                style={{ width: '100%' }}
-                                format="HH:mm"
-                                value={[
-                                    entry?.timePeriods?.[0]?.startTime
-                                        ? dayjs(entry.timePeriods[0].startTime, 'HH:mm:ss')
-                                        : null,
-                                    entry?.timePeriods?.[0]?.endTime
-                                        ? dayjs(entry.timePeriods[0].endTime, 'HH:mm:ss')
-                                        : null,
-                                ]}
-                                onChange={t => {
-                                    if (t?.[0] && t?.[1]) {
-                                        updateTime(d.value, t[0].format('HH:mm:ss'), t[1].format('HH:mm:ss'));
-                                    }
-                                }}
-                            />
-                        ) : (
-                            <span style={{ opacity: 0.5 }}>Closed</span>
-                        )}
-                    </div>
-                );
-            })}
-        </div>
-    );
-};
 
 // =====================
 // MAIN COMPONENT
@@ -165,6 +77,7 @@ const BranchView: React.FC<BranchViewProps> = ({ branches, loading = false, onSa
             setEditingBranch(branch);
             form.setFieldsValue({
                 ...branch,
+                availabilities: parseAvailabilities(branch.availabilities as any),
                 serviceCharge: getSetting('ServiceCharge'),
                 merchantFeePercentage: getSetting('MerchantFeePercentage'),
                 serviceChargeType: getSetting('ServiceChargeType'),
@@ -230,7 +143,7 @@ const BranchView: React.FC<BranchViewProps> = ({ branches, loading = false, onSa
                         { key: 'Language', value: safe(values.language || 'English') },
                     ],
                 },
-                availabilities: values.availabilities ?? [],
+                availabilities: (values.availabilities ?? []).map(toBackendAvail) as any,
             };
 
             onSave(branch);
@@ -339,16 +252,28 @@ const BranchView: React.FC<BranchViewProps> = ({ branches, loading = false, onSa
                                 children: (
                                     <>
                                         <Row gutter={16}>
-                                            <Col span={12}>
-                                                <Form.Item name="code" label="Branch Code" rules={[{ required: true }]}>
-                                                    <Input />
-                                                </Form.Item>
-                                            </Col>
+                                            {editingBranch && (
+                                                <Col span={12}>
+                                                    <Form.Item name="code" label="Branch Code">
+                                                        <Input disabled />
+                                                    </Form.Item>
+                                                </Col>
+                                            )}
                                             <Col span={12}>
                                                 <Form.Item name="name" label="Branch Name" rules={[{ required: true }]}>
                                                     <Input />
                                                 </Form.Item>
                                             </Col>
+                                            {!editingBranch && (
+                                                <Col span={12}>
+                                                    <Form.Item name="isActive" label="Status">
+                                                        <Select>
+                                                            <Option value={true}>Active</Option>
+                                                            <Option value={false}>Inactive</Option>
+                                                        </Select>
+                                                    </Form.Item>
+                                                </Col>
+                                            )}
                                         </Row>
                                         <Row gutter={16}>
                                             <Col span={12}>
@@ -362,12 +287,18 @@ const BranchView: React.FC<BranchViewProps> = ({ branches, loading = false, onSa
                                                 </Form.Item>
                                             </Col>
                                         </Row>
-                                        <Form.Item name="isActive" label="Status">
-                                            <Select>
-                                                <Option value={true}>Active</Option>
-                                                <Option value={false}>Inactive</Option>
-                                            </Select>
-                                        </Form.Item>
+                                        {editingBranch && (
+                                            <Row gutter={16}>
+                                                <Col span={12}>
+                                                    <Form.Item name="isActive" label="Status">
+                                                        <Select>
+                                                            <Option value={true}>Active</Option>
+                                                            <Option value={false}>Inactive</Option>
+                                                        </Select>
+                                                    </Form.Item>
+                                                </Col>
+                                            </Row>
+                                        )}
                                     </>
                                 ),
                             },
@@ -406,15 +337,19 @@ const BranchView: React.FC<BranchViewProps> = ({ branches, loading = false, onSa
                                                     <Input />
                                                 </Form.Item>
                                             </Col>
+                                        </Row>
+                                        <Row gutter={16}>
                                             <Col span={12}>
                                                 <Form.Item name={['address', 'latitude']} label="Latitude">
                                                     <Input />
                                                 </Form.Item>
                                             </Col>
+                                            <Col span={12}>
+                                                <Form.Item name={['address', 'longitude']} label="Longitude">
+                                                    <Input />
+                                                </Form.Item>
+                                            </Col>
                                         </Row>
-                                        <Form.Item name={['address', 'longitude']} label="Longitude">
-                                            <Input />
-                                        </Form.Item>
                                     </>
                                 ),
                             },
@@ -430,17 +365,26 @@ const BranchView: React.FC<BranchViewProps> = ({ branches, loading = false, onSa
                                                 </Form.Item>
                                             </Col>
                                             <Col span={12}>
+                                                <Form.Item name="serviceChargeType" label="Service Charge Type">
+                                                    <Select>
+                                                        <Option value="Percentage">Percentage</Option>
+                                                        <Option value="Fixed">Fixed</Option>
+                                                    </Select>
+                                                </Form.Item>
+                                            </Col>
+                                        </Row>
+                                        <Row gutter={16}>
+                                            <Col span={12}>
                                                 <Form.Item name="merchantFeePercentage" label="Merchant Fee (%)">
                                                     <InputNumber style={{ width: '100%' }} />
                                                 </Form.Item>
                                             </Col>
+                                            <Col span={12}>
+                                                <Form.Item name="posSessionTimeout" label="POS Session Timeout">
+                                                    <InputNumber style={{ width: '100%' }} />
+                                                </Form.Item>
+                                            </Col>
                                         </Row>
-                                        <Form.Item name="serviceChargeType" label="Service Charge Type">
-                                            <Select>
-                                                <Option value="Percentage">Percentage</Option>
-                                                <Option value="Fixed">Fixed</Option>
-                                            </Select>
-                                        </Form.Item>
                                         <Row gutter={16}>
                                             <Col span={12}>
                                                 <Form.Item name="isKdsAvailable" valuePropName="checked" label="KDS Available">
@@ -455,22 +399,17 @@ const BranchView: React.FC<BranchViewProps> = ({ branches, loading = false, onSa
                                         </Row>
                                         <Row gutter={16}>
                                             <Col span={12}>
-                                                <Form.Item name="posSessionTimeout" label="POS Session Timeout">
-                                                    <InputNumber style={{ width: '100%' }} />
-                                                </Form.Item>
-                                            </Col>
-                                            <Col span={12}>
                                                 <Form.Item name="timeZone" label="Time Zone">
                                                     <Input disabled />
                                                 </Form.Item>
                                             </Col>
-                                        </Row>
-                                        <Row gutter={16}>
                                             <Col span={12}>
                                                 <Form.Item name="currency" label="Currency">
                                                     <Input disabled />
                                                 </Form.Item>
                                             </Col>
+                                        </Row>
+                                        <Row gutter={16}>
                                             <Col span={12}>
                                                 <Form.Item name="language" label="Language">
                                                     <Input disabled />

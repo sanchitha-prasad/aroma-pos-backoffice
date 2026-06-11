@@ -8,7 +8,6 @@ export interface BranchMenuAssignment {
   menuId: string;
   title: string;
   subtitle?: string;
-  isAssigned: boolean;
   isEnabled: boolean;
   serviceAvailabilities: ServiceAvailability[];
 }
@@ -17,7 +16,6 @@ export interface BranchCategoryAssignment {
   categoryId: string;
   name: string;
   description?: string;
-  isAssigned: boolean;
   isEnabled: boolean;
   serviceAvailabilities: ServiceAvailability[];
 }
@@ -35,7 +33,6 @@ export interface BranchItemAssignment {
   name: string;
   description?: string;
   imageUrl?: string;
-  isAssigned: boolean;
   isEnabled: boolean;
   isSoldOut: boolean;
   serviceAvailabilities: ServiceAvailability[];
@@ -48,7 +45,6 @@ export interface BranchModifierGroupAssignment {
   description?: string;
   minSelectCount: number;
   maxSelectCount: number;
-  isAssigned: boolean;
   isEnabled: boolean;
   serviceAvailabilities: ServiceAvailability[];
 }
@@ -59,7 +55,6 @@ export interface BranchModifierAssignment {
   description?: string;
   basePrice: number;
   branchPrice?: number;
-  isAssigned: boolean;
   isEnabled: boolean;
   serviceAvailabilities: ServiceAvailability[];
 }

@@ -9,7 +9,7 @@ import {
   CheckCircleFilled, ClockCircleOutlined, CloseCircleFilled,
   MinusCircleOutlined, PlusCircleOutlined, PlusOutlined,
   ReadOutlined, SaveOutlined, SearchOutlined, ShopOutlined,
-  TagOutlined, UnorderedListOutlined, WarningFilled,
+  TagOutlined, ThunderboltOutlined, UnorderedListOutlined, WarningFilled,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import {
@@ -22,8 +22,7 @@ import { BranchCatalogService, parseAvailabilities } from '../api/branch-catalog
 import { useCurrency } from '../../../shared/context/CurrencyContext';
 import { useMenus } from '../../catalog/hooks/useMenus';
 import { useMenuItems } from '../../catalog/hooks/useMenuItems';
-import { useCategories, useModifierGroups } from '../../catalog/hooks/useMenuPageData';
-import { useModifiers } from '../../catalog/hooks/useModifiers';
+import { useModifierGroups } from '../../catalog/hooks/useMenuPageData';
 
 const { Text, Title } = Typography;
 
@@ -119,51 +118,17 @@ const findNode = (nodes: BranchNode[], key: string): BranchNode | null => {
 const walkCount = (nodes: BranchNode[], type: NodeType): number =>
   nodes.reduce((a, n) => a + (n.type === type ? 1 : 0) + walkCount(n.children, type), 0);
 
-// ─── Days ─────────────────────────────────────────────────────────────────────
-
-const DAYS = [
-  { short: 'Sun', value: 0 }, { short: 'Mon', value: 1 }, { short: 'Tue', value: 2 },
-  { short: 'Wed', value: 3 }, { short: 'Thu', value: 4 }, { short: 'Fri', value: 5 },
-  { short: 'Sat', value: 6 },
-];
-
-// ─── Availability Editor ──────────────────────────────────────────────────────
-
-const AvailabilityEditor: React.FC<{ value: ServiceAvailability[]; onChange: (v: ServiceAvailability[]) => void }> = ({ value, onChange }) => {
-  const { token } = theme.useToken();
-  const get = (d: number) => value.find(a => a.dayOfWeek === d);
-  const toggle = (d: number, on: boolean) =>
-    on ? onChange([...value, { dayOfWeek: d, startTime: '09:00', endTime: '22:00' }])
-       : onChange(value.filter(a => a.dayOfWeek !== d));
-  const setT = (d: number, s: string, e: string) =>
-    onChange(value.map(a => a.dayOfWeek === d ? { ...a, startTime: s, endTime: e } : a));
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      {DAYS.map(({ short, value: d }) => {
-        const entry = get(d); const on = !!entry;
-        return (
-          <div key={d} style={{
-            display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px',
-            borderRadius: 8, minHeight: 44,
-            background: on ? token.colorPrimaryBg : token.colorFillQuaternary,
-            border: `1px solid ${on ? token.colorPrimaryBorder : token.colorBorderSecondary}`,
-          }}>
-            <Switch checked={on} onChange={v => toggle(d, v)} />
-            <Text style={{ width: 36, fontSize: 14, fontWeight: on ? 600 : 400 }}>{short}</Text>
-            {on
-              ? <TimePicker.RangePicker format="HH:mm" style={{ flex: 1 }}
-                  value={[dayjs(entry!.startTime, 'HH:mm'), dayjs(entry!.endTime, 'HH:mm')]}
-                  onChange={t => { if (t?.[0] && t?.[1]) setT(d, t[0].format('HH:mm'), t[1].format('HH:mm')); }}
-                />
-              : <Text type="secondary" style={{ fontSize: 13 }}>Closed</Text>
-            }
-          </div>
-        );
-      })}
-    </div>
-  );
+/** Returns the ancestor chain (root → … → node) for a key, or [] when not found. */
+const findPath = (nodes: BranchNode[], key: string): BranchNode[] => {
+  for (const n of nodes) {
+    if (n.key === key) return [n];
+    const childPath = findPath(n.children, key);
+    if (childPath.length > 0) return [n, ...childPath];
+  }
+  return [];
 };
+
+import { AvailabilityEditor } from './AvailabilityEditor';
 
 // ─── Section label ────────────────────────────────────────────────────────────
 
@@ -394,8 +359,9 @@ const DetailPanelContent: React.FC<{
 
   // ── Overrides tab ─────────────────────────────────────────────────────────
   const overridesTab = (
-    <div style={{ overflowY: 'auto', overflowX: 'hidden', padding: '20px 24px 40px' }}>
-      <Form form={form} name="branch_catalog_form" layout="vertical">
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+      {/* Scrollable settings body */}
+      <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '20px 24px 24px' }}>
         <SectionLabel label="Status" />
         <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
           <div style={{ flex: 1, background: token.colorFillQuaternary, borderRadius: 10, padding: '16px 18px' }}>
@@ -443,14 +409,14 @@ const DetailPanelContent: React.FC<{
             <div style={{ background: token.colorFillQuaternary, borderRadius: 10, padding: '4px', marginBottom: 24 }}>
               <Table size="middle" dataSource={node.variants} rowKey="itemVariantId" pagination={false}
                 columns={[
-                  { title: 'Variant', dataIndex: 'variantName', render: (t: string) => <Text style={{ fontSize: 14 }}>{t}</Text> },
-                  { title: `Base (${currencySymbol})`, dataIndex: 'basePrice', width: 100, render: (p: number) => <Text style={{ fontSize: 14, fontFamily: 'monospace' }}>{currencySymbol}{p?.toFixed(2)}</Text> },
-                  { title: `Branch (${currencySymbol})`, width: 160, render: (_: any, r: any) => (
+                  { title: 'Variant', dataIndex: 'variantName', key: 'variantName', render: (t: string) => <Text style={{ fontSize: 14 }}>{t}</Text> },
+                  { title: `Base (${currencySymbol})`, dataIndex: 'basePrice', key: 'basePrice', width: 100, render: (p: number) => <Text style={{ fontSize: 14, fontFamily: 'monospace' }}>{currencySymbol}{p?.toFixed(2)}</Text> },
+                  { title: `Branch (${currencySymbol})`, key: 'branchPrice', width: 160, render: (_: any, r: any) => (
                     <Form.Item name={`vp_${r.itemVariantId}`} style={{ margin: 0 }} initialValue={r.branchPrice ?? null}>
                       <InputNumber prefix={currencySymbol} precision={2} min={0} placeholder="Override" style={{ width: '100%' }} />
                     </Form.Item>
                   )},
-                  { title: 'Enabled', width: 80, render: (_: any, r: any) => (
+                  { title: 'Enabled', key: 'isEnabled', width: 80, render: (_: any, r: any) => (
                     <Form.Item name={`ve_${r.itemVariantId}`} valuePropName="checked" style={{ margin: 0 }} initialValue={r.isEnabled}>
                       <Switch />
                     </Form.Item>
@@ -462,44 +428,67 @@ const DetailPanelContent: React.FC<{
         )}
 
         <SectionLabel icon={<ClockCircleOutlined />} label="Weekly Availability" count={avail.length} />
-        <div style={{ marginBottom: 28 }}>
+        <div style={{ marginBottom: 8 }}>
           <AvailabilityEditor value={avail} onChange={setAvail} />
         </div>
+      </div>
 
-        <Button type="primary" icon={<SaveOutlined />} block size="large" loading={applying} onClick={handleApply}
-          style={{ height: 48, fontSize: 15, fontWeight: 600, borderRadius: 10 }}>
-          Save Override
-        </Button>
-        <Text type="secondary" style={{ display: 'block', textAlign: 'center', marginTop: 8, fontSize: 12 }}>
-          Saved to this branch immediately
+      {/* Sticky footer — always visible, no scrolling needed to save */}
+      <div style={{
+        flexShrink: 0, padding: '14px 24px',
+        borderTop: `1px solid ${token.colorBorderSecondary}`,
+        background: token.colorBgContainer,
+        boxShadow: '0 -4px 12px rgba(0,0,0,0.04)',
+        display: 'flex', alignItems: 'center', gap: 16,
+      }}>
+        <Text type="secondary" style={{ fontSize: 12, flex: 1 }}>
+          Changes apply to this branch only
         </Text>
-      </Form>
+        <Button type="primary" icon={<SaveOutlined />} size="large" loading={applying} onClick={handleApply}
+          style={{ height: 44, minWidth: 180, fontSize: 15, fontWeight: 600, borderRadius: 10 }}>
+          Save Changes
+        </Button>
+      </div>
     </div>
   );
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+    <Form form={form} name="branch_catalog_form" layout="vertical" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       <div style={{
-        padding: '20px 24px 16px',
-        background: `linear-gradient(135deg, ${meta.bg} 0%, ${token.colorBgContainer} 60%)`,
+        padding: '12px 24px',
+        background: token.colorBgContainer,
         borderBottom: `1px solid ${token.colorBorderSecondary}`, flexShrink: 0,
+        display: 'flex', alignItems: 'center', gap: 12, minHeight: 60,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-          <div style={{ width: 32, height: 32, borderRadius: 8, background: meta.bg, border: `1.5px solid ${meta.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ color: meta.color, fontSize: 16 }}>{meta.icon}</span>
-          </div>
-          <Tag style={{ fontSize: 12, fontWeight: 600, color: meta.color, borderColor: meta.color + '50', background: meta.bg }}>
-            {node.type === 'modifierGroup' ? 'Modifier Group' : node.type.charAt(0).toUpperCase() + node.type.slice(1)}
-          </Tag>
-          {node.isEnabled ? <Tag icon={<CheckCircleFilled />} color="success" style={{ fontSize: 12 }}>Enabled</Tag> : <Tag icon={<CloseCircleFilled />} color="default" style={{ fontSize: 12 }}>Disabled</Tag>}
-          {node.isSoldOut && <Tag color="warning" icon={<WarningFilled />} style={{ fontSize: 12 }}>Sold Out</Tag>}
-          {node.branchPrice != null && node.branchPrice !== node.basePrice && <Tag color="orange" style={{ fontSize: 12 }}>Price Override</Tag>}
+        <div style={{ width: 36, height: 36, borderRadius: 9, background: meta.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <span style={{ color: meta.color, fontSize: 17 }}>{meta.icon}</span>
         </div>
-        <Title level={4} style={{ margin: 0, fontSize: 20 }}>{node.name}</Title>
-        {node.subtitle && <Text type="secondary" style={{ fontSize: 14, marginTop: 2, display: 'block' }}>{node.subtitle}</Text>}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+            <Title level={5} style={{ margin: 0, fontSize: 16, lineHeight: 1.3 }} ellipsis={{ tooltip: node.name }}>{node.name}</Title>
+            {node.subtitle && <Text type="secondary" ellipsis style={{ fontSize: 12.5, flexShrink: 1 }}>{node.subtitle}</Text>}
+          </div>
+          <Text style={{ fontSize: 11.5, fontWeight: 600, color: meta.color, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            {node.type === 'modifierGroup' ? 'Modifier Group' : node.type.charAt(0).toUpperCase() + node.type.slice(1)}
+          </Text>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+          {node.isSoldOut && <Tag color="warning" icon={<WarningFilled />} style={{ fontSize: 11, margin: 0 }}>Sold Out</Tag>}
+          {node.branchPrice != null && node.branchPrice !== node.basePrice && <Tag color="orange" style={{ fontSize: 11, margin: 0 }}>Price Override</Tag>}
+          {node.isEnabled
+            ? <Tag icon={<CheckCircleFilled />} color="success" style={{ fontSize: 11, margin: 0 }}>Enabled</Tag>
+            : <Tag icon={<CloseCircleFilled />} color="default" style={{ fontSize: 11, margin: 0 }}>Disabled</Tag>}
+        </div>
       </div>
 
+      {/* Flex-fill the tab content (no fixed calc heights — avoids dead space at the bottom) */}
+      <style>{`
+        .branch-catalog-detail-tabs .ant-tabs-content-holder,
+        .branch-catalog-detail-tabs .ant-tabs-content,
+        .branch-catalog-detail-tabs .ant-tabs-tabpane { height: 100%; }
+      `}</style>
       <Tabs defaultActiveKey={hasKids ? 'children' : 'overrides'}
+        className="branch-catalog-detail-tabs"
         style={{ flex: 1, overflow: 'hidden' }}
         tabBarStyle={{ margin: 0, padding: '0 24px', background: token.colorBgContainer, borderBottom: `1px solid ${token.colorBorderSecondary}`, fontSize: 14 }}
         size="large"
@@ -507,16 +496,16 @@ const DetailPanelContent: React.FC<{
           ...(hasKids ? [{
             key: 'children',
             label: <Space size={6}><span>Manage {meta.childLabel}s</span><div style={{ height: 20, minWidth: 20, padding: '0 6px', borderRadius: 10, background: token.colorPrimaryBg, color: token.colorPrimary, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 }}>{node.children.length}</div></Space>,
-            children: <div style={{ height: 'calc(100vh - 310px)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>{childrenTab}</div>,
+            children: <div style={{ height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>{childrenTab}</div>,
           }] : []),
           {
             key: 'overrides',
-            label: 'Branch Overrides',
-            children: <div style={{ height: 'calc(100vh - 310px)', overflowY: 'auto', overflowX: 'hidden' }}>{overridesTab}</div>,
+            label: 'Branch Settings',
+            children: <div style={{ height: '100%', overflow: 'hidden' }}>{overridesTab}</div>,
           },
         ]}
       />
-    </div>
+    </Form>
   );
 };
 
@@ -655,9 +644,8 @@ const DetailPanel: React.FC<{
 const TreeRow: React.FC<{
   node: BranchNode; depth: number; isSelected: boolean; isExpanded: boolean;
   onSelect: (n: BranchNode) => void; onExpand: (key: string) => void;
-  onToggle: (key: string, v: boolean) => void;
   onRemove: (node: BranchNode) => void;
-}> = ({ node, depth, isSelected, isExpanded, onSelect, onExpand, onToggle, onRemove }) => {
+}> = ({ node, depth, isSelected, isExpanded, onSelect, onExpand, onRemove }) => {
   const { token } = theme.useToken();
   const meta = NODE_META[node.type];
   const hasKids = node.type !== 'modifier';
@@ -691,19 +679,18 @@ const TreeRow: React.FC<{
         {node.subtitle && depth < 3 && <Text type="secondary" style={{ fontSize: 12 }}>{node.subtitle}</Text>}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, marginRight: 8 }}>
+      {/* Status indicators only — enable/disable lives in the Branch Settings tab */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, marginRight: 4 }}>
         {node.isSoldOut && <WarningFilled style={{ color: '#fa8c16', fontSize: 12 }} />}
         {node.type === 'modifier' && node.branchPrice != null && node.branchPrice !== node.basePrice && <Tag color="orange" style={{ fontSize: 10, padding: '0 5px', margin: 0 }}>✎</Tag>}
-        {!node.isEnabled ? <CloseCircleFilled style={{ color: token.colorTextQuaternary, fontSize: 12 }} /> : <CheckCircleFilled style={{ color: '#52c41a', fontSize: 12 }} />}
+        {!node.isEnabled
+          ? <Tooltip title="Disabled at this branch"><CloseCircleFilled style={{ color: token.colorTextQuaternary, fontSize: 12 }} /></Tooltip>
+          : <Tooltip title="Enabled at this branch"><CheckCircleFilled style={{ color: '#52c41a', fontSize: 12 }} /></Tooltip>}
       </div>
 
-      <Switch size="small" checked={node.isEnabled}
-        onChange={(v, e) => { e.stopPropagation(); onToggle(node.key, v); }}
-        onClick={(_, e) => e.stopPropagation()} />
-
       {depth > 0 && (
-        <Popconfirm title={`Remove "${node.name}" from branch?`} description="Queued as a pending removal — saved with Save All." onConfirm={e => { e?.stopPropagation(); onRemove(node); }} okText="Remove" okButtonProps={{ danger: true }}>
-          <Tooltip title="Queue removal">
+        <Popconfirm title={`Remove "${node.name}" from branch?`} description="Removed from this branch immediately." onConfirm={e => { e?.stopPropagation(); onRemove(node); }} okText="Remove" okButtonProps={{ danger: true }}>
+          <Tooltip title="Remove from branch">
             <Button type="text" size="small" danger icon={<MinusCircleOutlined style={{ fontSize: 13 }} />} onClick={e => e.stopPropagation()} style={{ marginLeft: 4, opacity: 0.6 }} />
           </Tooltip>
         </Popconfirm>
@@ -719,8 +706,8 @@ const RenderTree: React.FC<{
   expandedKeys: Set<string>; selectedKey: string | null;
   loadingKeys: Set<string>;
   onSelect: (n: BranchNode) => void; onExpand: (key: string) => void;
-  onToggle: (key: string, v: boolean) => void; onRemove: (n: BranchNode) => void;
-}> = ({ nodes, depth, expandedKeys, selectedKey, loadingKeys, onSelect, onExpand, onToggle, onRemove }) => {
+  onRemove: (n: BranchNode) => void;
+}> = ({ nodes, depth, expandedKeys, selectedKey, loadingKeys, onSelect, onExpand, onRemove }) => {
   const { token } = theme.useToken();
   return (
     <>
@@ -731,7 +718,7 @@ const RenderTree: React.FC<{
           <React.Fragment key={node.key}>
             <TreeRow node={node} depth={depth}
               isSelected={selectedKey === node.key} isExpanded={expandedKeys.has(node.key)}
-              onSelect={onSelect} onExpand={onExpand} onToggle={onToggle} onRemove={onRemove}
+              onSelect={onSelect} onExpand={onExpand} onRemove={onRemove}
             />
             {expandedKeys.has(node.key) && (
               <div style={{ marginLeft: 20, borderLeft: `2px solid ${meta.color}20`, paddingLeft: 4 }}>
@@ -741,7 +728,7 @@ const RenderTree: React.FC<{
                   <RenderTree nodes={node.children} depth={depth + 1}
                     expandedKeys={expandedKeys} selectedKey={selectedKey}
                     loadingKeys={loadingKeys}
-                    onSelect={onSelect} onExpand={onExpand} onToggle={onToggle} onRemove={onRemove}
+                    onSelect={onSelect} onExpand={onExpand} onRemove={onRemove}
                   />
                 ) : node.type !== 'modifier' ? (
                   <div style={{ padding: '6px 12px' }}>
@@ -780,42 +767,34 @@ const BranchCatalogView: React.FC<BranchCatalogViewProps> = ({ branch, open, onC
   const loadedKeysRef  = useRef<Set<string>>(new Set());
   const loadingKeysRef = useRef<Set<string>>(new Set());
 
-  // ── Tenant catalog (for assign pickers) ───────────────────────────────────
-  // Reuses the existing tenant-level endpoints — available children are derived
-  // client-side (all minus already-assigned), the same way menus already work.
+  // ── Tenant catalog (assign pickers) ────────────────────────────────────────
+  // Branch catalog GETs return ONLY associated rows (the tree). The pickers
+  // show the tenant-level hierarchy scoped to the selected parent: a menu's
+  // categories, a category's items, an item's modifier groups, a group's
+  // modifiers. Already-assigned ids are filtered out at render time.
   const { data: menusData }          = useMenus(true);
-  const { data: categoriesData }     = useCategories();
   const { data: itemsData }          = useMenuItems();
   const { data: modifierGroupsData } = useModifierGroups();
-  const { data: modifiersData }      = useModifiers();
 
-  const allItems: CatalogEntry[] = useMemo(
-    () => (itemsData || []).map(i => ({ id: i.id, name: i.name, subtitle: i.description })),
-    [itemsData],
-  );
-
-  const allModifierGroups: CatalogEntry[] = useMemo(
-    () => (modifierGroupsData || []).map(g => ({ id: g.id, name: g.name, subtitle: g.description })),
-    [modifierGroupsData],
-  );
-
-  const allModifiers: CatalogEntry[] = useMemo(
-    () => (modifiersData || []).map(m => ({ id: m.id, name: m.name, basePrice: m.price })),
-    [modifiersData],
-  );
   const allMenus: CatalogEntry[] = useMemo(
-    () => (menusData || []).map((m) => ({ id: m.id, name: m.title, subtitle: m.subtitle })),
+    () => (menusData || []).map(m => ({ id: m.id, name: m.title, subtitle: m.subtitle })),
     [menusData],
   );
 
-  // Full tenant category catalog — any of these can be added to a branch menu
-  // (BranchMenuCategory accepts any category, not just the menu's own).
-  const allCategories: CatalogEntry[] = useMemo(
-    () => (categoriesData || []).map(c => ({ id: c.id, name: c.name, subtitle: c.description })),
-    [categoriesData],
-  );
+  // Tenant menu → its categories (the only categories addable to a branch menu).
+  const categoriesByMenu = useMemo(() => {
+    const map = new Map<string, CatalogEntry[]>();
+    (menusData || []).forEach(m =>
+      map.set(m.id, (m.categories || []).map(c => ({
+        id: c.categoryId,
+        name: c.name ?? c.category?.name ?? 'Category',
+        subtitle: c.category?.description,
+      }))),
+    );
+    return map;
+  }, [menusData]);
 
-  // Per-category item list + per-item modifier-group list, from the tenant `/api/items`.
+  // Tenant category → its items.
   const itemsByCategory = useMemo(() => {
     const map = new Map<string, CatalogEntry[]>();
     (itemsData || []).forEach(i => {
@@ -826,24 +805,25 @@ const BranchCatalogView: React.FC<BranchCatalogViewProps> = ({ branch, open, onC
     return map;
   }, [itemsData]);
 
+  // Tenant item → its modifier groups.
   const modifierGroupsByItem = useMemo(() => {
     const map = new Map<string, CatalogEntry[]>();
     (itemsData || []).forEach(i =>
       map.set(i.id, (i.modifierGroups || []).map(g => ({
         id: (g as any).modifierGroupId || g.id,
         name: g.name,
-        subtitle: g.description || `Min ${(g as any).minSelectCount ?? 0} / Max ${(g as any).maxSelectCount ?? 0}`
+        subtitle: g.description || `Min ${(g as any).minSelectCount ?? 0} / Max ${(g as any).maxSelectCount ?? 0}`,
       }))),
     );
     return map;
   }, [itemsData]);
 
-  // Per-group modifier list, resolved from the tenant `/api/modifier-groups`.
+  // Tenant modifier group → its modifiers.
   const modifiersByGroup = useMemo(() => {
     const map = new Map<string, CatalogEntry[]>();
     (modifierGroupsData || []).forEach(g =>
       map.set(g.id, (g.modifierItems || []).map(mi => ({
-        id: mi.modifierId, name: mi.modifierName ?? 'Modifier', basePrice: mi.price,
+        id: mi.id || mi.modifierId || '', name: mi.name || mi.modifierName || 'Modifier', basePrice: mi.price,
       }))),
     );
     return map;
@@ -963,20 +943,7 @@ const BranchCatalogView: React.FC<BranchCatalogViewProps> = ({ branch, open, onC
     }
   };
 
-  // Tree-row enable/disable switch → optimistic single-call.
-  const handleToggle = async (key: string, v: boolean) => {
-    const node = findNode(tree, key);
-    if (!node) return;
-    const prev = node.isEnabled;
-    setTree(t => updateNode(t, key, { isEnabled: v }));
-    const ok = await persistOverride({ ...node, isEnabled: v });
-    if (!ok) {
-      setTree(t => updateNode(t, key, { isEnabled: prev }));
-      message.error(`Could not update "${node.name}"`);
-    }
-  };
-
-  // Right-panel "Save Override" → optimistic single-call.
+  // Right-panel "Save Changes" → optimistic single-call.
   const handleApplyOverride = async (key: string, patch: Partial<BranchNode>) => {
     const node = findNode(tree, key);
     if (!node) return;
@@ -1059,8 +1026,6 @@ const BranchCatalogView: React.FC<BranchCatalogViewProps> = ({ branch, open, onC
       const ok = (await BranchCatalogService.assignMenu(branch.id, entry.id)).success;
       if (ok) {
         message.success({ content: `Menu "${entry.name}" assigned to ${branch.name}`, duration: 2, icon: <PlusCircleOutlined /> });
-        // The backend cascade just created the branch hierarchy — load the menu's
-        // categories so they show under "Assigned" and drop out of the picker.
         await loadChildren(node);
         setSelectedKey(node.key);
       } else {
@@ -1074,6 +1039,7 @@ const BranchCatalogView: React.FC<BranchCatalogViewProps> = ({ branch, open, onC
 
   // ── Stats ─────────────────────────────────────────────────────────────────
 
+  // Tenant menus not yet associated with this branch.
   const usedMenuIds    = new Set(tree.map(n => n.id));
   const availableMenus = allMenus.filter(m => !usedMenuIds.has(m.id));
 
@@ -1084,23 +1050,24 @@ const BranchCatalogView: React.FC<BranchCatalogViewProps> = ({ branch, open, onC
     setExpandedKeys(all);
   };
 
-  // Available children for the selected node's assign picker (tenant minus assigned).
+  // Available children for the selected node's assign picker — the tenant-level
+  // children of THIS parent (already-assigned ids are filtered at render time).
   const availableChildren: CatalogEntry[] = useMemo(() => {
     if (!selectedNode) return [];
     switch (selectedNode.type) {
-      case 'menu':          return allCategories;
-      case 'category':      return allItems;
-      case 'item':          return allModifierGroups;
-      case 'modifierGroup': return allModifiers;
+      case 'menu':          return categoriesByMenu.get(selectedNode.id)     ?? [];
+      case 'category':      return itemsByCategory.get(selectedNode.id)      ?? [];
+      case 'item':          return modifierGroupsByItem.get(selectedNode.id) ?? [];
+      case 'modifierGroup': return modifiersByGroup.get(selectedNode.id)     ?? [];
       default:              return [];
     }
-  }, [selectedNode, allCategories, allItems, allModifierGroups, allModifiers]);
+  }, [selectedNode, categoriesByMenu, itemsByCategory, modifierGroupsByItem, modifiersByGroup]);
 
   const availLoading =
-    (selectedNode?.type === 'menu' && !categoriesData) ||
+    (selectedNode?.type === 'menu' && !menusData) ||
     (selectedNode?.type === 'category' && !itemsData) ||
-    (selectedNode?.type === 'item' && !modifierGroupsData) ||
-    (selectedNode?.type === 'modifierGroup' && !modifiersData);
+    (selectedNode?.type === 'item' && !itemsData) ||
+    (selectedNode?.type === 'modifierGroup' && !modifierGroupsData);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -1124,19 +1091,33 @@ const BranchCatalogView: React.FC<BranchCatalogViewProps> = ({ branch, open, onC
 
           <div style={{ flex: 1 }} />
 
-          {/* Stats */}
-          {([
-            { label: 'Menus', count: tree.length, color: '#6132C0' },
-            { label: 'Cats',  count: walkCount(tree, 'category'),      color: '#1677ff' },
-            { label: 'Items', count: walkCount(tree, 'item'),          color: '#389e0d' },
-            { label: 'Groups', count: walkCount(tree, 'modifierGroup'), color: '#d46b08' },
-            { label: 'Mods',   count: walkCount(tree, 'modifier'),      color: '#c41d7f' },
-          ]).map(s => (
-            <div key={s.label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '4px 12px', borderRadius: 8, background: s.color + '12', border: `1px solid ${s.color}30` }}>
-              <Text style={{ fontSize: 16, fontWeight: 700, color: s.color, lineHeight: 1.1 }}>{s.count}</Text>
-              <Text style={{ fontSize: 10, color: s.color, opacity: 0.8 }}>{s.label}</Text>
-            </div>
-          ))}
+          {/* Stats — one segmented bar; doubles as the level legend (icon + color per level) */}
+          <div style={{
+            display: 'flex', alignItems: 'stretch', height: 38,
+            background: token.colorBgContainer,
+            border: `1px solid ${token.colorBorderSecondary}`,
+            borderRadius: 10, overflow: 'hidden',
+          }}>
+            {([
+              { label: 'Menus',      type: 'menu' as NodeType,          count: tree.length },
+              { label: 'Categories', type: 'category' as NodeType,      count: walkCount(tree, 'category') },
+              { label: 'Items',      type: 'item' as NodeType,          count: walkCount(tree, 'item') },
+              { label: 'Mod Groups', type: 'modifierGroup' as NodeType, count: walkCount(tree, 'modifierGroup') },
+              { label: 'Modifiers',  type: 'modifier' as NodeType,      count: walkCount(tree, 'modifier') },
+            ]).map((s, i) => {
+              const m = NODE_META[s.type];
+              return (
+                <div key={s.label} style={{
+                  display: 'flex', alignItems: 'center', gap: 7, padding: '0 14px',
+                  borderLeft: i > 0 ? `1px solid ${token.colorBorderSecondary}` : 'none',
+                }}>
+                  <span style={{ color: m.color, fontSize: 13, display: 'inline-flex', lineHeight: 1 }}>{m.icon}</span>
+                  <Text style={{ fontSize: 14, fontWeight: 600, lineHeight: 1 }}>{s.count}</Text>
+                  <Text type="secondary" style={{ fontSize: 12, lineHeight: 1 }}>{s.label}</Text>
+                </div>
+              );
+            })}
+          </div>
         </div>
       }
     >
@@ -1161,17 +1142,51 @@ const BranchCatalogView: React.FC<BranchCatalogViewProps> = ({ branch, open, onC
             </Button>
           </div>
 
-          {/* Level legend */}
-          <div style={{ padding: '10px 16px', borderBottom: `1px solid ${token.colorBorderSecondary}`, display: 'flex', gap: 20, flexWrap: 'wrap', background: token.colorFillQuaternary }}>
-            {(Object.entries(NODE_META) as [NodeType, typeof NODE_META[NodeType]][]).map(([type, m]) => (
-              <Space key={type} size={6}>
-                <div style={{ width: 20, height: 20, borderRadius: 5, background: m.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <span style={{ color: m.color, fontSize: 12 }}>{m.icon}</span>
-                </div>
-                <Text style={{ fontSize: 12, fontWeight: 500 }}>{type === 'modifierGroup' ? 'Mod Group' : type.charAt(0).toUpperCase() + type.slice(1)}</Text>
-              </Space>
-            ))}
-          </div>
+          {/* Breadcrumb — path to the selected node, clickable for quick navigation */}
+          {selectedNode && (() => {
+            const path = findPath(tree, selectedNode.key);
+            return (
+              <div style={{
+                padding: '8px 16px', borderBottom: `1px solid ${token.colorBorderSecondary}`,
+                display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2,
+                background: token.colorBgContainer, minHeight: 38,
+              }}>
+                <button type="button"
+                  onClick={() => { setSelectedKey(null); setSelectedNode(null); }}
+                  style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '2px 6px', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 5, font: 'inherit' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = token.colorFillTertiary; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                >
+                  <ShopOutlined style={{ fontSize: 12, color: token.colorTextSecondary }} />
+                  <Text type="secondary" style={{ fontSize: 12.5 }}>{branch.name}</Text>
+                </button>
+                {path.map((n, i) => {
+                  const meta = NODE_META[n.type];
+                  const isLast = i === path.length - 1;
+                  return (
+                    <React.Fragment key={n.key}>
+                      <Text type="secondary" style={{ fontSize: 11, margin: '0 2px' }}>/</Text>
+                      <button type="button"
+                        onClick={() => { if (!isLast) handleSelect(n); }}
+                        style={{
+                          border: 'none', background: isLast ? meta.bg : 'transparent',
+                          cursor: isLast ? 'default' : 'pointer', padding: '2px 8px', borderRadius: 6,
+                          display: 'inline-flex', alignItems: 'center', gap: 5, font: 'inherit', maxWidth: 180,
+                        }}
+                        onMouseEnter={e => { if (!isLast) (e.currentTarget as HTMLElement).style.background = token.colorFillTertiary; }}
+                        onMouseLeave={e => { if (!isLast) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                      >
+                        <span style={{ color: meta.color, fontSize: 12, display: 'inline-flex' }}>{meta.icon}</span>
+                        <Text ellipsis style={{ fontSize: 12.5, fontWeight: isLast ? 600 : 400, color: isLast ? meta.color : token.colorText }}>
+                          {n.name}
+                        </Text>
+                      </button>
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+            );
+          })()}
 
           {/* Tree */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '10px 12px 24px' }}>
@@ -1185,7 +1200,7 @@ const BranchCatalogView: React.FC<BranchCatalogViewProps> = ({ branch, open, onC
               <RenderTree nodes={tree} depth={0}
                 expandedKeys={expandedKeys} selectedKey={selectedKey}
                 loadingKeys={loadingKeys}
-                onSelect={handleSelect} onExpand={handleExpand} onToggle={handleToggle} onRemove={handleRemoveNode}
+                onSelect={handleSelect} onExpand={handleExpand} onRemove={handleRemoveNode}
               />
             )}
           </div>
