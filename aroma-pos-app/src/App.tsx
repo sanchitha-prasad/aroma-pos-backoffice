@@ -22,6 +22,7 @@ const Employees = lazyWithRetry(() => import('./pages/Employees'));
 const Categories = lazyWithRetry(() => import('./pages/Categories'));
 const Modifiers = lazyWithRetry(() => import('./pages/Modifiers'));
 const Devices = lazyWithRetry(() => import('./pages/Devices'));
+const DeviceCategoryView = lazyWithRetry(() => import('./pages/DeviceCategoryView'));
 const Configuration = lazyWithRetry(() => import('./pages/Configuration'));
 const Reports = lazyWithRetry(() => import('./pages/Reports'));
 const Activities = lazyWithRetry(() => import('./pages/Activities'));
@@ -165,11 +166,12 @@ const App: React.FC = () => {
                 <Route index element={<Suspense fallback={<DashboardSkeleton />}><Dashboard isDarkMode={isDarkMode} /></Suspense>} />
 
                 <Route path="menus" element={<Suspense fallback={<TableSkeleton />}><Menus /></Suspense>} />
-                <Route path="menu" element={<Suspense fallback={<TableSkeleton />}><Menu currentUser={currentUser} /></Suspense>} />
+                <Route path="items" element={<Suspense fallback={<TableSkeleton />}><Menu currentUser={currentUser} /></Suspense>} />
                 <Route path="categories" element={<Suspense fallback={<TableSkeleton />}><Categories /></Suspense>} />
                 <Route path="variants" element={<Suspense fallback={<TableSkeleton />}><Variants /></Suspense>} />
                 <Route path="modifiers" element={<Suspense fallback={<TableSkeleton />}><Modifiers /></Suspense>} />
                 <Route path="devices" element={<Suspense fallback={<TableSkeleton />}><Devices /></Suspense>} />
+                <Route path="device-categories" element={<Suspense fallback={<TableSkeleton />}><DeviceCategoryView /></Suspense>} />
                 <Route path="taxes" element={<Suspense fallback={<TableSkeleton />}><Taxes /></Suspense>} />
                 <Route path="branches" element={<Suspense fallback={<TableSkeleton />}><Branches /></Suspense>} />
                 <Route path="orders" element={<Suspense fallback={<TableSkeleton />}><Orders /></Suspense>} />

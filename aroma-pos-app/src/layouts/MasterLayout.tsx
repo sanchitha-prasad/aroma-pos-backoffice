@@ -1,6 +1,6 @@
 import React, { useState, Suspense } from 'react';
 import { Layout, Drawer, List, Avatar, Typography, Button } from 'antd';
-import { BellOutlined, MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
+import { BellOutlined } from '@ant-design/icons';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { Employee, Role } from '../shared/types';
@@ -45,26 +45,7 @@ const MasterLayout: React.FC<MasterLayoutProps> = ({ currentUser, isDarkMode, se
         userPermissions={userPermissions}
       />
 
-      <Layout style={{ position: 'relative' }}>
-        <Button
-          type="text"
-          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-          onClick={() => setCollapsed(c => !c)}
-          style={{
-            position: 'absolute',
-            top: 22,
-            left: 16,
-            zIndex: 30,
-            width: 36,
-            height: 36,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 16,
-          }}
-        />
+      <Layout>
         <Drawer title="Notifications" placement="right" onClose={() => setIsNotifOpen(false)} open={isNotifOpen}>
             {/* <List
               itemLayout="horizontal"

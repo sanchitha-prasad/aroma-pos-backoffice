@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   Avatar,
   Button,
+  Checkbox,
+  Divider,
   Empty,
   Form,
   Input,
@@ -13,10 +15,12 @@ import {
   Space,
   Switch,
   Tag,
+  TimePicker,
   Tooltip,
   Typography,
   theme,
 } from 'antd';
+import dayjs, { Dayjs } from 'dayjs';
 import { globalMessage as message } from '../../../shared/services/api/globalMessage';
 import {
   AppstoreAddOutlined,
@@ -32,11 +36,24 @@ import {
   SearchOutlined,
   TagsOutlined,
 } from '@ant-design/icons';
-import { Category, MenuEntity } from '../../../shared/types';
+import { Category, MenuEntity, MenuAvailability } from '../../../shared/types';
 
 const { Title, Text } = Typography;
 
 const BRAND = '#6132C0';
+
+// 0=Sunday … 6=Saturday — must match backend Contracts.Enums.DayOfWeek.
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const DEFAULT_START = '08:00:00';
+const DEFAULT_END   = '22:00:00';
+
+// Time helpers — parse/format without relying on the dayjs customParseFormat plugin.
+const toDayjs   = (t: string): Dayjs => { const [h = 0, m = 0] = t.split(':').map(Number); return dayjs().hour(h).minute(m).second(0).millisecond(0); };
+const toTimeStr = (d: Dayjs): string => d.format('HH:mm:ss');
+
+interface DayAvailability { enabled: boolean; start: Dayjs; end: Dayjs; }
+const makeDefaultDays = (): DayAvailability[] =>
+  Array.from({ length: 7 }, () => ({ enabled: false, start: toDayjs(DEFAULT_START), end: toDayjs(DEFAULT_END) }));
 
 /**
  * Category management is atomic on the backend: there are no assign/remove
@@ -48,6 +65,7 @@ interface MenuFormValues {
   subtitle?: string;
   isActive: boolean;
   categoryIds: string[];
+  availabilities?: MenuAvailability[];
 }
 
 interface MenuManagementViewProps {
@@ -87,7 +105,64 @@ const MenuManagementView: React.FC<MenuManagementViewProps> = ({
   const [catSearch, setCatSearch]       = useState('');
   const [availSearch, setAvailSearch]   = useState('');
 
+  // Modal Category management states
+  const [selectedCatIds, setSelectedCatIds] = useState<string[]>([]);
+  const [modalCatSearch, setModalCatSearch] = useState('');
+  const [modalAvailSearch, setModalAvailSearch] = useState('');
+
+  // Weekly availability editor state (lives outside the antd Form — complex shape).
+  const [availMode, setAvailMode] = useState<'all' | 'custom'>('all');
+  const [dayAvail, setDayAvail]   = useState<DayAvailability[]>(makeDefaultDays);
+
   const [form] = Form.useForm();
+
+  const formTitle = Form.useWatch('title', form);
+  const formSubtitle = Form.useWatch('subtitle', form);
+
+  const isFormValid = useMemo(() => {
+    if (!formTitle || !formTitle.trim()) return false;
+    if (!/^[a-zA-Z0-9 ]+$/.test(formTitle)) return false;
+    if (formSubtitle && !/^[a-zA-Z0-9 ]*$/.test(formSubtitle)) return false;
+    if (selectedCatIds.length === 0) return false;
+    return true;
+  }, [formTitle, formSubtitle, selectedCatIds]);
+
+  const updateDay = (idx: number, patch: Partial<DayAvailability>) =>
+    setDayAvail((prev) => prev.map((d, i) => (i === idx ? { ...d, ...patch } : d)));
+
+  const enableAllDays = () =>
+    setDayAvail(() => Array.from({ length: 7 }, () => ({ enabled: true, start: toDayjs(DEFAULT_START), end: toDayjs(DEFAULT_END) })));
+
+  // Map the menu's stored availabilities into editor state.
+  const loadAvailabilities = (menu: MenuEntity | null) => {
+    const sa = menu?.serviceAvailabilities ?? [];
+    if (sa.length === 0) { setAvailMode('all'); setDayAvail(makeDefaultDays()); return; }
+    const days = makeDefaultDays();
+    sa.forEach((a) => {
+      const idx = a.dayOfWeek;
+      if (idx < 0 || idx > 6) return;
+      const tp = a.timePeriods?.[0];
+      days[idx] = {
+        enabled: true,
+        start: tp ? toDayjs(tp.startTime) : toDayjs(DEFAULT_START),
+        end:   tp ? toDayjs(tp.endTime)   : toDayjs(DEFAULT_END),
+      };
+    });
+    setAvailMode('custom');
+    setDayAvail(days);
+  };
+
+  // Build the API payload. 'all' → empty array (no restriction / clears existing).
+  const buildAvailabilities = (): MenuAvailability[] => {
+    if (availMode === 'all') return [];
+    return dayAvail
+      .map((d, idx) => ({ d, idx }))
+      .filter(({ d }) => d.enabled)
+      .map(({ d, idx }) => ({
+        dayOfWeek: idx,
+        timePeriods: [{ startTime: toTimeStr(d.start), endTime: toTimeStr(d.end) }],
+      }));
+  };
 
   // Keep selectedMenu in sync when TanStack Query refreshes the list
   useEffect(() => {
@@ -117,6 +192,40 @@ const MenuManagementView: React.FC<MenuManagementViewProps> = ({
     () => categories.map((c) => ({ value: c.id, label: c.name, disabled: c.isActive === false })),
     [categories],
   );
+
+  const modalAssignedCats = useMemo(() => {
+    return selectedCatIds.map(id => categories.find(c => c.id === id)).filter(Boolean) as Category[];
+  }, [selectedCatIds, categories]);
+
+  const modalUnassignedCats = useMemo(() => {
+    return categories.filter(c => !selectedCatIds.includes(c.id));
+  }, [selectedCatIds, categories]);
+
+  const filteredModalAssigned = useMemo(() => {
+    const q = modalCatSearch.trim().toLowerCase();
+    if (!q) return modalAssignedCats;
+    return modalAssignedCats.filter(c => c.name.toLowerCase().includes(q));
+  }, [modalAssignedCats, modalCatSearch]);
+
+  const filteredModalUnassigned = useMemo(() => {
+    const q = modalAvailSearch.trim().toLowerCase();
+    if (!q) return modalUnassignedCats;
+    return modalUnassignedCats.filter(c => c.name.toLowerCase().includes(q));
+  }, [modalUnassignedCats, modalAvailSearch]);
+
+  const handleModalAddCategory = (id: string) => {
+    const next = [...selectedCatIds, id];
+    setSelectedCatIds(next);
+    form.setFieldsValue({ categoryIds: next });
+    form.validateFields(['categoryIds']);
+  };
+
+  const handleModalRemoveCategory = (id: string) => {
+    const next = selectedCatIds.filter((item) => item !== id);
+    setSelectedCatIds(next);
+    form.setFieldsValue({ categoryIds: next });
+    form.validateFields(['categoryIds']);
+  };
 
   const activeCount = useMemo(() => menus.filter((m) => m.isActive).length, [menus]);
 
@@ -157,30 +266,42 @@ const MenuManagementView: React.FC<MenuManagementViewProps> = ({
     setEditingMenu(null);
     form.resetFields();
     form.setFieldsValue({ isActive: true, categoryIds: [] });
+    setSelectedCatIds([]);
+    setModalCatSearch('');
+    setModalAvailSearch('');
     setFormOpen(true);
   };
 
   const openEdit = (menu: MenuEntity, e?: React.MouseEvent) => {
     e?.stopPropagation();
     setEditingMenu(menu);
+    const catIds = (menu.categories ?? []).map((c) => c.categoryId);
     form.setFieldsValue({
       title: menu.title,
       subtitle: menu.subtitle,
       isActive: menu.isActive,
-      categoryIds: (menu.categories ?? []).map((c) => c.categoryId),
+      categoryIds: catIds,
     });
+    setSelectedCatIds(catIds);
+    setModalCatSearch('');
+    setModalAvailSearch('');
     setFormOpen(true);
   };
 
   const handleSaveMenu = async () => {
     const values = (await form.validateFields()) as MenuFormValues;
+
+    const payload = { 
+      ...values, 
+      availabilities: editingMenu ? (editingMenu.serviceAvailabilities ?? []) : [] 
+    };
     setSaving(true);
     try {
       if (editingMenu) {
-        await onUpdateMenu(editingMenu.id, values);
+        await onUpdateMenu(editingMenu.id, payload);
         message.success('Menu updated');
       } else {
-        await onCreateMenu(values);
+        await onCreateMenu(payload);
         message.success('Menu created');
       }
       setFormOpen(false);
@@ -734,38 +855,250 @@ const MenuManagementView: React.FC<MenuManagementViewProps> = ({
         open={formOpen}
         onOk={handleSaveMenu}
         okText={editingMenu ? 'Save Changes' : 'Create Menu'}
-        okButtonProps={{ loading: saving }}
+        okButtonProps={{ loading: saving, disabled: !isFormValid }}
         onCancel={() => setFormOpen(false)}
-        width={480}
+        width={1200}
+        styles={{ body: { minHeight: '650px', display: 'flex', flexDirection: 'column' } }}
         forceRender
       >
         <Form form={form} name="menu_modal_form" layout="vertical" style={{ marginTop: 16 }}>
-          <Form.Item name="title" label="Menu Title" rules={[{ required: true, message: 'Title is required' }, { max: 100, message: 'Max 100 characters' }]}>
-            <Input placeholder="e.g. Breakfast Menu" size="large" showCount maxLength={100} />
-          </Form.Item>
-          <Form.Item name="subtitle" label="Subtitle (optional)" rules={[{ max: 200, message: 'Max 200 characters' }]}>
-            <Input placeholder="e.g. Served 6am – 11am" maxLength={200} />
-          </Form.Item>
-          <Form.Item
-            name="categoryIds"
-            label="Categories"
-            rules={[{ required: true, type: 'array', min: 1, message: 'Select at least one category' }]}
-            extra={categories.length === 0 ? 'No categories exist yet — create categories first.' : 'A menu must contain at least one category.'}
-          >
-            <Select
-              mode="multiple"
-              size="large"
-              allowClear
-              placeholder="Select one or more categories…"
-              showSearch
-              optionFilterProp="label"
-              options={categoryOptions}
-              maxTagCount="responsive"
-            />
-          </Form.Item>
-          <Form.Item name="isActive" label="Status" valuePropName="checked">
-            <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
-          </Form.Item>
+          <div style={{ display: 'flex', gap: 28 }}>
+            
+            {/* Left side: General Information */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div 
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between',
+                  background: token.colorBgLayout,
+                  padding: '12px 16px',
+                  borderRadius: 10,
+                  border: `1px solid ${token.colorBorderSecondary}`
+                }}
+              >
+                <div>
+                  <Text strong style={{ fontSize: 14 }}>Menu Status</Text>
+                  <div><Text type="secondary" style={{ fontSize: 12 }}>Should this menu be active and visible?</Text></div>
+                </div>
+                <Form.Item name="isActive" valuePropName="checked" style={{ margin: 0 }}>
+                  <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
+                </Form.Item>
+              </div>
+
+              <Form.Item name="title" label="Menu Title" rules={[
+                { required: true, message: 'Title is required' },
+                { max: 100, message: 'Max 100 characters' },
+                { pattern: /^[a-zA-Z0-9 ]+$/, message: 'Only letters, numbers, and spaces are allowed' }
+              ]}>
+                <Input placeholder="e.g. Breakfast Menu" size="large" showCount maxLength={100} />
+              </Form.Item>
+              
+              <Form.Item name="subtitle" label="Subtitle (optional)" rules={[
+                { max: 200, message: 'Max 200 characters' },
+                { pattern: /^[a-zA-Z0-9 ]*$/, message: 'Only letters, numbers, and spaces are allowed' }
+              ]}>
+                <Input placeholder="e.g. Morning Selection" size="large" maxLength={200} />
+              </Form.Item>
+
+              <Form.Item
+                name="categoryIds"
+                style={{ margin: 0, height: 0, overflow: 'hidden' }}
+                rules={[{ required: true, type: 'array', min: 1, message: 'Please select at least one category' }]}
+              />
+              {selectedCatIds.length === 0 && (
+                <div style={{ color: token.colorError, fontSize: 12, marginTop: -8 }}>
+                  Please assign at least one category to this menu.
+                </div>
+              )}
+            </div>
+
+            {/* Right side: Categories management */}
+            <div style={{ flex: 2.5, display: 'flex', flexDirection: 'column', gap: 16 }}>
+              
+              {/* Assigned Categories section */}
+              <div 
+                style={{ 
+                  border: `1px solid ${token.colorBorderSecondary}`, 
+                  borderRadius: 12, 
+                  padding: 16,
+                  background: token.colorBgContainer
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <Space size={6}>
+                    <TagsOutlined style={{ color: BRAND }} />
+                    <Text strong style={{ fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                      Assigned Categories <span style={{ color: token.colorError, marginLeft: 2 }}>*</span>
+                    </Text>
+                    <Tag color="purple" style={{ borderRadius: 6, margin: 0 }}>{selectedCatIds.length}</Tag>
+                  </Space>
+                  {selectedCatIds.length > 0 && (
+                    <Input
+                      allowClear
+                      size="small"
+                      placeholder="Search assigned…"
+                      prefix={<SearchOutlined style={{ color: token.colorTextTertiary }} />}
+                      value={modalCatSearch}
+                      onChange={(e) => setModalCatSearch(e.target.value)}
+                      style={{ width: 160, borderRadius: 6 }}
+                    />
+                  )}
+                </div>
+
+                <div style={{ height: 220, overflowY: 'auto', overflowX: 'hidden', paddingRight: 4 }}>
+                  {filteredModalAssigned.length === 0 ? (
+                    <div style={{ padding: '24px 0', textAlign: 'center' }}>
+                      <Text type="secondary" style={{ fontSize: 13 }}>
+                        {selectedCatIds.length === 0 ? 'No categories assigned yet. Choose from below.' : 'No matching categories.'}
+                      </Text>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 8 }}>
+                      {filteredModalAssigned.map((cat) => (
+                        <div
+                          key={cat.id}
+                          style={{
+                            padding: '8px 10px',
+                            borderRadius: 8,
+                            border: `1px solid ${token.colorBorderSecondary}`,
+                            background: token.colorBgContainer,
+                            display: 'flex', gap: 8, alignItems: 'center',
+                            justifyContent: 'space-between',
+                          }}
+                        >
+                          <Space size={6} style={{ minWidth: 0 }}>
+                            <Avatar
+                              shape="square"
+                              size={26}
+                              style={{ background: token.colorPrimaryBg, color: BRAND, borderRadius: 6, fontWeight: 600, fontSize: 11 }}
+                            >
+                              {cat.name.charAt(0).toUpperCase()}
+                            </Avatar>
+                            <Text strong style={{ fontSize: 12.5 }} ellipsis={{ tooltip: cat.name }}>
+                              {cat.name}
+                            </Text>
+                          </Space>
+                          <Button
+                            type="text"
+                            size="small"
+                            danger
+                            icon={<MinusCircleOutlined style={{ fontSize: 13 }} />}
+                            onClick={() => handleModalRemoveCategory(cat.id)}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Available to Add section */}
+              <div 
+                style={{ 
+                  border: `1px dashed ${token.colorBorder}`, 
+                  borderRadius: 12, 
+                  padding: 16,
+                  background: token.colorBgContainer
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <Space size={6}>
+                    <AppstoreAddOutlined style={{ color: token.colorTextSecondary }} />
+                    <Text strong style={{ fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                      Available to Add
+                    </Text>
+                    <Tag style={{ borderRadius: 6, margin: 0 }}>{modalUnassignedCats.length}</Tag>
+                  </Space>
+                  {modalUnassignedCats.length > 0 && (
+                    <Input
+                      allowClear
+                      size="small"
+                      placeholder="Search available…"
+                      prefix={<SearchOutlined style={{ color: token.colorTextTertiary }} />}
+                      value={modalAvailSearch}
+                      onChange={(e) => setModalAvailSearch(e.target.value)}
+                      style={{ width: 160, borderRadius: 6 }}
+                    />
+                  )}
+                </div>
+
+                <div style={{ height: 220, overflowY: 'auto', overflowX: 'hidden', paddingRight: 4 }}>
+                  {filteredModalUnassigned.length === 0 ? (
+                    <div style={{ padding: '24px 0', textAlign: 'center' }}>
+                      <Text type="secondary" style={{ fontSize: 13 }}>
+                        {modalUnassignedCats.length === 0 ? 'All categories are assigned.' : 'No matching categories.'}
+                      </Text>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 8 }}>
+                      {filteredModalUnassigned.map((cat) => {
+                        const disabled = cat.isActive === false;
+                        return (
+                          <button
+                            key={cat.id}
+                            type="button"
+                            disabled={disabled}
+                            onClick={() => handleModalAddCategory(cat.id)}
+                            style={{
+                              textAlign: 'left',
+                              font: 'inherit',
+                              padding: '8px 10px',
+                              borderRadius: 8,
+                              border: `1px dashed ${token.colorBorder}`,
+                              background: token.colorBgContainer,
+                              display: 'flex', gap: 8, alignItems: 'center',
+                              justifyContent: 'space-between',
+                              cursor: disabled ? 'not-allowed' : 'pointer',
+                              opacity: disabled ? 0.55 : 1,
+                              transition: 'all 0.15s',
+                              width: '100%'
+                            }}
+                            onMouseEnter={(e) => {
+                              if (disabled) return;
+                              const el = e.currentTarget as HTMLButtonElement;
+                              el.style.borderColor = BRAND;
+                              el.style.borderStyle = 'solid';
+                              el.style.background = token.colorPrimaryBg;
+                            }}
+                            onMouseLeave={(e) => {
+                              const el = e.currentTarget as HTMLButtonElement;
+                              el.style.borderColor = token.colorBorder;
+                              el.style.borderStyle = 'dashed';
+                              el.style.background = token.colorBgContainer;
+                            }}
+                          >
+                            <Space size={6} style={{ minWidth: 0 }}>
+                              <Avatar
+                                shape="square"
+                                size={26}
+                                style={{ background: token.colorFillSecondary, color: token.colorTextSecondary, borderRadius: 6, fontWeight: 600, fontSize: 11 }}
+                              >
+                                {cat.name.charAt(0).toUpperCase()}
+                              </Avatar>
+                              <Text strong style={{ fontSize: 12.5 }} ellipsis={{ tooltip: cat.name }}>
+                                {cat.name}
+                              </Text>
+                            </Space>
+                            <span style={{ color: BRAND, fontSize: 11.5, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                              <PlusOutlined style={{ fontSize: 9 }} /> Add
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+            </div>
+          </div>
+          {!isFormValid && (
+            <div style={{ marginTop: 16, color: token.colorTextSecondary, fontSize: 12, textAlign: 'right' }}>
+              <span style={{ color: token.colorError, marginRight: 4 }}>*</span>
+              Please fill in the <strong>All Required Fields</strong> to enable the button.
+            </div>
+          )}
         </Form>
       </Modal>
 

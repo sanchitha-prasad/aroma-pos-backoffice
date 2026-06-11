@@ -32,6 +32,18 @@ const MenuForm: React.FC<MenuFormProps> = ({ initialData, categories, modifierGr
 
     const [popup, contextHolder] = Modal.useModal();
 
+    const modifierGroupOptions = useMemo(() => {
+        const map = new Map<string, string>();
+        modifierGroups.forEach(g => map.set(g.id, g.name));
+        if (initialData?.modifierGroups) {
+            initialData.modifierGroups.forEach(g => map.set(g.id, g.name));
+        }
+        return Array.from(map.entries()).map(([id, name]) => ({
+            value: id,
+            label: name
+        }));
+    }, [modifierGroups, initialData]);
+
     useEffect(() => {
         if (initialData) {
             (form as any).setFieldsValue({
@@ -162,13 +174,22 @@ const MenuForm: React.FC<MenuFormProps> = ({ initialData, categories, modifierGr
                             label: 'Basic Info',
                             children: (
                                 <div style={{ padding: '8px 0' }}>
-                                    <Form.Item name="name" label="Item Name" rules={[{ required: true }]}>
+                                    <Form.Item name="name" label="Item Name" rules={[
+                                        { required: true, message: 'Item name is required' },
+                                        { pattern: /^[a-zA-Z0-9 ]+$/, message: 'Only letters, numbers, and spaces are allowed' }
+                                    ]}>
                                         <Input placeholder="e.g. Classic Burger" size="large" />
                                     </Form.Item>
-                                    <Form.Item name="categoryId" label="Category" rules={[{ required: true }]}>
-                                        <Select placeholder="Select Category" size="large">
-                                            {categories.map(cat => <Option key={cat.id} value={cat.id}>{cat.name}</Option>)}
-                                        </Select>
+                                    <Form.Item name="categoryId" label="Category" rules={[
+                                        { required: true, message: 'Category is required' }
+                                    ]}>
+                                        <Select
+                                            showSearch
+                                            placeholder="Select Category"
+                                            size="large"
+                                            optionFilterProp="label"
+                                            options={categories.map(cat => ({ value: cat.id, label: cat.name }))}
+                                        />
                                     </Form.Item>
                                     <Form.Item label="Description" name="description">
                                         <TextArea rows={4} style={{ resize: 'none' }} />
@@ -204,11 +225,14 @@ const MenuForm: React.FC<MenuFormProps> = ({ initialData, categories, modifierGr
                             label: 'Modifiers',
                             children: (
                                 <Form.Item name="modifierGroupIds" label="Select Modifier Groups">
-                                    <Select mode="multiple" placeholder="Select groups" size="large" style={{ width: '100%' }}>
-                                        {modifierGroups.map(grp => (
-                                            <Option key={grp.id} value={grp.id}>{grp.name}</Option>
-                                        ))}
-                                    </Select>
+                                    <Select
+                                        mode="multiple"
+                                        placeholder="Select groups"
+                                        size="large"
+                                        style={{ width: '100%' }}
+                                        optionFilterProp="label"
+                                        options={modifierGroupOptions}
+                                    />
                                 </Form.Item>
                             )
                         }
@@ -219,7 +243,7 @@ const MenuForm: React.FC<MenuFormProps> = ({ initialData, categories, modifierGr
             <div style={{ padding: '16px 32px', borderTop: `1px solid ${token.colorBorderSecondary}`, display: 'flex', gap: 16, background: token.colorBgLayout, justifyContent: 'flex-end' }}>
                 {initialData && onDelete && (
                     <Popconfirm title="Delete Item" onConfirm={() => onDelete(initialData.id)} okButtonProps={{ danger: true }}>
-                        <Button type="text" danger icon={<DeleteOutlined />} style={{ marginRight: 'auto' }}>Delete</Button>
+                        <Button type="primary" danger icon={<DeleteOutlined />} style={{ marginRight: 'auto' }}>Delete Item</Button>
                     </Popconfirm>
                 )}
                 <Button onClick={onCancel}>Cancel</Button>

@@ -11,9 +11,9 @@ import {
 } from "@/src/shared/types";
 
 // ---------------------------------------------------------------------------
-// Route helpers — ALL write operations live under /catalog/
+// Route helpers — all catalog operations live under /api/branches/{branchId}/
 // ---------------------------------------------------------------------------
-const cat = (b: string) => `/api/branches/${b}/catalog`;
+const cat = (b: string) => `/api/branches/${b}`;
 const cMenu = (b: string, m: string) => `${cat(b)}/menus/${m}`;
 
 // ---------------------------------------------------------------------------
@@ -27,7 +27,7 @@ interface BackendTimePeriod  { startTime: string; endTime: string }
 interface BackendAvailability { dayOfWeek: number | null; timePeriods: BackendTimePeriod[] }
 
 /** Map the flat internal ServiceAvailability → nested backend request shape. */
-const toBackendAvail = (a: ServiceAvailability): BackendAvailability => ({
+export const toBackendAvail = (a: ServiceAvailability): BackendAvailability => ({
   dayOfWeek: a.dayOfWeek,
   timePeriods: [{ startTime: `${a.startTime}:00`, endTime: `${a.endTime}:00` }],
 });
@@ -49,25 +49,28 @@ export const parseAvailabilities = (raw: BackendAvailability[]): ServiceAvailabi
 
 export const BranchCatalogService = {
 
-  // ── GET: hierarchy read ──────────────────────────────────────────────────
+  // ── GET: hierarchy read (associated rows only) ─────────────────────────────
+  // Every GET returns ONLY the entities associated with the branch (the branch
+  // association rows + their overrides). The "available to assign" pickers are
+  // fed from the tenant-level endpoints, scoped per parent.
 
-  /** All menus assigned to the branch with their IsEnabled + availabilities. */
+  /** Menus associated with the branch (BranchMenu rows). */
   getMenus: (branchId: string): Promise<ServiceResponse<BranchMenuAssignment[]>> =>
     handleRequest(apiClient.get(`${cat(branchId)}/menus`)),
 
-  /** Categories assigned to a specific branch menu. */
+  /** Categories associated with a branch menu (BranchMenuCategory rows). */
   getCategories: (branchId: string, menuId: string): Promise<ServiceResponse<BranchCategoryAssignment[]>> =>
     handleRequest(apiClient.get(`${cMenu(branchId, menuId)}/categories`)),
 
-  /** Items in a category for this branch (includes variant overrides). */
+  /** Items associated with the branch in this category (BranchItem rows, with variant overrides). */
   getItems: (branchId: string, categoryId: string): Promise<ServiceResponse<BranchItemAssignment[]>> =>
     handleRequest(apiClient.get(`${cat(branchId)}/categories/${categoryId}/items`)),
 
-  /** Modifier groups linked to an item, annotated with branch overrides. */
+  /** Modifier groups of the item associated with the branch (BranchModifierGroup rows). */
   getModifierGroups: (branchId: string, itemId: string): Promise<ServiceResponse<BranchModifierGroupAssignment[]>> =>
     handleRequest(apiClient.get(`${cat(branchId)}/items/${itemId}/modifier-groups`)),
 
-  /** Modifiers in a modifier group, annotated with branch price + enable overrides. */
+  /** Modifiers of the group associated with the branch (BranchModifier rows). */
   getModifiers: (branchId: string, modifierGroupId: string): Promise<ServiceResponse<BranchModifierAssignment[]>> =>
     handleRequest(apiClient.get(`${cat(branchId)}/modifier-groups/${modifierGroupId}/modifiers`)),
 

@@ -1,15 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Badge, Button, Divider, Drawer, Empty, Form, Input, InputNumber,
-  Popconfirm, Select, Space, Spin, Switch, Table, Tabs, Tag,
+  Avatar, Button, Drawer, Empty, Form, Input, InputNumber,
+  Popconfirm, Space, Spin, Switch, Table, Tabs, Tag,
   TimePicker, Tooltip, Typography, message, theme,
 } from 'antd';
 import {
   AppstoreOutlined, CaretDownFilled, CaretRightFilled,
   CheckCircleFilled, ClockCircleOutlined, CloseCircleFilled,
-  CloudUploadOutlined, MinusCircleOutlined, PlusCircleOutlined,
+  MinusCircleOutlined, PlusCircleOutlined, PlusOutlined,
   ReadOutlined, SaveOutlined, SearchOutlined, ShopOutlined,
-  TagOutlined, UnorderedListOutlined, WarningFilled,
+  TagOutlined, ThunderboltOutlined, UnorderedListOutlined, WarningFilled,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import {
@@ -18,9 +18,11 @@ import {
   BranchModifierAssignment, BranchModifierGroupAssignment,
   ServiceAvailability,
 } from '../../../shared/types';
-import { BranchCatalogService, BulkSavePayload, parseAvailabilities } from '../api/branch-catalog.service';
+import { BranchCatalogService, parseAvailabilities } from '../api/branch-catalog.service';
 import { useCurrency } from '../../../shared/context/CurrencyContext';
 import { useMenus } from '../../catalog/hooks/useMenus';
+import { useMenuItems } from '../../catalog/hooks/useMenuItems';
+import { useModifierGroups } from '../../catalog/hooks/useMenuPageData';
 
 const { Text, Title } = Typography;
 
@@ -38,105 +40,6 @@ interface BranchNode {
 
 interface CatalogEntry { id: string; name: string; subtitle?: string; basePrice?: number }
 
-// ─── Pending changes ──────────────────────────────────────────────────────────
-
-interface PendingChanges {
-  // Assignments
-  menusToAdd:       string[];
-  menusToRemove:    string[];
-  categoryAdd:      { menuId: string; categoryId: string }[];
-  categoryRemove:   { menuId: string; categoryId: string }[];
-  itemsToAdd:       string[];
-  itemsToRemove:    string[];
-  modGroupsToAdd:   string[];
-  modGroupsToRemove: string[];
-  modifiersToAdd:   string[];
-  modifiersToRemove: string[];
-  // Overrides (latest write per entity ID wins)
-  menuOverrides:     Record<string, { isEnabled: boolean; serviceAvailabilities: ServiceAvailability[] }>;
-  categoryOverrides: Record<string, { isEnabled: boolean; serviceAvailabilities: ServiceAvailability[] }>;
-  itemOverrides:     Record<string, { isEnabled: boolean; isSoldOut: boolean; serviceAvailabilities: ServiceAvailability[] }>;
-  // keyed by itemId — each entry is the variants belonging to that item
-  variantOverrides:  Record<string, { itemVariantId: string; isEnabled: boolean; branchPrice?: number }[]>;
-  modGroupOverrides: Record<string, { isEnabled: boolean; serviceAvailabilities: ServiceAvailability[] }>;
-  modifierOverrides: Record<string, { isEnabled: boolean; branchPrice?: number; serviceAvailabilities: ServiceAvailability[] }>;
-}
-
-const EMPTY_PENDING: PendingChanges = {
-  menusToAdd: [], menusToRemove: [],
-  categoryAdd: [], categoryRemove: [],
-  itemsToAdd: [], itemsToRemove: [],
-  modGroupsToAdd: [], modGroupsToRemove: [],
-  modifiersToAdd: [], modifiersToRemove: [],
-  menuOverrides: {}, categoryOverrides: {}, itemOverrides: {},
-  variantOverrides: {}, modGroupOverrides: {}, modifierOverrides: {},
-};
-
-const countPending = (p: PendingChanges): number =>
-  p.menusToAdd.length + p.menusToRemove.length +
-  p.categoryAdd.length + p.categoryRemove.length +
-  p.itemsToAdd.length + p.itemsToRemove.length +
-  p.modGroupsToAdd.length + p.modGroupsToRemove.length +
-  p.modifiersToAdd.length + p.modifiersToRemove.length +
-  Object.keys(p.menuOverrides).length + Object.keys(p.categoryOverrides).length +
-  Object.keys(p.itemOverrides).length + Object.values(p.variantOverrides).reduce((s, vs) => s + vs.length, 0) +
-  Object.keys(p.modGroupOverrides).length + Object.keys(p.modifierOverrides).length;
-
-// Idempotent: adding then removing the same entity cancels out
-const applyAssign = (list: string[], id: string, removals: string[]): [string[], string[]] =>
-  [[...list.filter(x => x !== id), id], removals.filter(x => x !== id)];
-
-const applyUnassign = (list: string[], id: string, additions: string[]): [string[], string[]] =>
-  [[...list.filter(x => x !== id), id], additions.filter(x => x !== id)];
-
-// Build the bulk save payload from pending state
-const buildPayload = (p: PendingChanges): BulkSavePayload => {
-  const catByMenu: Record<string, { toAdd: string[]; toRemove: string[] }> = {};
-  p.categoryAdd.forEach(({ menuId, categoryId }) => {
-    catByMenu[menuId] ??= { toAdd: [], toRemove: [] };
-    catByMenu[menuId].toAdd.push(categoryId);
-  });
-  p.categoryRemove.forEach(({ menuId, categoryId }) => {
-    catByMenu[menuId] ??= { toAdd: [], toRemove: [] };
-    catByMenu[menuId].toRemove.push(categoryId);
-  });
-
-  const orNull = <T,>(arr: T[]) => (arr.length > 0 ? arr : undefined);
-
-  return {
-    menusToAdd:    orNull(p.menusToAdd),
-    menusToRemove: orNull(p.menusToRemove),
-    menuOverrides: Object.keys(p.menuOverrides).length > 0
-      ? Object.entries(p.menuOverrides).map(([menuId, o]) => ({ menuId, ...o }))
-      : undefined,
-    categoryAssignments: Object.keys(catByMenu).length > 0
-      ? Object.entries(catByMenu).map(([menuId, v]) => ({ menuId, ...v }))
-      : undefined,
-    categoryOverrides: Object.keys(p.categoryOverrides).length > 0
-      ? Object.entries(p.categoryOverrides).map(([categoryId, o]) => ({ categoryId, ...o }))
-      : undefined,
-    itemsToAdd:    orNull(p.itemsToAdd),
-    itemsToRemove: orNull(p.itemsToRemove),
-    itemOverrides: Object.keys(p.itemOverrides).length > 0
-      ? Object.entries(p.itemOverrides).map(([itemId, o]) => ({
-          itemId, ...o,
-          variants: p.variantOverrides[itemId]?.map(v => ({
-            itemVariantId: v.itemVariantId, isEnabled: v.isEnabled, price: v.branchPrice,
-          })),
-        }))
-      : undefined,
-    modifierGroupsToAdd:    orNull(p.modGroupsToAdd),
-    modifierGroupsToRemove: orNull(p.modGroupsToRemove),
-    modifierGroupOverrides: Object.keys(p.modGroupOverrides).length > 0
-      ? Object.entries(p.modGroupOverrides).map(([modifierGroupId, o]) => ({ modifierGroupId, ...o }))
-      : undefined,
-    modifiersToAdd:    orNull(p.modifiersToAdd),
-    modifiersToRemove: orNull(p.modifiersToRemove),
-    modifierOverrides: Object.keys(p.modifierOverrides).length > 0
-      ? Object.entries(p.modifierOverrides).map(([modifierId, o]) => ({ modifierId, ...o }))
-      : undefined,
-  };
-};
 
 // ─── Response-to-node mapping helpers ────────────────────────────────────────
 
@@ -215,51 +118,17 @@ const findNode = (nodes: BranchNode[], key: string): BranchNode | null => {
 const walkCount = (nodes: BranchNode[], type: NodeType): number =>
   nodes.reduce((a, n) => a + (n.type === type ? 1 : 0) + walkCount(n.children, type), 0);
 
-// ─── Days ─────────────────────────────────────────────────────────────────────
-
-const DAYS = [
-  { short: 'Sun', value: 0 }, { short: 'Mon', value: 1 }, { short: 'Tue', value: 2 },
-  { short: 'Wed', value: 3 }, { short: 'Thu', value: 4 }, { short: 'Fri', value: 5 },
-  { short: 'Sat', value: 6 },
-];
-
-// ─── Availability Editor ──────────────────────────────────────────────────────
-
-const AvailabilityEditor: React.FC<{ value: ServiceAvailability[]; onChange: (v: ServiceAvailability[]) => void }> = ({ value, onChange }) => {
-  const { token } = theme.useToken();
-  const get = (d: number) => value.find(a => a.dayOfWeek === d);
-  const toggle = (d: number, on: boolean) =>
-    on ? onChange([...value, { dayOfWeek: d, startTime: '09:00', endTime: '22:00' }])
-       : onChange(value.filter(a => a.dayOfWeek !== d));
-  const setT = (d: number, s: string, e: string) =>
-    onChange(value.map(a => a.dayOfWeek === d ? { ...a, startTime: s, endTime: e } : a));
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      {DAYS.map(({ short, value: d }) => {
-        const entry = get(d); const on = !!entry;
-        return (
-          <div key={d} style={{
-            display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px',
-            borderRadius: 8, minHeight: 44,
-            background: on ? token.colorPrimaryBg : token.colorFillQuaternary,
-            border: `1px solid ${on ? token.colorPrimaryBorder : token.colorBorderSecondary}`,
-          }}>
-            <Switch checked={on} onChange={v => toggle(d, v)} />
-            <Text style={{ width: 36, fontSize: 14, fontWeight: on ? 600 : 400 }}>{short}</Text>
-            {on
-              ? <TimePicker.RangePicker format="HH:mm" style={{ flex: 1 }}
-                  value={[dayjs(entry!.startTime, 'HH:mm'), dayjs(entry!.endTime, 'HH:mm')]}
-                  onChange={t => { if (t?.[0] && t?.[1]) setT(d, t[0].format('HH:mm'), t[1].format('HH:mm')); }}
-                />
-              : <Text type="secondary" style={{ fontSize: 13 }}>Closed</Text>
-            }
-          </div>
-        );
-      })}
-    </div>
-  );
+/** Returns the ancestor chain (root → … → node) for a key, or [] when not found. */
+const findPath = (nodes: BranchNode[], key: string): BranchNode[] => {
+  for (const n of nodes) {
+    if (n.key === key) return [n];
+    const childPath = findPath(n.children, key);
+    if (childPath.length > 0) return [n, ...childPath];
+  }
+  return [];
 };
+
+import { AvailabilityEditor } from './AvailabilityEditor';
 
 // ─── Section label ────────────────────────────────────────────────────────────
 
@@ -284,13 +153,23 @@ const SectionLabel: React.FC<{ icon?: React.ReactNode; label: string; count?: nu
 
 const DetailPanelContent: React.FC<{
   node: BranchNode;
-  onApply: (key: string, patch: Partial<BranchNode>) => void;
-}> = ({ node, onApply }) => {
+  availableChildren: CatalogEntry[];
+  availLoading: boolean;
+  onApply: (key: string, patch: Partial<BranchNode>) => Promise<void>;
+  onAddChild: (parentKey: string, entry: CatalogEntry) => Promise<void>;
+}> = ({ node, availableChildren, availLoading, onApply, onAddChild }) => {
   const { token } = theme.useToken();
   const [form] = Form.useForm();
   const [avail, setAvail] = useState<ServiceAvailability[]>([]);
   const [search, setSearch] = useState('');
+  const [applying, setApplying] = useState(false);
+  const [assigningId, setAssigningId] = useState<string | null>(null);
   const { currencySymbol } = useCurrency();
+
+  // Every parent level gets an "add from tenant" picker (menu→category,
+  // category→item, item→modifier group, group→modifier). Picking inserts the
+  // branch-level row via the matching assign endpoint.
+  const canAssignChildren = node.type !== 'modifier';
 
   useEffect(() => {
     form.resetFields();
@@ -314,15 +193,33 @@ const DetailPanelContent: React.FC<{
       ...v, isEnabled: vals[`ve_${v.itemVariantId}`] ?? v.isEnabled,
       branchPrice: vals[`vp_${v.itemVariantId}`] ?? v.branchPrice,
     }));
-    onApply(node.key, {
-      isEnabled: vals.isEnabled, isSoldOut: vals.isSoldOut,
-      branchPrice: vals.branchPrice ?? undefined,
-      serviceAvailabilities: avail, variants,
-    });
+    setApplying(true);
+    try {
+      await onApply(node.key, {
+        isEnabled: vals.isEnabled, isSoldOut: vals.isSoldOut,
+        branchPrice: vals.branchPrice ?? undefined,
+        serviceAvailabilities: avail, variants,
+      });
+    } finally {
+      setApplying(false);
+    }
+  };
+
+  const handleAssign = async (entry: CatalogEntry) => {
+    setAssigningId(entry.id);
+    try {
+      await onAddChild(node.key, entry);
+    } finally {
+      setAssigningId(null);
+    }
   };
 
   // ── Children tab ──────────────────────────────────────────────────────────
   const filteredAssigned = node.children.filter(c => c.name.toLowerCase().includes(search.toLowerCase()));
+  const assignedIds = new Set(node.children.map(c => c.id));
+  const filteredAvailable = availableChildren.filter(
+    a => !assignedIds.has(a.id) && a.name.toLowerCase().includes(search.toLowerCase()),
+  );
 
   const childrenTab = (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -330,7 +227,7 @@ const DetailPanelContent: React.FC<{
         <Input size="large" prefix={<SearchOutlined style={{ color: token.colorTextTertiary }} />}
           placeholder={`Search ${meta.childPlural}…`} value={search} onChange={e => setSearch(e.target.value)} allowClear />
       </div>
-      <div style={{ flex: 1, overflowY: 'auto', padding: '4px 24px 32px' }}>
+      <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '4px 24px 32px' }}>
         <SectionLabel icon={<CheckCircleFilled />} label="Assigned to this branch" count={node.children.length} color="#389e0d" />
         {filteredAssigned.length === 0 ? (
           <div style={{ padding: '32px 24px', borderRadius: 12, textAlign: 'center', border: `2px dashed ${token.colorBorderSecondary}`, background: token.colorFillQuaternary, marginBottom: 28 }}>
@@ -341,20 +238,37 @@ const DetailPanelContent: React.FC<{
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 28 }}>
             {filteredAssigned.map(child => {
-              const cm = NODE_META[child.type];
+              const firstLetter = child.name.trim().charAt(0).toUpperCase() || '?';
               return (
                 <div key={child.key} style={{
-                  display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px',
+                  display: 'flex', alignItems: 'center', gap: 12, padding: 14,
                   borderRadius: 12, border: `1px solid ${token.colorBorderSecondary}`,
-                  background: token.colorBgContainer, boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-                  borderLeft: `3px solid ${cm.color}`,
-                }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 8, background: cm.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <span style={{ color: cm.color, fontSize: 16 }}>{cm.icon}</span>
-                  </div>
+                  background: token.colorBgContainer,
+                  transition: 'all 0.15s',
+                }}
+                  onMouseEnter={(e) => {
+                    const el = e.currentTarget as HTMLDivElement;
+                    el.style.borderColor = token.colorPrimaryBorder;
+                    el.style.boxShadow = `0 4px 14px ${token.colorPrimaryBg}`;
+                    el.style.transform = 'translateY(-2px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    const el = e.currentTarget as HTMLDivElement;
+                    el.style.borderColor = token.colorBorderSecondary;
+                    el.style.boxShadow = 'none';
+                    el.style.transform = 'none';
+                  }}
+                >
+                  <Avatar
+                    shape="square"
+                    size={40}
+                    style={{ background: token.colorPrimaryBg, color: token.colorPrimary, flexShrink: 0, borderRadius: 10, fontWeight: 700 }}
+                  >
+                    {firstLetter}
+                  </Avatar>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <Text strong style={{ fontSize: 14, display: 'block' }}>{child.name}</Text>
-                    {child.subtitle && <Text type="secondary" style={{ fontSize: 12 }}>{child.subtitle}</Text>}
+                    <Text strong style={{ fontSize: 13.5, display: 'block' }}>{child.name}</Text>
+                    {child.subtitle && <Text type="secondary" style={{ fontSize: 11.5, display: 'block', marginTop: 2 }}>{child.subtitle}</Text>}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                     {child.isEnabled ? <Tag color="success" style={{ fontSize: 12 }}>Enabled</Tag> : <Tag style={{ fontSize: 12 }}>Disabled</Tag>}
@@ -365,14 +279,89 @@ const DetailPanelContent: React.FC<{
             })}
           </div>
         )}
+
+        {canAssignChildren && (
+          <>
+            <SectionLabel icon={<PlusCircleOutlined />} label={`Available ${meta.childPlural} to assign`} count={filteredAvailable.length} color={NODE_META[meta.childType!].color} />
+            {availLoading ? (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 0' }}><Spin /></div>
+            ) : filteredAvailable.length === 0 ? (
+              <div style={{ padding: '24px', borderRadius: 12, textAlign: 'center', border: `2px dashed ${token.colorBorderSecondary}`, background: token.colorFillQuaternary }}>
+                <Text type="secondary" style={{ fontSize: 14 }}>
+                  {availableChildren.length === 0 ? `All ${meta.childPlural} are already assigned` : 'No matches'}
+                </Text>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }}>
+                {filteredAvailable.map(entry => {
+                  const firstLetter = entry.name.trim().charAt(0).toUpperCase() || '?';
+                  const busy = assigningId === entry.id;
+                  return (
+                    <button
+                      key={entry.id}
+                      type="button"
+                      disabled={busy}
+                      onClick={() => handleAssign(entry)}
+                      style={{
+                        textAlign: 'left',
+                        font: 'inherit',
+                        padding: 14,
+                        borderRadius: 12,
+                        border: `1px dashed ${token.colorBorder}`,
+                        background: token.colorBgContainer,
+                        display: 'flex', gap: 12, alignItems: 'center',
+                        cursor: 'pointer',
+                        width: '100%',
+                        transition: 'border-color 0.15s, box-shadow 0.15s, background 0.15s',
+                      }}
+                      onMouseEnter={(e) => {
+                        const el = e.currentTarget as HTMLButtonElement;
+                        el.style.borderColor = '#6132C0';
+                        el.style.borderStyle = 'solid';
+                        el.style.background = token.colorPrimaryBg;
+                      }}
+                      onMouseLeave={(e) => {
+                        const el = e.currentTarget as HTMLButtonElement;
+                        el.style.borderColor = token.colorBorder;
+                        el.style.borderStyle = 'dashed';
+                        el.style.background = token.colorBgContainer;
+                      }}
+                    >
+                      <Avatar
+                        shape="square"
+                        size={40}
+                        style={{ background: token.colorFillSecondary, color: token.colorTextSecondary, flexShrink: 0, borderRadius: 10, fontWeight: 700 }}
+                      >
+                        {firstLetter}
+                      </Avatar>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <Text strong style={{ fontSize: 13.5, display: 'block', color: token.colorText }} ellipsis={{ tooltip: entry.name }}>
+                          {entry.name}
+                        </Text>
+                        <Text type="secondary" style={{ fontSize: 11.5, display: 'block', marginTop: 2 }} ellipsis={{ tooltip: entry.subtitle || undefined }}>
+                          {entry.subtitle || '—'}
+                        </Text>
+                      </div>
+                      <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 4, color: '#6132C0', fontSize: 12.5, fontWeight: 600 }}>
+                        <PlusOutlined spin={busy} style={{ fontSize: 12 }} />
+                        Add
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );
 
   // ── Overrides tab ─────────────────────────────────────────────────────────
   const overridesTab = (
-    <div style={{ overflowY: 'auto', padding: '20px 24px 40px' }}>
-      <Form form={form} name="branch_catalog_form" layout="vertical">
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+      {/* Scrollable settings body */}
+      <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '20px 24px 24px' }}>
         <SectionLabel label="Status" />
         <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
           <div style={{ flex: 1, background: token.colorFillQuaternary, borderRadius: 10, padding: '16px 18px' }}>
@@ -420,14 +409,14 @@ const DetailPanelContent: React.FC<{
             <div style={{ background: token.colorFillQuaternary, borderRadius: 10, padding: '4px', marginBottom: 24 }}>
               <Table size="middle" dataSource={node.variants} rowKey="itemVariantId" pagination={false}
                 columns={[
-                  { title: 'Variant', dataIndex: 'variantName', render: (t: string) => <Text style={{ fontSize: 14 }}>{t}</Text> },
-                  { title: `Base (${currencySymbol})`, dataIndex: 'basePrice', width: 100, render: (p: number) => <Text style={{ fontSize: 14, fontFamily: 'monospace' }}>{currencySymbol}{p?.toFixed(2)}</Text> },
-                  { title: `Branch (${currencySymbol})`, width: 160, render: (_: any, r: any) => (
+                  { title: 'Variant', dataIndex: 'variantName', key: 'variantName', render: (t: string) => <Text style={{ fontSize: 14 }}>{t}</Text> },
+                  { title: `Base (${currencySymbol})`, dataIndex: 'basePrice', key: 'basePrice', width: 100, render: (p: number) => <Text style={{ fontSize: 14, fontFamily: 'monospace' }}>{currencySymbol}{p?.toFixed(2)}</Text> },
+                  { title: `Branch (${currencySymbol})`, key: 'branchPrice', width: 160, render: (_: any, r: any) => (
                     <Form.Item name={`vp_${r.itemVariantId}`} style={{ margin: 0 }} initialValue={r.branchPrice ?? null}>
                       <InputNumber prefix={currencySymbol} precision={2} min={0} placeholder="Override" style={{ width: '100%' }} />
                     </Form.Item>
                   )},
-                  { title: 'Enabled', width: 80, render: (_: any, r: any) => (
+                  { title: 'Enabled', key: 'isEnabled', width: 80, render: (_: any, r: any) => (
                     <Form.Item name={`ve_${r.itemVariantId}`} valuePropName="checked" style={{ margin: 0 }} initialValue={r.isEnabled}>
                       <Switch />
                     </Form.Item>
@@ -439,44 +428,67 @@ const DetailPanelContent: React.FC<{
         )}
 
         <SectionLabel icon={<ClockCircleOutlined />} label="Weekly Availability" count={avail.length} />
-        <div style={{ marginBottom: 28 }}>
+        <div style={{ marginBottom: 8 }}>
           <AvailabilityEditor value={avail} onChange={setAvail} />
         </div>
+      </div>
 
-        <Button type="primary" icon={<SaveOutlined />} block size="large" onClick={handleApply}
-          style={{ height: 48, fontSize: 15, fontWeight: 600, borderRadius: 10 }}>
-          Apply Override
-        </Button>
-        <Text type="secondary" style={{ display: 'block', textAlign: 'center', marginTop: 8, fontSize: 12 }}>
-          Changes are queued — click <strong>Save All</strong> in the header to commit
+      {/* Sticky footer — always visible, no scrolling needed to save */}
+      <div style={{
+        flexShrink: 0, padding: '14px 24px',
+        borderTop: `1px solid ${token.colorBorderSecondary}`,
+        background: token.colorBgContainer,
+        boxShadow: '0 -4px 12px rgba(0,0,0,0.04)',
+        display: 'flex', alignItems: 'center', gap: 16,
+      }}>
+        <Text type="secondary" style={{ fontSize: 12, flex: 1 }}>
+          Changes apply to this branch only
         </Text>
-      </Form>
+        <Button type="primary" icon={<SaveOutlined />} size="large" loading={applying} onClick={handleApply}
+          style={{ height: 44, minWidth: 180, fontSize: 15, fontWeight: 600, borderRadius: 10 }}>
+          Save Changes
+        </Button>
+      </div>
     </div>
   );
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+    <Form form={form} name="branch_catalog_form" layout="vertical" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       <div style={{
-        padding: '20px 24px 16px',
-        background: `linear-gradient(135deg, ${meta.bg} 0%, ${token.colorBgContainer} 60%)`,
+        padding: '12px 24px',
+        background: token.colorBgContainer,
         borderBottom: `1px solid ${token.colorBorderSecondary}`, flexShrink: 0,
+        display: 'flex', alignItems: 'center', gap: 12, minHeight: 60,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-          <div style={{ width: 32, height: 32, borderRadius: 8, background: meta.bg, border: `1.5px solid ${meta.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ color: meta.color, fontSize: 16 }}>{meta.icon}</span>
-          </div>
-          <Tag style={{ fontSize: 12, fontWeight: 600, color: meta.color, borderColor: meta.color + '50', background: meta.bg }}>
-            {node.type === 'modifierGroup' ? 'Modifier Group' : node.type.charAt(0).toUpperCase() + node.type.slice(1)}
-          </Tag>
-          {node.isEnabled ? <Tag icon={<CheckCircleFilled />} color="success" style={{ fontSize: 12 }}>Enabled</Tag> : <Tag icon={<CloseCircleFilled />} color="default" style={{ fontSize: 12 }}>Disabled</Tag>}
-          {node.isSoldOut && <Tag color="warning" icon={<WarningFilled />} style={{ fontSize: 12 }}>Sold Out</Tag>}
-          {node.branchPrice != null && node.branchPrice !== node.basePrice && <Tag color="orange" style={{ fontSize: 12 }}>Price Override</Tag>}
+        <div style={{ width: 36, height: 36, borderRadius: 9, background: meta.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <span style={{ color: meta.color, fontSize: 17 }}>{meta.icon}</span>
         </div>
-        <Title level={4} style={{ margin: 0, fontSize: 20 }}>{node.name}</Title>
-        {node.subtitle && <Text type="secondary" style={{ fontSize: 14, marginTop: 2, display: 'block' }}>{node.subtitle}</Text>}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+            <Title level={5} style={{ margin: 0, fontSize: 16, lineHeight: 1.3 }} ellipsis={{ tooltip: node.name }}>{node.name}</Title>
+            {node.subtitle && <Text type="secondary" ellipsis style={{ fontSize: 12.5, flexShrink: 1 }}>{node.subtitle}</Text>}
+          </div>
+          <Text style={{ fontSize: 11.5, fontWeight: 600, color: meta.color, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            {node.type === 'modifierGroup' ? 'Modifier Group' : node.type.charAt(0).toUpperCase() + node.type.slice(1)}
+          </Text>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+          {node.isSoldOut && <Tag color="warning" icon={<WarningFilled />} style={{ fontSize: 11, margin: 0 }}>Sold Out</Tag>}
+          {node.branchPrice != null && node.branchPrice !== node.basePrice && <Tag color="orange" style={{ fontSize: 11, margin: 0 }}>Price Override</Tag>}
+          {node.isEnabled
+            ? <Tag icon={<CheckCircleFilled />} color="success" style={{ fontSize: 11, margin: 0 }}>Enabled</Tag>
+            : <Tag icon={<CloseCircleFilled />} color="default" style={{ fontSize: 11, margin: 0 }}>Disabled</Tag>}
+        </div>
       </div>
 
+      {/* Flex-fill the tab content (no fixed calc heights — avoids dead space at the bottom) */}
+      <style>{`
+        .branch-catalog-detail-tabs .ant-tabs-content-holder,
+        .branch-catalog-detail-tabs .ant-tabs-content,
+        .branch-catalog-detail-tabs .ant-tabs-tabpane { height: 100%; }
+      `}</style>
       <Tabs defaultActiveKey={hasKids ? 'children' : 'overrides'}
+        className="branch-catalog-detail-tabs"
         style={{ flex: 1, overflow: 'hidden' }}
         tabBarStyle={{ margin: 0, padding: '0 24px', background: token.colorBgContainer, borderBottom: `1px solid ${token.colorBorderSecondary}`, fontSize: 14 }}
         size="large"
@@ -484,16 +496,16 @@ const DetailPanelContent: React.FC<{
           ...(hasKids ? [{
             key: 'children',
             label: <Space size={6}><span>Manage {meta.childLabel}s</span><div style={{ height: 20, minWidth: 20, padding: '0 6px', borderRadius: 10, background: token.colorPrimaryBg, color: token.colorPrimary, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 }}>{node.children.length}</div></Space>,
-            children: <div style={{ height: 'calc(100vh - 310px)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>{childrenTab}</div>,
+            children: <div style={{ height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>{childrenTab}</div>,
           }] : []),
           {
             key: 'overrides',
-            label: 'Branch Overrides',
-            children: <div style={{ height: 'calc(100vh - 310px)', overflowY: 'auto' }}>{overridesTab}</div>,
+            label: 'Branch Settings',
+            children: <div style={{ height: '100%', overflow: 'hidden' }}>{overridesTab}</div>,
           },
         ]}
       />
-    </div>
+    </Form>
   );
 };
 
@@ -501,34 +513,139 @@ const DetailPanelContent: React.FC<{
 
 const DetailPanel: React.FC<{
   node: BranchNode | null;
-  onApply: (key: string, patch: Partial<BranchNode>) => void;
-}> = ({ node, onApply }) => {
+  availableChildren: CatalogEntry[];
+  availLoading: boolean;
+  onApply: (key: string, patch: Partial<BranchNode>) => Promise<void>;
+  onAddChild: (parentKey: string, entry: CatalogEntry) => Promise<void>;
+  availableMenus: CatalogEntry[];
+  onAssignMenu: (menuId: string) => Promise<void>;
+  assigningMenuId: string | null;
+  branchName: string;
+}> = ({ node, availableChildren, availLoading, onApply, onAddChild, availableMenus, onAssignMenu, assigningMenuId, branchName }) => {
   const { token } = theme.useToken();
+  const [search, setSearch] = useState('');
 
-  if (!node) return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: 48, opacity: 0.5 }}>
-      <ReadOutlined style={{ fontSize: 48, color: token.colorTextQuaternary }} />
-      <div style={{ textAlign: 'center' }}>
-        <Text style={{ fontSize: 16, fontWeight: 600, display: 'block', color: token.colorTextSecondary }}>Nothing selected</Text>
-        <Text type="secondary" style={{ fontSize: 14 }}>Click any item in the tree to configure its branch settings</Text>
+  if (!node) {
+    const filtered = availableMenus.filter(m => m.name.toLowerCase().includes(search.toLowerCase()));
+
+    return (
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: token.colorBgContainer }}>
+        {/* Header */}
+        <div style={{ padding: '20px 24px 16px', borderBottom: `1px solid ${token.colorBorderSecondary}`, background: `linear-gradient(135deg, #f5f0ff 0%, ${token.colorBgContainer} 60%)`, flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: '#f5f0ff', border: '1.5px solid #6132C030', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <ReadOutlined style={{ color: '#6132C0', fontSize: 16 }} />
+            </div>
+            <Tag style={{ fontSize: 12, fontWeight: 600, color: '#6132C0', borderColor: '#6132C050', background: '#f5f0ff' }}>
+              Assign Menus
+            </Tag>
+          </div>
+          <Title level={4} style={{ margin: 0, fontSize: 20 }}>Assign Menus to Branch</Title>
+          <Text type="secondary" style={{ fontSize: 14, marginTop: 2, display: 'block' }}>
+            Select from the available tenant-level menus below to assign them to {branchName}.
+          </Text>
+        </div>
+
+        {/* Search */}
+        <div style={{ padding: '16px 24px 12px', flexShrink: 0 }}>
+          <Input
+            prefix={<SearchOutlined style={{ color: token.colorTextTertiary }} />}
+            placeholder="Search available menus…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            allowClear
+            size="large"
+          />
+        </div>
+
+        {/* Cards */}
+        <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '4px 24px 32px' }}>
+          {filtered.length === 0 ? (
+            <div style={{ padding: '48px 24px', textAlign: 'center', background: token.colorFillAlter, borderRadius: 12, border: `2px dashed ${token.colorBorderSecondary}` }}>
+              <Empty
+                description={
+                  availableMenus.length === 0
+                    ? "All available menus are already assigned to this branch. Click any assigned item in the tree on the left to configure branch overrides."
+                    : "No available menus match your search."
+                }
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+              />
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }}>
+              {filtered.map(menu => {
+                const firstLetter = menu.name.trim().charAt(0).toUpperCase() || '?';
+                const busy = assigningMenuId === menu.id;
+                return (
+                  <button
+                    key={menu.id}
+                    type="button"
+                    disabled={busy}
+                    onClick={() => onAssignMenu(menu.id)}
+                    style={{
+                      textAlign: 'left',
+                      font: 'inherit',
+                      padding: 14,
+                      borderRadius: 12,
+                      border: `1px dashed ${token.colorBorder}`,
+                      background: token.colorBgContainer,
+                      display: 'flex', gap: 12, alignItems: 'center',
+                      cursor: 'pointer',
+                      width: '100%',
+                      transition: 'border-color 0.15s, box-shadow 0.15s, background 0.15s',
+                    }}
+                    onMouseEnter={(e) => {
+                      const el = e.currentTarget as HTMLButtonElement;
+                      el.style.borderColor = '#6132C0';
+                      el.style.borderStyle = 'solid';
+                      el.style.background = token.colorPrimaryBg;
+                    }}
+                    onMouseLeave={(e) => {
+                      const el = e.currentTarget as HTMLButtonElement;
+                      el.style.borderColor = token.colorBorder;
+                      el.style.borderStyle = 'dashed';
+                      el.style.background = token.colorBgContainer;
+                    }}
+                  >
+                    <Avatar
+                      shape="square"
+                      size={40}
+                      style={{ background: token.colorFillSecondary, color: token.colorTextSecondary, flexShrink: 0, borderRadius: 10, fontWeight: 700 }}
+                    >
+                      {firstLetter}
+                    </Avatar>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <Text strong style={{ fontSize: 13.5, display: 'block', color: token.colorText }} ellipsis={{ tooltip: menu.name }}>
+                        {menu.name}
+                      </Text>
+                      <Text type="secondary" style={{ fontSize: 11.5, display: 'block', marginTop: 2 }} ellipsis={{ tooltip: menu.subtitle || undefined }}>
+                        {menu.subtitle || '—'}
+                      </Text>
+                    </div>
+                    <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 4, color: '#6132C0', fontSize: 12.5, fontWeight: 600 }}>
+                      <PlusOutlined spin={busy} style={{ fontSize: 12 }} />
+                      Add
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 
-  // Use node.key so the inner component fully remounts when selection changes,
-  // which resets the form and avail state cleanly without manual imperative calls.
-  return <DetailPanelContent key={node.key} node={node} onApply={onApply} />;
+  return <DetailPanelContent key={node.key} node={node} availableChildren={availableChildren} availLoading={availLoading} onApply={onApply} onAddChild={onAddChild} />;
 };
 
 // ─── Tree row ─────────────────────────────────────────────────────────────────
 
 const TreeRow: React.FC<{
   node: BranchNode; depth: number; isSelected: boolean; isExpanded: boolean;
-  isDirty: boolean;
   onSelect: (n: BranchNode) => void; onExpand: (key: string) => void;
-  onToggle: (key: string, v: boolean) => void;
   onRemove: (node: BranchNode) => void;
-}> = ({ node, depth, isSelected, isExpanded, isDirty, onSelect, onExpand, onToggle, onRemove }) => {
+}> = ({ node, depth, isSelected, isExpanded, onSelect, onExpand, onRemove }) => {
   const { token } = theme.useToken();
   const meta = NODE_META[node.type];
   const hasKids = node.type !== 'modifier';
@@ -562,26 +679,20 @@ const TreeRow: React.FC<{
         {node.subtitle && depth < 3 && <Text type="secondary" style={{ fontSize: 12 }}>{node.subtitle}</Text>}
       </div>
 
-      {/* Dirty indicator */}
-      {isDirty && <Tooltip title="Unsaved change"><div style={{ width: 7, height: 7, borderRadius: '50%', background: '#fa8c16', flexShrink: 0, marginRight: 6 }} /></Tooltip>}
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, marginRight: 8 }}>
+      {/* Status indicators only — enable/disable lives in the Branch Settings tab */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, marginRight: 4 }}>
         {node.isSoldOut && <WarningFilled style={{ color: '#fa8c16', fontSize: 12 }} />}
         {node.type === 'modifier' && node.branchPrice != null && node.branchPrice !== node.basePrice && <Tag color="orange" style={{ fontSize: 10, padding: '0 5px', margin: 0 }}>✎</Tag>}
-        {!node.isEnabled ? <CloseCircleFilled style={{ color: token.colorTextQuaternary, fontSize: 12 }} /> : <CheckCircleFilled style={{ color: '#52c41a', fontSize: 12 }} />}
+        {!node.isEnabled
+          ? <Tooltip title="Disabled at this branch"><CloseCircleFilled style={{ color: token.colorTextQuaternary, fontSize: 12 }} /></Tooltip>
+          : <Tooltip title="Enabled at this branch"><CheckCircleFilled style={{ color: '#52c41a', fontSize: 12 }} /></Tooltip>}
       </div>
 
-      <Switch size="small" checked={node.isEnabled}
-        onChange={(v, e) => { e.stopPropagation(); onToggle(node.key, v); }}
-        onClick={(_, e) => e.stopPropagation()} />
-
-      {depth > 0 && (
-        <Popconfirm title={`Remove "${node.name}" from branch?`} description="Queued as a pending removal — saved with Save All." onConfirm={e => { e?.stopPropagation(); onRemove(node); }} okText="Remove" okButtonProps={{ danger: true }}>
-          <Tooltip title="Queue removal">
-            <Button type="text" size="small" danger icon={<MinusCircleOutlined style={{ fontSize: 13 }} />} onClick={e => e.stopPropagation()} style={{ marginLeft: 4, opacity: 0.6 }} />
-          </Tooltip>
-        </Popconfirm>
-      )}
+      <Popconfirm title={`Remove "${node.name}" from branch?`} description="Removed from this branch immediately." onConfirm={e => { e?.stopPropagation(); onRemove(node); }} okText="Remove" okButtonProps={{ danger: true }}>
+        <Tooltip title="Remove from branch">
+          <Button type="text" size="small" danger icon={<MinusCircleOutlined style={{ fontSize: 13 }} />} onClick={e => e.stopPropagation()} style={{ marginLeft: 4, opacity: 0.6 }} />
+        </Tooltip>
+      </Popconfirm>
     </div>
   );
 };
@@ -591,10 +702,10 @@ const TreeRow: React.FC<{
 const RenderTree: React.FC<{
   nodes: BranchNode[]; depth: number;
   expandedKeys: Set<string>; selectedKey: string | null;
-  dirtyKeys: Set<string>; loadingKeys: Set<string>;
+  loadingKeys: Set<string>;
   onSelect: (n: BranchNode) => void; onExpand: (key: string) => void;
-  onToggle: (key: string, v: boolean) => void; onRemove: (n: BranchNode) => void;
-}> = ({ nodes, depth, expandedKeys, selectedKey, dirtyKeys, loadingKeys, onSelect, onExpand, onToggle, onRemove }) => {
+  onRemove: (n: BranchNode) => void;
+}> = ({ nodes, depth, expandedKeys, selectedKey, loadingKeys, onSelect, onExpand, onRemove }) => {
   const { token } = theme.useToken();
   return (
     <>
@@ -605,8 +716,7 @@ const RenderTree: React.FC<{
           <React.Fragment key={node.key}>
             <TreeRow node={node} depth={depth}
               isSelected={selectedKey === node.key} isExpanded={expandedKeys.has(node.key)}
-              isDirty={dirtyKeys.has(node.key)}
-              onSelect={onSelect} onExpand={onExpand} onToggle={onToggle} onRemove={onRemove}
+              onSelect={onSelect} onExpand={onExpand} onRemove={onRemove}
             />
             {expandedKeys.has(node.key) && (
               <div style={{ marginLeft: 20, borderLeft: `2px solid ${meta.color}20`, paddingLeft: 4 }}>
@@ -614,9 +724,9 @@ const RenderTree: React.FC<{
                   <div style={{ padding: '6px 12px' }}><Spin size="small" /></div>
                 ) : node.children.length > 0 ? (
                   <RenderTree nodes={node.children} depth={depth + 1}
-                    expandedKeys={expandedKeys} selectedKey={selectedKey} dirtyKeys={dirtyKeys}
+                    expandedKeys={expandedKeys} selectedKey={selectedKey}
                     loadingKeys={loadingKeys}
-                    onSelect={onSelect} onExpand={onExpand} onToggle={onToggle} onRemove={onRemove}
+                    onSelect={onSelect} onExpand={onExpand} onRemove={onRemove}
                   />
                 ) : node.type !== 'modifier' ? (
                   <div style={{ padding: '6px 12px' }}>
@@ -636,6 +746,36 @@ const RenderTree: React.FC<{
 
 interface BranchCatalogViewProps { branch: Branch; open: boolean; onClose: () => void }
 
+
+const filterTree = (nodes: BranchNode[], query: string): BranchNode[] => {
+  if (!query.trim()) return nodes;
+
+  const q = query.toLowerCase().trim();
+
+  const match = (n: BranchNode) =>
+    n.name.toLowerCase().includes(q) ||
+    (n.subtitle ?? '').toLowerCase().includes(q);
+
+  const walk = (ns: BranchNode[]): BranchNode[] => {
+    const res: BranchNode[] = [];
+
+    for (const n of ns) {
+      const filteredChildren = walk(n.children);
+
+      if (match(n) || filteredChildren.length > 0) {
+        res.push({
+          ...n,
+          children: filteredChildren,
+        });
+      }
+    }
+
+    return res;
+  };
+
+  return walk(nodes);
+};
+
 const BranchCatalogView: React.FC<BranchCatalogViewProps> = ({ branch, open, onClose }) => {
   const { token } = theme.useToken();
 
@@ -644,8 +784,8 @@ const BranchCatalogView: React.FC<BranchCatalogViewProps> = ({ branch, open, onC
   const [selectedKey, setSelectedKey]   = useState<string | null>(null);
   const [selectedNode, setSelectedNode] = useState<BranchNode | null>(null);
   const [treeSearch, setTreeSearch]     = useState('');
-  const [addMenuOpen, setAddMenuOpen]   = useState(false);
-  const [addMenuId, setAddMenuId]       = useState<string | undefined>(undefined);
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [assignSearch, setAssignSearch]           = useState('');
 
   // ── Loading states ────────────────────────────────────────────────────────
   const [treeLoading, setTreeLoading]   = useState(false);
@@ -655,29 +795,70 @@ const BranchCatalogView: React.FC<BranchCatalogViewProps> = ({ branch, open, onC
   const loadedKeysRef  = useRef<Set<string>>(new Set());
   const loadingKeysRef = useRef<Set<string>>(new Set());
 
-  // ── Available menus for the "Add menu" dropdown ───────────────────────────
-  const { data: menusData } = useMenus();
+  // ── Tenant catalog (assign pickers) ────────────────────────────────────────
+  // Branch catalog GETs return ONLY associated rows (the tree). The pickers
+  // show the tenant-level hierarchy scoped to the selected parent: a menu's
+  // categories, a category's items, an item's modifier groups, a group's
+  // modifiers. Already-assigned ids are filtered out at render time.
+  const { data: menusData }          = useMenus(true);
+  const { data: itemsData }          = useMenuItems();
+  const { data: modifierGroupsData } = useModifierGroups();
+
   const allMenus: CatalogEntry[] = useMemo(
-    () => (menusData || []).map((m) => ({ id: m.id, name: m.title, subtitle: m.subtitle })),
+    () => (menusData || []).map(m => ({ id: m.id, name: m.title, subtitle: m.subtitle })),
     [menusData],
   );
 
-  // ── Pending changes state ─────────────────────────────────────────────────
-  const [pending, setPending] = useState<PendingChanges>(EMPTY_PENDING);
-  const [saving, setSaving]   = useState(false);
+  // Tenant menu → its categories (the only categories addable to a branch menu).
+  const categoriesByMenu = useMemo(() => {
+    const map = new Map<string, CatalogEntry[]>();
+    (menusData || []).forEach(m =>
+      map.set(m.id, (m.categories || []).map(c => ({
+        id: c.categoryId,
+        name: c.name ?? c.category?.name ?? 'Category',
+        subtitle: c.category?.description,
+      }))),
+    );
+    return map;
+  }, [menusData]);
 
-  const pendingCount = useMemo(() => countPending(pending), [pending]);
+  // Tenant category → its items.
+  const itemsByCategory = useMemo(() => {
+    const map = new Map<string, CatalogEntry[]>();
+    (itemsData || []).forEach(i => {
+      const list = map.get(i.categoryId) ?? [];
+      list.push({ id: i.id, name: i.name, subtitle: i.description });
+      map.set(i.categoryId, list);
+    });
+    return map;
+  }, [itemsData]);
 
-  // Track dirty node keys (for orange dot in tree)
-  const dirtyKeys = useMemo(() => {
-    const keys = new Set<string>();
-    [...Object.keys(pending.menuOverrides)].forEach(id => keys.add(`menu::${id}`));
-    [...Object.keys(pending.categoryOverrides)].forEach(id => keys.add(`category::${id}`));
-    [...Object.keys(pending.itemOverrides)].forEach(id => keys.add(`item::${id}`));
-    [...Object.keys(pending.modGroupOverrides)].forEach(id => keys.add(`modifierGroup::${id}`));
-    [...Object.keys(pending.modifierOverrides)].forEach(id => keys.add(`modifier::${id}`));
-    return keys;
-  }, [pending]);
+  // Tenant item → its modifier groups.
+  const modifierGroupsByItem = useMemo(() => {
+    const map = new Map<string, CatalogEntry[]>();
+    (itemsData || []).forEach(i =>
+      map.set(i.id, (i.modifierGroups || []).map(g => ({
+        id: (g as any).modifierGroupId || g.id,
+        name: g.name,
+        subtitle: g.description || `Min ${(g as any).minSelectCount ?? 0} / Max ${(g as any).maxSelectCount ?? 0}`,
+      }))),
+    );
+    return map;
+  }, [itemsData]);
+
+  // Tenant modifier group → its modifiers.
+  const modifiersByGroup = useMemo(() => {
+    const map = new Map<string, CatalogEntry[]>();
+    (modifierGroupsData || []).forEach(g =>
+      map.set(g.id, (g.modifierItems || []).map(mi => ({
+        id: mi.id || mi.modifierId || '', name: mi.name || mi.modifierName || 'Modifier', basePrice: mi.price,
+      }))),
+    );
+    return map;
+  }, [modifierGroupsData]);
+
+  // ── In-flight action state (replaces the batch "pending" model) ───────────
+  const [assigningMenuId, setAssigningMenuId] = useState<string | null>(null);
 
   // ── Init — load menus from API on open ───────────────────────────────────
 
@@ -686,7 +867,7 @@ const BranchCatalogView: React.FC<BranchCatalogViewProps> = ({ branch, open, onC
     setTree([]);
     setExpandedKeys(new Set());
     setSelectedKey(null); setSelectedNode(null);
-    setTreeSearch(''); setPending(EMPTY_PENDING);
+    setTreeSearch('');
     loadedKeysRef.current  = new Set();
     loadingKeysRef.current = new Set();
     setLoadingKeys(new Set());
@@ -744,73 +925,122 @@ const BranchCatalogView: React.FC<BranchCatalogViewProps> = ({ branch, open, onC
     }
   }, [branch.id]);
 
+  
+  const visibleTree = useMemo(() => {
+  return filterTree(tree, treeSearch);
+}, [tree, treeSearch]);
+
+useEffect(() => {
+  if (!treeSearch.trim()) {
+    setExpandedKeys(new Set());
+    return;
+  }
+
+  const q = treeSearch.toLowerCase().trim();
+  const newExpanded = new Set<string>();
+
+  const searchWalk = async (nodes: BranchNode[]) => {
+    for (const n of nodes) {
+      const match =
+        n.name.toLowerCase().includes(q) ||
+        (n.subtitle ?? '').toLowerCase().includes(q);
+
+      // Always expand path
+      newExpanded.add(n.key);
+
+      // 🔥 IMPORTANT: load children BEFORE deciding visibility
+      if (n.type !== 'modifier' && n.children.length === 0) {
+        await loadChildren(n);
+      }
+
+      // recurse after loading
+      if (n.children?.length) {
+        await searchWalk(n.children);
+      }
+
+      // If match → ensure full branch is expanded
+      if (match) {
+        let parent = findParent(tree, n.key);
+        while (parent) {
+          newExpanded.add(parent.key);
+          parent = findParent(tree, parent.key);
+        }
+      }
+    }
+  };
+
+  searchWalk(tree).then(() => {
+    setExpandedKeys(newExpanded);
+  });
+}, [treeSearch, tree, loadChildren]);
+
   const handleExpand = (key: string) => {
     setExpandedKeys(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
     const node = findNode(tree, key);
     if (node && node.type !== 'modifier') loadChildren(node);
   };
 
-  const handleSelect = (node: BranchNode) => { setSelectedKey(node.key); setSelectedNode(node); };
-
-  const handleToggle = (key: string, v: boolean) => {
-    setTree(t => updateNode(t, key, { isEnabled: v }));
-    const node = findNode(tree, key);
-    if (!node) return;
-
-    // Record override in pending (latest write wins)
-    setPending(p => {
-      const avail = node.serviceAvailabilities ?? [];
-      switch (node.type) {
-        case 'menu':
-          return { ...p, menuOverrides: { ...p.menuOverrides, [node.id]: { isEnabled: v, serviceAvailabilities: avail } } };
-        case 'category':
-          return { ...p, categoryOverrides: { ...p.categoryOverrides, [node.id]: { isEnabled: v, serviceAvailabilities: avail } } };
-        case 'item':
-          return { ...p, itemOverrides: { ...p.itemOverrides, [node.id]: { isEnabled: v, isSoldOut: node.isSoldOut ?? false, serviceAvailabilities: avail } } };
-        case 'modifierGroup':
-          return { ...p, modGroupOverrides: { ...p.modGroupOverrides, [node.id]: { isEnabled: v, serviceAvailabilities: avail } } };
-        case 'modifier':
-          return { ...p, modifierOverrides: { ...p.modifierOverrides, [node.id]: { isEnabled: v, branchPrice: node.branchPrice, serviceAvailabilities: avail } } };
-        default: return p;
-      }
-    });
+  const handleSelect = (node: BranchNode) => {
+    setSelectedKey(node.key);
+    setSelectedNode(node);
+    // Lazy-load the branch's already-assigned children so the "Assigned to this
+    // branch" list (and the available-picker filter) reflect what's actually there.
+    if (node.type !== 'modifier') loadChildren(node);
   };
 
-  // Right panel "Apply Override" — updates tree + records full override in pending
-  const handleApplyOverride = (key: string, patch: Partial<BranchNode>) => {
+  // Helper: find a node's parent (needed for category → menu context).
+  const findParent = (nodes: BranchNode[], targetKey: string): BranchNode | null => {
+    for (const n of nodes) {
+      if (n.children.some(c => c.key === targetKey)) return n;
+      const found = findParent(n.children, targetKey);
+      if (found) return found;
+    }
+    return null;
+  };
+
+  // ── Single-call override (toggle + Save Override) with optimistic rollback ──
+  const persistOverride = async (node: BranchNode): Promise<boolean> => {
+    const avail = node.serviceAvailabilities ?? [];
+    switch (node.type) {
+      case 'menu':
+        return (await BranchCatalogService.updateMenu(branch.id, node.id, { isEnabled: node.isEnabled, serviceAvailabilities: avail })).success;
+      case 'category':
+        return (await BranchCatalogService.updateCategory(branch.id, node.id, { isEnabled: node.isEnabled, serviceAvailabilities: avail })).success;
+      case 'item':
+        return (await BranchCatalogService.updateItem(branch.id, node.id, {
+          isEnabled: node.isEnabled, isSoldOut: node.isSoldOut ?? false, serviceAvailabilities: avail,
+          variants: (node.variants ?? []).map(v => ({ itemVariantId: v.itemVariantId, isEnabled: v.isEnabled, price: v.branchPrice })),
+        })).success;
+      case 'modifierGroup':
+        return (await BranchCatalogService.updateModifierGroup(branch.id, node.id, { isEnabled: node.isEnabled, serviceAvailabilities: avail })).success;
+      case 'modifier':
+        return (await BranchCatalogService.updateModifier(branch.id, node.id, { isEnabled: node.isEnabled, price: node.branchPrice, serviceAvailabilities: avail })).success;
+      default:
+        return false;
+    }
+  };
+
+  // Right-panel "Save Changes" → optimistic single-call.
+  const handleApplyOverride = async (key: string, patch: Partial<BranchNode>) => {
+    const node = findNode(tree, key);
+    if (!node) return;
+    const before = node;
     setTree(t => updateNode(t, key, patch));
-    const node = findNode(tree, key);
-    if (!node) return;
-    const merged = { ...node, ...patch };
-
-    setPending(p => {
-      switch (merged.type) {
-        case 'menu':
-          return { ...p, menuOverrides: { ...p.menuOverrides, [merged.id]: { isEnabled: merged.isEnabled, serviceAvailabilities: merged.serviceAvailabilities } } };
-        case 'category':
-          return { ...p, categoryOverrides: { ...p.categoryOverrides, [merged.id]: { isEnabled: merged.isEnabled, serviceAvailabilities: merged.serviceAvailabilities } } };
-        case 'item': {
-          const variants = (merged.variants ?? []).map(v => ({
-            itemVariantId: v.itemVariantId, isEnabled: v.isEnabled, branchPrice: v.branchPrice,
-          }));
-          return {
-            ...p,
-            itemOverrides: { ...p.itemOverrides, [merged.id]: { isEnabled: merged.isEnabled, isSoldOut: merged.isSoldOut ?? false, serviceAvailabilities: merged.serviceAvailabilities } },
-            variantOverrides: { ...p.variantOverrides, [merged.id]: variants },
-          };
-        }
-        case 'modifierGroup':
-          return { ...p, modGroupOverrides: { ...p.modGroupOverrides, [merged.id]: { isEnabled: merged.isEnabled, serviceAvailabilities: merged.serviceAvailabilities } } };
-        case 'modifier':
-          return { ...p, modifierOverrides: { ...p.modifierOverrides, [merged.id]: { isEnabled: merged.isEnabled, branchPrice: merged.branchPrice, serviceAvailabilities: merged.serviceAvailabilities } } };
-        default: return p;
-      }
-    });
-
-    message.success({ content: 'Override queued — click Save All to commit', duration: 2 });
+    const ok = await persistOverride({ ...node, ...patch });
+    if (ok) {
+      message.success({ content: `Saved to ${branch.name}`, duration: 2 });
+    } else {
+      setTree(t => updateNode(t, key, {
+        isEnabled: before.isEnabled, isSoldOut: before.isSoldOut,
+        branchPrice: before.branchPrice, serviceAvailabilities: before.serviceAvailabilities,
+        variants: before.variants,
+      }));
+      message.error(`Could not save "${node.name}"`);
+    }
   };
 
-  const handleAddChild = (parentKey: string, entry: CatalogEntry) => {
+  // Assign-picker → optimistic add + single-call assign.
+  const handleAddChild = async (parentKey: string, entry: CatalogEntry) => {
     const parent = findNode(tree, parentKey);
     if (!parent) return;
     const childType = NODE_META[parent.type].childType!;
@@ -818,130 +1048,75 @@ const BranchCatalogView: React.FC<BranchCatalogViewProps> = ({ branch, open, onC
     setTree(t => addChild(t, parentKey, child));
     setExpandedKeys(prev => new Set([...prev, parentKey]));
 
-    // Record assignment
-    setPending(p => {
-      switch (childType) {
-        case 'category':
-          return {
-            ...p,
-            categoryAdd:    [...p.categoryAdd.filter(c => !(c.menuId === parent.id && c.categoryId === entry.id)), { menuId: parent.id, categoryId: entry.id }],
-            categoryRemove: p.categoryRemove.filter(c => !(c.menuId === parent.id && c.categoryId === entry.id)),
-          };
-        case 'item': {
-          const [add, remove] = applyAssign(p.itemsToAdd, entry.id, p.itemsToRemove);
-          return { ...p, itemsToAdd: add, itemsToRemove: remove };
-        }
-        case 'modifierGroup': {
-          const [add, remove] = applyAssign(p.modGroupsToAdd, entry.id, p.modGroupsToRemove);
-          return { ...p, modGroupsToAdd: add, modGroupsToRemove: remove };
-        }
-        case 'modifier': {
-          const [add, remove] = applyAssign(p.modifiersToAdd, entry.id, p.modifiersToRemove);
-          return { ...p, modifiersToAdd: add, modifiersToRemove: remove };
-        }
-        default: return p;
-      }
-    });
-    message.info({ content: `"${entry.name}" added — queued for save`, duration: 2, icon: <PlusCircleOutlined /> });
-  };
+    let ok = false;
+    switch (childType) {
+      case 'category':     ok = (await BranchCatalogService.addCategoryToMenu(branch.id, parent.id, entry.id)).success; break;
+      case 'item':         ok = (await BranchCatalogService.assignItem(branch.id, entry.id)).success; break;
+      case 'modifierGroup':ok = (await BranchCatalogService.assignModifierGroup(branch.id, entry.id)).success; break;
+      case 'modifier':     ok = (await BranchCatalogService.assignModifier(branch.id, entry.id)).success; break;
+    }
 
-  const handleRemoveNode = (node: BranchNode) => {
-    // Find parent to determine context
-    const findParent = (nodes: BranchNode[], targetKey: string, parent: BranchNode | null = null): BranchNode | null => {
-      for (const n of nodes) {
-        if (n.children.some(c => c.key === targetKey)) return n;
-        const found = findParent(n.children, targetKey, n);
-        if (found) return found;
-      }
-      return parent;
-    };
-    const parent = findParent(tree, node.key);
-
-    setTree(t => removeNode(t, node.key));
-    if (selectedKey === node.key) { setSelectedKey(null); setSelectedNode(null); }
-
-    setPending(p => {
-      switch (node.type) {
-        case 'menu': {
-          const [remove, add] = applyUnassign(p.menusToRemove, node.id, p.menusToAdd);
-          return { ...p, menusToRemove: remove, menusToAdd: add };
-        }
-        case 'category': {
-          const menuId = parent?.id ?? '';
-          return {
-            ...p,
-            categoryRemove: [...p.categoryRemove.filter(c => !(c.menuId === menuId && c.categoryId === node.id)), { menuId, categoryId: node.id }],
-            categoryAdd:    p.categoryAdd.filter(c => !(c.menuId === menuId && c.categoryId === node.id)),
-          };
-        }
-        case 'item': {
-          const [remove, add] = applyUnassign(p.itemsToRemove, node.id, p.itemsToAdd);
-          return { ...p, itemsToRemove: remove, itemsToAdd: add };
-        }
-        case 'modifierGroup': {
-          const [remove, add] = applyUnassign(p.modGroupsToRemove, node.id, p.modGroupsToAdd);
-          return { ...p, modGroupsToRemove: remove, modGroupsToAdd: add };
-        }
-        case 'modifier': {
-          const [remove, add] = applyUnassign(p.modifiersToRemove, node.id, p.modifiersToAdd);
-          return { ...p, modifiersToRemove: remove, modifiersToAdd: add };
-        }
-        default: return p;
-      }
-    });
-    message.info({ content: `"${node.name}" removal queued`, duration: 2, icon: <MinusCircleOutlined /> });
-  };
-
-  const handleAddMenu = () => {
-    const entry = allMenus.find(m => m.id === addMenuId);
-    if (!entry) return;
-    const node = mk('menu', entry.id, entry.name, true, { subtitle: entry.subtitle });
-    setTree(t => [...t, node]);
-    setExpandedKeys(prev => new Set([...prev, node.key]));
-    setAddMenuOpen(false); setAddMenuId(undefined);
-    const [add, remove] = applyAssign(pending.menusToAdd, entry.id, pending.menusToRemove);
-    setPending(p => ({ ...p, menusToAdd: add, menusToRemove: remove }));
-    message.info({ content: `Menu "${entry.name}" queued for assignment`, duration: 2, icon: <PlusCircleOutlined /> });
-  };
-
-  // ── Save All ──────────────────────────────────────────────────────────────
-
-  const handleSaveAll = async () => {
-    if (pendingCount === 0) return;
-    setSaving(true);
-    try {
-      const payload = buildPayload(pending);
-      const res = await BranchCatalogService.saveBulk(branch.id, payload);
-      if (res.success) {
-        message.success(`✓ ${pendingCount} change${pendingCount !== 1 ? 's' : ''} saved to ${branch.name}`);
-        setPending(EMPTY_PENDING);
-      }
-    } finally {
-      setSaving(false);
+    if (ok) {
+      message.success({ content: `"${entry.name}" assigned to ${branch.name}`, duration: 2, icon: <PlusCircleOutlined /> });
+      // Adding a category cascades its items (+ modifier groups/modifiers) on the
+      // backend — load the new node's children so the cascaded subtree shows.
+      if (childType === 'category') await loadChildren(child);
+    } else {
+      setTree(t => removeNode(t, child.key));
+      message.error(`Could not assign "${entry.name}"`);
     }
   };
 
-  const handleDiscard = () => {
-    setTree([]);
-    setExpandedKeys(new Set());
-    setSelectedKey(null); setSelectedNode(null);
-    setPending(EMPTY_PENDING);
-    loadedKeysRef.current  = new Set();
-    loadingKeysRef.current = new Set();
-    setLoadingKeys(new Set());
+  // Tree-row remove → optimistic unassign + single-call.
+  const handleRemoveNode = async (node: BranchNode) => {
+    const parent = findParent(tree, node.key);
+    const snapshot = tree;
+    setTree(t => removeNode(t, node.key));
+    if (selectedKey === node.key) { setSelectedKey(null); setSelectedNode(null); }
 
-    setTreeLoading(true);
-    BranchCatalogService.getMenus(branch.id)
-      .then(res => {
-        if (res.success && res.data) setTree(res.data.map(menuToNode));
-      })
-      .finally(() => setTreeLoading(false));
+    let ok = false;
+    switch (node.type) {
+      case 'menu':          ok = (await BranchCatalogService.unassignMenu(branch.id, node.id)).success; break;
+      case 'category':      ok = (await BranchCatalogService.removeCategoryFromMenu(branch.id, parent?.id ?? '', node.id)).success; break;
+      case 'item':          ok = (await BranchCatalogService.unassignItem(branch.id, node.id)).success; break;
+      case 'modifierGroup': ok = (await BranchCatalogService.unassignModifierGroup(branch.id, node.id)).success; break;
+      case 'modifier':      ok = (await BranchCatalogService.unassignModifier(branch.id, node.id)).success; break;
+    }
 
-    message.info('All pending changes discarded');
+    if (ok) {
+      message.success({ content: `"${node.name}" removed from ${branch.name}`, duration: 2, icon: <MinusCircleOutlined /> });
+    } else {
+      setTree(snapshot); // restore the full previous tree
+      message.error(`Could not remove "${node.name}"`);
+    }
+  };
+
+  // Assign a tenant menu to the branch → optimistic add + single-call.
+  const handleAssignMenu = async (menuId: string) => {
+    const entry = allMenus.find(m => m.id === menuId);
+    if (!entry) return;
+    const node = mk('menu', entry.id, entry.name, true, { subtitle: entry.subtitle });
+    setAssigningMenuId(menuId);
+    setTree(t => [...t, node]);
+    setExpandedKeys(prev => new Set([...prev, node.key]));
+    try {
+      const ok = (await BranchCatalogService.assignMenu(branch.id, entry.id)).success;
+      if (ok) {
+        message.success({ content: `Menu "${entry.name}" assigned to ${branch.name}`, duration: 2, icon: <PlusCircleOutlined /> });
+        await loadChildren(node);
+        setSelectedKey(node.key);
+      } else {
+        setTree(t => removeNode(t, node.key));
+        message.error(`Could not assign menu "${entry.name}"`);
+      }
+    } finally {
+      setAssigningMenuId(null);
+    }
   };
 
   // ── Stats ─────────────────────────────────────────────────────────────────
 
+  // Tenant menus not yet associated with this branch.
   const usedMenuIds    = new Set(tree.map(n => n.id));
   const availableMenus = allMenus.filter(m => !usedMenuIds.has(m.id));
 
@@ -952,11 +1127,30 @@ const BranchCatalogView: React.FC<BranchCatalogViewProps> = ({ branch, open, onC
     setExpandedKeys(all);
   };
 
+  // Available children for the selected node's assign picker — the tenant-level
+  // children of THIS parent (already-assigned ids are filtered at render time).
+  const availableChildren: CatalogEntry[] = useMemo(() => {
+    if (!selectedNode) return [];
+    switch (selectedNode.type) {
+      case 'menu':          return categoriesByMenu.get(selectedNode.id)     ?? [];
+      case 'category':      return itemsByCategory.get(selectedNode.id)      ?? [];
+      case 'item':          return modifierGroupsByItem.get(selectedNode.id) ?? [];
+      case 'modifierGroup': return modifiersByGroup.get(selectedNode.id)     ?? [];
+      default:              return [];
+    }
+  }, [selectedNode, categoriesByMenu, itemsByCategory, modifierGroupsByItem, modifiersByGroup]);
+
+  const availLoading =
+    (selectedNode?.type === 'menu' && !menusData) ||
+    (selectedNode?.type === 'category' && !itemsData) ||
+    (selectedNode?.type === 'item' && !itemsData) ||
+    (selectedNode?.type === 'modifierGroup' && !modifierGroupsData);
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <Drawer
-      open={open} onClose={onClose} width="92%"
+      open={open} onClose={onClose} width="86%"
       styles={{
         body: { padding: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' },
         header: { padding: '14px 24px', borderBottom: `1px solid ${token.colorBorderSecondary}`, background: `linear-gradient(135deg, #f5f0ff 0%, ${token.colorBgContainer} 50%)` },
@@ -974,36 +1168,33 @@ const BranchCatalogView: React.FC<BranchCatalogViewProps> = ({ branch, open, onC
 
           <div style={{ flex: 1 }} />
 
-          {/* Stats */}
-          {([
-            { label: 'Menus', count: tree.length, color: '#6132C0' },
-            { label: 'Cats',  count: walkCount(tree, 'category'),      color: '#1677ff' },
-            { label: 'Items', count: walkCount(tree, 'item'),          color: '#389e0d' },
-            { label: 'Groups', count: walkCount(tree, 'modifierGroup'), color: '#d46b08' },
-            { label: 'Mods',   count: walkCount(tree, 'modifier'),      color: '#c41d7f' },
-          ]).map(s => (
-            <div key={s.label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '4px 12px', borderRadius: 8, background: s.color + '12', border: `1px solid ${s.color}30` }}>
-              <Text style={{ fontSize: 16, fontWeight: 700, color: s.color, lineHeight: 1.1 }}>{s.count}</Text>
-              <Text style={{ fontSize: 10, color: s.color, opacity: 0.8 }}>{s.label}</Text>
-            </div>
-          ))}
-
-          {/* Pending / Save All */}
-          {pendingCount > 0 && (
-            <Space size={8} style={{ marginLeft: 8 }}>
-              <Badge count={pendingCount} color="#fa8c16" overflowCount={99}>
-                <Button type="primary" icon={<CloudUploadOutlined />} loading={saving}
-                  onClick={handleSaveAll}
-                  style={{ background: '#389e0d', borderColor: '#389e0d', fontWeight: 600, height: 38 }}
-                >
-                  Save All
-                </Button>
-              </Badge>
-              <Popconfirm title="Discard all pending changes?" onConfirm={handleDiscard} okText="Discard" okButtonProps={{ danger: true }}>
-                <Button size="middle" style={{ height: 38 }}>Discard</Button>
-              </Popconfirm>
-            </Space>
-          )}
+          {/* Stats — one segmented bar; doubles as the level legend (icon + color per level) */}
+          <div style={{
+            display: 'flex', alignItems: 'stretch', height: 38,
+            background: token.colorBgContainer,
+            border: `1px solid ${token.colorBorderSecondary}`,
+            borderRadius: 10, overflow: 'hidden',
+          }}>
+            {([
+              { label: 'Menus',      type: 'menu' as NodeType,          count: tree.length },
+              { label: 'Categories', type: 'category' as NodeType,      count: walkCount(tree, 'category') },
+              { label: 'Items',      type: 'item' as NodeType,          count: walkCount(tree, 'item') },
+              { label: 'Mod Groups', type: 'modifierGroup' as NodeType, count: walkCount(tree, 'modifierGroup') },
+              { label: 'Modifiers',  type: 'modifier' as NodeType,      count: walkCount(tree, 'modifier') },
+            ]).map((s, i) => {
+              const m = NODE_META[s.type];
+              return (
+                <div key={s.label} style={{
+                  display: 'flex', alignItems: 'center', gap: 7, padding: '0 14px',
+                  borderLeft: i > 0 ? `1px solid ${token.colorBorderSecondary}` : 'none',
+                }}>
+                  <span style={{ color: m.color, fontSize: 13, display: 'inline-flex', lineHeight: 1 }}>{m.icon}</span>
+                  <Text style={{ fontSize: 14, fontWeight: 600, lineHeight: 1 }}>{s.count}</Text>
+                  <Text type="secondary" style={{ fontSize: 12, lineHeight: 1 }}>{s.label}</Text>
+                </div>
+              );
+            })}
+          </div>
         </div>
       }
     >
@@ -1011,16 +1202,6 @@ const BranchCatalogView: React.FC<BranchCatalogViewProps> = ({ branch, open, onC
 
         {/* ── Left: Tree (55%) ── */}
         <div style={{ width: '55%', flexShrink: 0, borderRight: `1px solid ${token.colorBorderSecondary}`, display: 'flex', flexDirection: 'column', background: token.colorBgContainer }}>
-
-          {/* Unsaved changes ribbon */}
-          {pendingCount > 0 && (
-            <div style={{ background: '#fffbe6', borderBottom: `1px solid #ffe58f`, padding: '6px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
-              <WarningFilled style={{ color: '#fa8c16' }} />
-              <Text style={{ fontSize: 13, color: '#d46b08', fontWeight: 500 }}>
-                {pendingCount} unsaved change{pendingCount !== 1 ? 's' : ''} — click <strong>Save All</strong> to commit
-              </Text>
-            </div>
-          )}
 
           {/* Toolbar */}
           <div style={{ padding: '12px 16px', borderBottom: `1px solid ${token.colorBorderSecondary}`, display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1031,34 +1212,58 @@ const BranchCatalogView: React.FC<BranchCatalogViewProps> = ({ branch, open, onC
               onClick={() => expandedKeys.size > 0 ? setExpandedKeys(new Set()) : expandAll()}>
               {expandedKeys.size > 0 ? '⊟ Collapse' : '⊞ Expand'}
             </Button>
-            {addMenuOpen ? (
-              <Space size={6}>
-                <Select size="large" style={{ width: 180 }} placeholder="Select menu…" value={addMenuId} onChange={setAddMenuId}
-                  showSearch optionFilterProp="label" options={availableMenus.map(m => ({ value: m.id, label: m.name }))} autoFocus />
-                <Button size="large" type="primary" onClick={handleAddMenu} disabled={!addMenuId}>Add</Button>
-                <Button size="large" onClick={() => { setAddMenuOpen(false); setAddMenuId(undefined); }}>✕</Button>
-              </Space>
-            ) : (
-              <Button type="dashed" size="large" icon={<PlusCircleOutlined />}
-                onClick={() => setAddMenuOpen(true)} disabled={availableMenus.length === 0}
-                style={{ whiteSpace: 'nowrap', fontWeight: 500 }}>
-                Add menu
-              </Button>
-            )}
+            <Button type="primary" size="large" icon={<PlusCircleOutlined />}
+              onClick={() => { setSelectedKey(null); setSelectedNode(null); }}
+              style={{ whiteSpace: 'nowrap', fontWeight: 600 }}>
+              Assign Menus
+            </Button>
           </div>
 
-          {/* Level legend */}
-          <div style={{ padding: '10px 16px', borderBottom: `1px solid ${token.colorBorderSecondary}`, display: 'flex', gap: 20, flexWrap: 'wrap', background: token.colorFillQuaternary }}>
-            {(Object.entries(NODE_META) as [NodeType, typeof NODE_META[NodeType]][]).map(([type, m]) => (
-              <Space key={type} size={6}>
-                <div style={{ width: 20, height: 20, borderRadius: 5, background: m.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <span style={{ color: m.color, fontSize: 12 }}>{m.icon}</span>
-                </div>
-                <Text style={{ fontSize: 12, fontWeight: 500 }}>{type === 'modifierGroup' ? 'Mod Group' : type.charAt(0).toUpperCase() + type.slice(1)}</Text>
-              </Space>
-            ))}
-            <Space size={4}><div style={{ width: 7, height: 7, borderRadius: '50%', background: '#fa8c16' }} /><Text style={{ fontSize: 12 }}>Unsaved</Text></Space>
-          </div>
+          {/* Breadcrumb — path to the selected node, clickable for quick navigation */}
+          {selectedNode && (() => {
+            const path = findPath(tree, selectedNode.key);
+            return (
+              <div style={{
+                padding: '8px 16px', borderBottom: `1px solid ${token.colorBorderSecondary}`,
+                display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2,
+                background: token.colorBgContainer, minHeight: 38,
+              }}>
+                <button type="button"
+                  onClick={() => { setSelectedKey(null); setSelectedNode(null); }}
+                  style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '2px 6px', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 5, font: 'inherit' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = token.colorFillTertiary; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                >
+                  <ShopOutlined style={{ fontSize: 12, color: token.colorTextSecondary }} />
+                  <Text type="secondary" style={{ fontSize: 12.5 }}>{branch.name}</Text>
+                </button>
+                {path.map((n, i) => {
+                  const meta = NODE_META[n.type];
+                  const isLast = i === path.length - 1;
+                  return (
+                    <React.Fragment key={n.key}>
+                      <Text type="secondary" style={{ fontSize: 11, margin: '0 2px' }}>/</Text>
+                      <button type="button"
+                        onClick={() => { if (!isLast) handleSelect(n); }}
+                        style={{
+                          border: 'none', background: isLast ? meta.bg : 'transparent',
+                          cursor: isLast ? 'default' : 'pointer', padding: '2px 8px', borderRadius: 6,
+                          display: 'inline-flex', alignItems: 'center', gap: 5, font: 'inherit', maxWidth: 180,
+                        }}
+                        onMouseEnter={e => { if (!isLast) (e.currentTarget as HTMLElement).style.background = token.colorFillTertiary; }}
+                        onMouseLeave={e => { if (!isLast) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                      >
+                        <span style={{ color: meta.color, fontSize: 12, display: 'inline-flex' }}>{meta.icon}</span>
+                        <Text ellipsis style={{ fontSize: 12.5, fontWeight: isLast ? 600 : 400, color: isLast ? meta.color : token.colorText }}>
+                          {n.name}
+                        </Text>
+                      </button>
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+            );
+          })()}
 
           {/* Tree */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '10px 12px 24px' }}>
@@ -1066,13 +1271,13 @@ const BranchCatalogView: React.FC<BranchCatalogViewProps> = ({ branch, open, onC
               <div style={{ display: 'flex', justifyContent: 'center', marginTop: 80 }}><Spin size="large" /></div>
             ) : tree.length === 0 ? (
               <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={<Text style={{ fontSize: 14 }}>No menus assigned to this branch</Text>} style={{ marginTop: 80 }}>
-                <Button type="primary" size="large" icon={<PlusCircleOutlined />} onClick={() => setAddMenuOpen(true)}>Add First Menu</Button>
+                <Button type="primary" size="large" icon={<PlusCircleOutlined />} onClick={() => { setSelectedKey(null); setSelectedNode(null); }}>Assign Menus</Button>
               </Empty>
             ) : (
-              <RenderTree nodes={tree} depth={0}
-                expandedKeys={expandedKeys} selectedKey={selectedKey} dirtyKeys={dirtyKeys}
+              <RenderTree nodes={visibleTree} depth={0}
+                expandedKeys={expandedKeys} selectedKey={selectedKey}
                 loadingKeys={loadingKeys}
-                onSelect={handleSelect} onExpand={handleExpand} onToggle={handleToggle} onRemove={handleRemoveNode}
+                onSelect={handleSelect} onExpand={handleExpand} onRemove={handleRemoveNode}
               />
             )}
           </div>
@@ -1080,7 +1285,17 @@ const BranchCatalogView: React.FC<BranchCatalogViewProps> = ({ branch, open, onC
 
         {/* ── Right: Detail panel (45%) ── */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: token.colorBgLayout }}>
-          <DetailPanel node={selectedNode} onApply={handleApplyOverride} />
+          <DetailPanel
+            node={selectedNode}
+            availableChildren={availableChildren}
+            availLoading={availLoading}
+            onApply={handleApplyOverride}
+            onAddChild={handleAddChild}
+            availableMenus={availableMenus}
+            onAssignMenu={handleAssignMenu}
+            assigningMenuId={assigningMenuId}
+            branchName={branch.name}
+          />
         </div>
       </div>
     </Drawer>

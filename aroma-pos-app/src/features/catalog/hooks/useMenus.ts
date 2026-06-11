@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/src/shared/services/api/client';
-import type { MenuEntity } from '@/src/shared/types';
+import type { MenuEntity, MenuAvailability } from '@/src/shared/types';
 
 export const MENUS_KEY = ['menus'] as const;
 
@@ -15,6 +15,7 @@ export interface CreateMenuPayload {
     subtitle?: string;
     isActive: boolean;
     categoryIds: string[];
+    availabilities?: MenuAvailability[];
 }
 
 export interface UpdateMenuPayload {
@@ -22,12 +23,13 @@ export interface UpdateMenuPayload {
     subtitle?: string;
     isActive: boolean;
     categoryIds?: string[];
+    availabilities?: MenuAvailability[];
 }
 
-export function useMenus() {
+export function useMenus(skipBranchId = false) {
     return useQuery<MenuEntity[]>({
-        queryKey: MENUS_KEY,
-        queryFn: () => apiClient.get<MenuEntity[]>('/api/menus'),
+        queryKey: [...MENUS_KEY, { skipBranchId }],
+        queryFn: () => apiClient.get<MenuEntity[]>('/api/menus', { skipBranchId } as any),
         staleTime: 60_000,
     });
 }

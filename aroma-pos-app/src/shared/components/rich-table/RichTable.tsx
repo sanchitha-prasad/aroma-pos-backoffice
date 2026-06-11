@@ -24,6 +24,8 @@ interface RichTableProps<T extends object> {
     // Table body scroll height
     scrollY?: string | number;
 
+     scroll?: React.ComponentProps<typeof Table<T>>['scroll'];
+
     // Pagination (controlled externally for slice logic)
     currentPage: number;
     pageSize: number;
@@ -40,6 +42,7 @@ function RichTable<T extends object>({
     data, columns, rowKey, isLoading = false,
     quickFilters, activeFilterKey, onFilterChange,
     toolbarRight, filterBar, scrollY = 'calc(100vh - 340px)',
+    scroll,
     currentPage, pageSize, totalItems,
     onPageChange, onPageSizeChange, totalLabel = 'records',
     onRow,
@@ -107,7 +110,7 @@ function RichTable<T extends object>({
                     pagination={false}
                     // Only apply fixed scroll when there is data — prevents phantom
                     // scrollbars rendered by Ant Design's overflow:auto container on empty tables
-                    scroll={data.length > 0 ? { x: 'max-content', y: scrollY } : undefined}
+                    scroll={scroll || (data.length > 0 ? { x: 'max-content', y: scrollY } : undefined)}
                     onRow={onRow}
                     style={{ height: '100%' }}
                     className="rich-table"

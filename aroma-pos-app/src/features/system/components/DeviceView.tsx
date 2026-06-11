@@ -6,7 +6,7 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
 import type { UseMutationResult } from '@tanstack/react-query';
-import { Device, DeviceType, DeviceProtocol } from '../../../shared/types';
+import { Device, DeviceType, DeviceProtocol, Branch } from '../../../shared/types';
 import { DeviceStatusType, DeviceTypeEnum, CardProviderType } from '@/src/shared/enums';
 import { RichTable } from '../../../shared/components/rich-table';
 
@@ -18,6 +18,7 @@ interface DeviceViewProps {
     devices: Device[];
     deviceTypes: DeviceType[];
     protocols: DeviceProtocol[];
+    branches: Branch[];
     isLoading?: boolean;
     createDevice: UseMutationResult<any, any, any, any>;
     updateDevice: UseMutationResult<any, any, any, any>;
@@ -39,6 +40,7 @@ const DeviceView: React.FC<DeviceViewProps> = ({
     devices,
     deviceTypes,
     protocols,
+    branches,
     isLoading = false,
     createDevice,
     updateDevice,
@@ -47,15 +49,15 @@ const DeviceView: React.FC<DeviceViewProps> = ({
     const [form] = Form.useForm();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingDevice, setEditingDevice] = useState<Device | null>(null);
-
+ 
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(8);
-
+ 
     const selectedTypeId = useWatch('deviceTypeId', form);
     const isPax = deviceTypes.find(t => t.id === selectedTypeId)?.name === DeviceTypeEnum[DeviceTypeEnum.PAX];
-
+ 
     const isDeviceActive = (status: any, isActive?: boolean): boolean => {
         if (status !== undefined && status !== null && status !== '') {
             if (typeof status === 'number') return status === DeviceStatusType.Active;
@@ -65,7 +67,7 @@ const DeviceView: React.FC<DeviceViewProps> = ({
         if (isActive !== undefined) return isActive;
         return false;
     };
-
+ 
     const openModal = (device?: Device) => {
         setEditingDevice(device || null);
         if (device) {
@@ -79,6 +81,7 @@ const DeviceView: React.FC<DeviceViewProps> = ({
                 ...device,
                 deviceTypeId: device.type?.id,
                 deviceProtocolId: device.protocol?.id,
+                branchId: device.branchId || (device as any).branch?.id,
                 status: statusVal,
             });
         } else {
@@ -151,6 +154,7 @@ const DeviceView: React.FC<DeviceViewProps> = ({
     const columns: ColumnsType<Device> = [
         {
             title: 'Name', dataIndex: 'name', key: 'name', width: 220,
+            sorter: (a, b) => (a.name || '').localeCompare(b.name || ''),
             render: (text: string, record: Device) => (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     <span style={{ fontWeight: 600, fontSize: 14 }}>{text}</span>
@@ -174,15 +178,23 @@ const DeviceView: React.FC<DeviceViewProps> = ({
         },
         {
             title: 'Type', dataIndex: ['type', 'name'], key: 'type', width: 120,
+            sorter: (a, b) => (a.type?.name || '').localeCompare(b.type?.name || ''),
             render: (text: string) => <Tag color="blue">{text || 'N/A'}</Tag>,
         },
-        { title: 'Location', dataIndex: 'location', key: 'location', width: 160 },
+        { title: 'Location', dataIndex: 'location', key: 'location', width: 160, 
+            sorter: (a, b) => (a.location || '').localeCompare(b.location || '')
+        },
         {
             title: 'IP Address', dataIndex: 'ipAddress', key: 'ip', width: 140,
             render: (text: string) => <span style={{ fontFamily: 'monospace' }}>{text || '—'}</span>,
         },
         {
             title: 'Status', dataIndex: 'status', key: 'status', width: 100,
+            sorter: (a, b) => {
+                const aActive = isDeviceActive(a.status, a.isActive);
+                const bActive = isDeviceActive(b.status, b.isActive);
+                return Number(aActive) - Number(bActive);
+            },
             render: (v: DeviceStatusType, record: Device) => {
                 const isActive = isDeviceActive(v, record.isActive);
                 return isActive
@@ -192,6 +204,9 @@ const DeviceView: React.FC<DeviceViewProps> = ({
         },
         {
             title: 'Created At', dataIndex: 'createdOnUtc', key: 'createdAt', width: 160,
+            sorter: (a, b) =>
+                new Date(a.createdOnUtc || 0).getTime() -
+                new Date(b.createdOnUtc || 0).getTime(),
             render: (v: string) => v
                 ? new Date(v).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
                 : '—',
@@ -247,6 +262,7 @@ const DeviceView: React.FC<DeviceViewProps> = ({
                     activeFilterKey={statusFilter}
                     onFilterChange={key => { setStatusFilter(key); setPage(1); }}
                     totalLabel="devices"
+                    scroll={{ x: 'max-content' }}  
                     scrollY="calc(100vh - 320px)"
                 />
             </div>
@@ -278,13 +294,24 @@ const DeviceView: React.FC<DeviceViewProps> = ({
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                        <Form.Item name="branchId" label="Branch" rules={[{ required: true, message: 'Branch is required' }]}>
+                            <Select placeholder="Select branch" disabled={!!editingDevice}>
+                                {branches.map(b => <Option key={b.id} value={b.id}>{b.name}</Option>)}
+                            </Select>
+                        </Form.Item>
                         <Form.Item name="deviceProtocolId" label="Protocol">
                             <Select placeholder="Select protocol" allowClear>
                                 {protocols.map(p => <Option key={p.id} value={p.id}>{p.name}</Option>)}
                             </Select>
                         </Form.Item>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                         <Form.Item name="location" label="Location">
                             <Input placeholder="e.g. Counter A" />
+                        </Form.Item>
+                        <Form.Item name="serialNumber" label="Serial Number" rules={[{ required: true }]}>
+                            <Input placeholder="e.g. SN-2025-AX94" />
                         </Form.Item>
                     </div>
 
@@ -298,9 +325,6 @@ const DeviceView: React.FC<DeviceViewProps> = ({
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                        <Form.Item name="serialNumber" label="Serial Number" rules={[{ required: true }]}>
-                            <Input placeholder="e.g. SN-2025-AX94" />
-                        </Form.Item>
                         <Form.Item
                             name="provider"
                             label={<span style={{ opacity: isPax ? 1 : 0.4 }}>Provider</span>}
