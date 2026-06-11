@@ -120,6 +120,7 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({
       children: [
         { key: '/devices', icon: <DesktopOutlined />, label: 'Devices', permission: 'BackOffice:devices:getall' },
         { key: '/branches', icon: <ShopOutlined />, label: 'Branches', permission: 'BackOffice:branches:getall' },
+        { key: '/device-categories', icon: <ControlOutlined />, label: 'Device Categories', permission: 'BackOffice:devices:getall' },
       ],
     },
     {

@@ -154,6 +154,7 @@ const DeviceView: React.FC<DeviceViewProps> = ({
     const columns: ColumnsType<Device> = [
         {
             title: 'Name', dataIndex: 'name', key: 'name', width: 220,
+            sorter: (a, b) => (a.name || '').localeCompare(b.name || ''),
             render: (text: string, record: Device) => (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     <span style={{ fontWeight: 600, fontSize: 14 }}>{text}</span>
@@ -177,15 +178,23 @@ const DeviceView: React.FC<DeviceViewProps> = ({
         },
         {
             title: 'Type', dataIndex: ['type', 'name'], key: 'type', width: 120,
+            sorter: (a, b) => (a.type?.name || '').localeCompare(b.type?.name || ''),
             render: (text: string) => <Tag color="blue">{text || 'N/A'}</Tag>,
         },
-        { title: 'Location', dataIndex: 'location', key: 'location', width: 160 },
+        { title: 'Location', dataIndex: 'location', key: 'location', width: 160, 
+            sorter: (a, b) => (a.location || '').localeCompare(b.location || '')
+        },
         {
             title: 'IP Address', dataIndex: 'ipAddress', key: 'ip', width: 140,
             render: (text: string) => <span style={{ fontFamily: 'monospace' }}>{text || '—'}</span>,
         },
         {
             title: 'Status', dataIndex: 'status', key: 'status', width: 100,
+            sorter: (a, b) => {
+                const aActive = isDeviceActive(a.status, a.isActive);
+                const bActive = isDeviceActive(b.status, b.isActive);
+                return Number(aActive) - Number(bActive);
+            },
             render: (v: DeviceStatusType, record: Device) => {
                 const isActive = isDeviceActive(v, record.isActive);
                 return isActive
@@ -195,6 +204,9 @@ const DeviceView: React.FC<DeviceViewProps> = ({
         },
         {
             title: 'Created At', dataIndex: 'createdOnUtc', key: 'createdAt', width: 160,
+            sorter: (a, b) =>
+                new Date(a.createdOnUtc || 0).getTime() -
+                new Date(b.createdOnUtc || 0).getTime(),
             render: (v: string) => v
                 ? new Date(v).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
                 : '—',
@@ -250,6 +262,7 @@ const DeviceView: React.FC<DeviceViewProps> = ({
                     activeFilterKey={statusFilter}
                     onFilterChange={key => { setStatusFilter(key); setPage(1); }}
                     totalLabel="devices"
+                    scroll={{ x: 'max-content' }}  
                     scrollY="calc(100vh - 320px)"
                 />
             </div>
