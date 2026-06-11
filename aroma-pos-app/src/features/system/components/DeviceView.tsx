@@ -259,6 +259,7 @@ const DeviceView: React.FC<DeviceViewProps> = ({
                     activeFilterKey={statusFilter}
                     onFilterChange={key => { setStatusFilter(key); setPage(1); }}
                     totalLabel="devices"
+                    scroll={{ x: 'max-content' }}  
                     scrollY="calc(100vh - 320px)"
                 />
             </div>
