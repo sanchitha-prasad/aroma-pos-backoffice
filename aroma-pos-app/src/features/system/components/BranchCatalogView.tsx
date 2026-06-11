@@ -688,13 +688,11 @@ const TreeRow: React.FC<{
           : <Tooltip title="Enabled at this branch"><CheckCircleFilled style={{ color: '#52c41a', fontSize: 12 }} /></Tooltip>}
       </div>
 
-      {depth > 0 && (
-        <Popconfirm title={`Remove "${node.name}" from branch?`} description="Removed from this branch immediately." onConfirm={e => { e?.stopPropagation(); onRemove(node); }} okText="Remove" okButtonProps={{ danger: true }}>
-          <Tooltip title="Remove from branch">
-            <Button type="text" size="small" danger icon={<MinusCircleOutlined style={{ fontSize: 13 }} />} onClick={e => e.stopPropagation()} style={{ marginLeft: 4, opacity: 0.6 }} />
-          </Tooltip>
-        </Popconfirm>
-      )}
+      <Popconfirm title={`Remove "${node.name}" from branch?`} description="Removed from this branch immediately." onConfirm={e => { e?.stopPropagation(); onRemove(node); }} okText="Remove" okButtonProps={{ danger: true }}>
+        <Tooltip title="Remove from branch">
+          <Button type="text" size="small" danger icon={<MinusCircleOutlined style={{ fontSize: 13 }} />} onClick={e => e.stopPropagation()} style={{ marginLeft: 4, opacity: 0.6 }} />
+        </Tooltip>
+      </Popconfirm>
     </div>
   );
 };
@@ -1073,7 +1071,7 @@ const BranchCatalogView: React.FC<BranchCatalogViewProps> = ({ branch, open, onC
 
   return (
     <Drawer
-      open={open} onClose={onClose} width="92%"
+      open={open} onClose={onClose} width="86%"
       styles={{
         body: { padding: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' },
         header: { padding: '14px 24px', borderBottom: `1px solid ${token.colorBorderSecondary}`, background: `linear-gradient(135deg, #f5f0ff 0%, ${token.colorBgContainer} 50%)` },
