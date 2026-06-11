@@ -6,7 +6,7 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
 import type { UseMutationResult } from '@tanstack/react-query';
-import { Device, DeviceType, DeviceProtocol } from '../../../shared/types';
+import { Device, DeviceType, DeviceProtocol, Branch } from '../../../shared/types';
 import { DeviceStatusType, DeviceTypeEnum, CardProviderType } from '@/src/shared/enums';
 import { RichTable } from '../../../shared/components/rich-table';
 
@@ -18,6 +18,7 @@ interface DeviceViewProps {
     devices: Device[];
     deviceTypes: DeviceType[];
     protocols: DeviceProtocol[];
+    branches: Branch[];
     isLoading?: boolean;
     createDevice: UseMutationResult<any, any, any, any>;
     updateDevice: UseMutationResult<any, any, any, any>;
@@ -39,6 +40,7 @@ const DeviceView: React.FC<DeviceViewProps> = ({
     devices,
     deviceTypes,
     protocols,
+    branches,
     isLoading = false,
     createDevice,
     updateDevice,
@@ -47,15 +49,15 @@ const DeviceView: React.FC<DeviceViewProps> = ({
     const [form] = Form.useForm();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingDevice, setEditingDevice] = useState<Device | null>(null);
-
+ 
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(8);
-
+ 
     const selectedTypeId = useWatch('deviceTypeId', form);
     const isPax = deviceTypes.find(t => t.id === selectedTypeId)?.name === DeviceTypeEnum[DeviceTypeEnum.PAX];
-
+ 
     const isDeviceActive = (status: any, isActive?: boolean): boolean => {
         if (status !== undefined && status !== null && status !== '') {
             if (typeof status === 'number') return status === DeviceStatusType.Active;
@@ -65,7 +67,7 @@ const DeviceView: React.FC<DeviceViewProps> = ({
         if (isActive !== undefined) return isActive;
         return false;
     };
-
+ 
     const openModal = (device?: Device) => {
         setEditingDevice(device || null);
         if (device) {
@@ -79,6 +81,7 @@ const DeviceView: React.FC<DeviceViewProps> = ({
                 ...device,
                 deviceTypeId: device.type?.id,
                 deviceProtocolId: device.protocol?.id,
+                branchId: device.branchId || (device as any).branch?.id,
                 status: statusVal,
             });
         } else {
@@ -278,13 +281,24 @@ const DeviceView: React.FC<DeviceViewProps> = ({
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                        <Form.Item name="branchId" label="Branch" rules={[{ required: true, message: 'Branch is required' }]}>
+                            <Select placeholder="Select branch" disabled={!!editingDevice}>
+                                {branches.map(b => <Option key={b.id} value={b.id}>{b.name}</Option>)}
+                            </Select>
+                        </Form.Item>
                         <Form.Item name="deviceProtocolId" label="Protocol">
                             <Select placeholder="Select protocol" allowClear>
                                 {protocols.map(p => <Option key={p.id} value={p.id}>{p.name}</Option>)}
                             </Select>
                         </Form.Item>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                         <Form.Item name="location" label="Location">
                             <Input placeholder="e.g. Counter A" />
+                        </Form.Item>
+                        <Form.Item name="serialNumber" label="Serial Number" rules={[{ required: true }]}>
+                            <Input placeholder="e.g. SN-2025-AX94" />
                         </Form.Item>
                     </div>
 
@@ -298,9 +312,6 @@ const DeviceView: React.FC<DeviceViewProps> = ({
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                        <Form.Item name="serialNumber" label="Serial Number" rules={[{ required: true }]}>
-                            <Input placeholder="e.g. SN-2025-AX94" />
-                        </Form.Item>
                         <Form.Item
                             name="provider"
                             label={<span style={{ opacity: isPax ? 1 : 0.4 }}>Provider</span>}

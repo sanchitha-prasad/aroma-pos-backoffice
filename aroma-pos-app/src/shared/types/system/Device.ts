@@ -6,6 +6,7 @@ import { CardProviderType } from '../../enums';
 
 export interface Device {
   id: string;
+  branchId?: string;
   name: string;
   status: DeviceStatusType;
   isActive?: boolean;
