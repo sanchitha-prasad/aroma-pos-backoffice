@@ -301,68 +301,65 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
             children: (
                 <ScrollablePane>
                     <div style={{ maxWidth: 800 }}>
-                        <Title level={4}>Payment Gateway & Terminals</Title>
+                        <Title level={4}>Payment Methods</Title>
                         <Divider />
                         <Form name="config_payment_form" layout="vertical">
-                            <Form.Item label="Payment Processor">
-                                <Select defaultValue="Stripe">
-                                    <Option value="Stripe">Stripe</Option>
-                                    <Option value="Square">Square</Option>
-                                    <Option value="Clover">Clover</Option>
-                                    <Option value="PAX">PAX Technology</Option>
-                                </Select>
-                            </Form.Item>
-                            <Card size="small" title="Processor Credentials" style={{ marginBottom: 24 }}>
-                                <Form.Item label="API Key / Token">
-                                    <Input.Password placeholder="sk_test_..." />
-                                </Form.Item>
-                                <Form.Item label="Terminal IP / Port (If applicable)">
-                                    <Input placeholder="192.168.1.50:10009" />
-                                </Form.Item>
+                            <Card
+                                style={{ marginBottom: 16, borderRadius: 8 }}
+                                bodyStyle={{ padding: '16px 20px' }}
+                            >
+                                <Row align="middle" justify="space-between">
+                                    <Col>
+                                        <Text strong style={{ fontSize: 15 }}>💵 Cash Payments</Text>
+                                        <div><Text type="secondary" style={{ fontSize: 13 }}>Allow customers to pay with cash</Text></div>
+                                    </Col>
+                                    <Col>
+                                        <Form.Item name="cashPaymentEnabled" valuePropName="checked" style={{ margin: 0 }}>
+                                            <Switch defaultChecked />
+                                        </Form.Item>
+                                    </Col>
+                                </Row>
                             </Card>
-                            
-                            <Row gutter={24}>
-                                <Col span={12}>
-                                    <Form.Item label="Surcharge / Convenience Fee (%)">
-                                        <InputNumber min={0} max={100} defaultValue={0} formatter={value => `${value}%`} />
-                                    </Form.Item>
-                                </Col>
-                                <Col span={12}>
-                                    <Form.Item label="Tip Configuration">
-                                        <Select defaultValue="Prompt on Terminal">
-                                            <Option value="None">Disabled</Option>
-                                            <Option value="Prompt on Screen">Prompt on POS Screen</Option>
-                                            <Option value="Prompt on Terminal">Prompt on Card Terminal</Option>
-                                        </Select>
-                                    </Form.Item>
-                                </Col>
-                            </Row>
 
-                            <Divider style={{ fontSize: 14 }}>Rules</Divider>
-                            <Row gutter={24}>
-                                <Col span={12}>
-                                    <Form.Item label="Offline Mode" valuePropName="checked">
-                                        <Switch /> <Text type="secondary" style={{ marginLeft: 8 }}>Allow transactions without internet</Text>
-                                    </Form.Item>
-                                    <Form.Item label="Auto-Close Card Batch" valuePropName="checked">
-                                        <Switch defaultChecked />
-                                    </Form.Item>
-                                </Col>
-                                <Col span={12}>
-                                    <Form.Item label="Cash Drawer Opens On">
-                                        <Select mode="multiple" defaultValue={['Cash Sale']}>
-                                            <Option value="Cash Sale">Cash Sale</Option>
-                                            <Option value="Card Sale">Card Sale</Option>
-                                            <Option value="Refund">Refund</Option>
-                                        </Select>
-                                    </Form.Item>
-                                </Col>
-                            </Row>
+                            <Card
+                                style={{ marginBottom: 16, borderRadius: 8 }}
+                                bodyStyle={{ padding: '16px 20px' }}
+                            >
+                                <Row align="middle" justify="space-between">
+                                    <Col>
+                                        <Text strong style={{ fontSize: 15 }}>💳 Card Payments</Text>
+                                        <div><Text type="secondary" style={{ fontSize: 13 }}>Allow customers to pay with credit / debit cards</Text></div>
+                                    </Col>
+                                    <Col>
+                                        <Form.Item name="cardPaymentEnabled" valuePropName="checked" style={{ margin: 0 }}>
+                                            <Switch defaultChecked />
+                                        </Form.Item>
+                                    </Col>
+                                </Row>
+                            </Card>
+
+                            <Card
+                                style={{ marginBottom: 16, borderRadius: 8 }}
+                                bodyStyle={{ padding: '16px 20px' }}
+                            >
+                                <Row align="middle" justify="space-between">
+                                    <Col>
+                                        <Text strong style={{ fontSize: 15 }}>🎁 Gift Card Payments</Text>
+                                        <div><Text type="secondary" style={{ fontSize: 13 }}>Allow customers to pay using gift cards</Text></div>
+                                    </Col>
+                                    <Col>
+                                        <Form.Item name="giftCardPaymentEnabled" valuePropName="checked" style={{ margin: 0 }}>
+                                            <Switch />
+                                        </Form.Item>
+                                    </Col>
+                                </Row>
+                            </Card>
                         </Form>
                     </div>
                 </ScrollablePane>
             )
         },
+        /* COMMENTED OUT - KDS tab
         {
             key: '3',
             permission: 'BackOffice:config:kds',
@@ -401,7 +398,8 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                     </div>
                 </ScrollablePane>
             )
-        },
+        }, // END COMMENTED OUT - KDS tab */
+        /* COMMENTED OUT - Alerts tab
         {
             key: '4',
             permission: 'BackOffice:config:alerts',
@@ -440,7 +438,8 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                     </div>
                 </ScrollablePane>
             )
-        },
+        }, // END COMMENTED OUT - Alerts tab */
+        /* COMMENTED OUT - Loyalty tab
         {
             key: '5',
             permission: 'BackOffice:config:view',
@@ -486,7 +485,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                     </div>
                     </ScrollablePane>
             )
-        },
+        }, // END COMMENTED OUT - Loyalty tab */
         {
             key: '6',
             permission: 'BackOffice:config:view',
@@ -514,6 +513,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                 </ScrollablePane>
             )
         },
+        /* COMMENTED OUT - Reservations tab
         {
             key: '7',
             permission: 'BackOffice:config:view',
@@ -550,7 +550,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                     </div>
                 </ScrollablePane>
             )
-        },
+        }, // END COMMENTED OUT - Reservations tab */
         {
             key: '8',
             permission: 'BackOffice:config:reports',
@@ -582,6 +582,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                 </ScrollablePane>
             )
         },
+        /* COMMENTED OUT - QR Ordering tab
         {
             key: '9',
             permission: 'BackOffice:config:view',
@@ -608,7 +609,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                     </div>
                 </ScrollablePane>
             )
-        },
+        }, // END COMMENTED OUT - QR Ordering tab */
         {
             key: '10',
             permission: 'BackOffice:config:view',
@@ -636,6 +637,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                 </ScrollablePane>
             )
         },
+        /* COMMENTED OUT - Shifts tab
         {
             key: '11',
             permission: 'BackOffice:config:shifts',
@@ -663,7 +665,7 @@ const ConfigurationView: React.FC<ConfigurationViewProps> = ({ permissions }) =>
                     </div>
                 </ScrollablePane>
             )
-        }
+        } // END COMMENTED OUT - Shifts tab */
     ];
 
     const visibleTabs = allTabs.filter(tab => permissions.includes(tab.permission));
