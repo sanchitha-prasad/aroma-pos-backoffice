@@ -39,6 +39,7 @@ import DashboardSkeleton from './shared/components/loading/DashboardSkeleton';
 
 import { Employee, Role } from './shared/types';
 import { DEFAULT_ROLE_PERMISSIONS } from './shared/constants';
+import { systemService } from './features/system/api/system.service';
 
 const MessageInitializer: React.FC = () => {
   const { message } = AntdApp.useApp();
@@ -96,7 +97,15 @@ const App: React.FC = () => {
   }, [currentUser]);
 
   const fetchPermissions = async () => {
-      // permissions API not yet available — using defaults
+      setLoadingPermissions(true);
+      try {
+          const data = await systemService.getRolePermissions();
+          setRolePermissions(data.roles);
+      } catch {
+          setRolePermissions(DEFAULT_ROLE_PERMISSIONS);
+      } finally {
+          setLoadingPermissions(false);
+      }
   };
 
   useEffect(() => {

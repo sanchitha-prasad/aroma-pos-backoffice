@@ -1,8 +1,9 @@
 ﻿import React, { useState, useEffect, useMemo } from 'react';
-import { Button, Typography, theme, message, Select, Input, Tree, Space, Tag, Divider, Tabs, Empty } from 'antd';
+import { Button, Typography, theme, Select, Input, Tree, Space, Tag, Divider, Tabs, Empty, Spin } from 'antd';
 import { SaveOutlined, ExpandAltOutlined, CompressOutlined, CaretRightOutlined, ShopOutlined, DesktopOutlined } from '@ant-design/icons';
 import { Role, Permission } from '../../../shared/types';
-import { ALL_PERMISSIONS, APPLICATIONS, APP_LABELS, APP_ROLES, ROLES } from '../../../shared/constants';
+import { APPLICATIONS, APP_LABELS, ROLES } from '../../../shared/constants';
+import { usePermissions } from '../../../shared/hooks/usePermissions';
 
 const { Title, Text } = Typography;
 const { Search } = Input;
@@ -19,6 +20,8 @@ const subGroupKey = (group: string, subGroup: string) => `subgroup-${group}-${su
 const RolePermissionsView: React.FC<RolePermissionsViewProps> = ({ rolePermissions, onSave }) => {
     const { token } = theme.useToken();
 
+    const { data: allPermissionsData = [], isLoading: permissionsLoading } = usePermissions();
+
     const [permissions, setPermissions] = useState<Record<Role, string[]>>(rolePermissions);
     const [activeApp, setActiveApp] = useState<'POS' | 'BackOffice'>('BackOffice');
     const [selectedRole, setSelectedRole] = useState<Role>('Manager');
@@ -32,8 +35,8 @@ const RolePermissionsView: React.FC<RolePermissionsViewProps> = ({ rolePermissio
     }, [rolePermissions]);
 
     const filteredPermissions = useMemo(() => {
-        return ALL_PERMISSIONS.filter(perm => (perm.application || 'BackOffice') === activeApp);
-    }, [activeApp]);
+        return allPermissionsData.filter(perm => (perm.application || 'BackOffice') === activeApp);
+    }, [activeApp, allPermissionsData]);
 
     const groupedPermissions = useMemo<Record<string, Record<string, Permission[]>>>(() => {
         return filteredPermissions.reduce((acc, perm) => {
@@ -260,7 +263,6 @@ const RolePermissionsView: React.FC<RolePermissionsViewProps> = ({ rolePermissio
     const handleSave = () => {
         onSave(permissions);
         setHasChanges(false);
-        message.success('Permissions updated successfully');
     };
 
     const handleAppChange = (app: string) => {
